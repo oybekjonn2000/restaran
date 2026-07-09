@@ -1,0 +1,12 @@
+package com.restoran.entity;
+
+public enum OrderStatus {
+    PENDING,
+    PREPARING,
+    COURIER_ACCEPTED,
+    COURIER_AT_RESTAURANT,
+    DELIVERING,
+    COURIER_AT_CLIENT,
+    DELIVERED,
+    CANCELED
+}

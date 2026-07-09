@@ -1,0 +1,216 @@
+package com.restoran.service;
+
+import com.restoran.dto.request.OrderRequest;
+import com.restoran.entity.*;
+import com.restoran.repository.FoodRepository;
+import com.restoran.repository.OrderRepository;
+import com.restoran.repository.UserRepository;
+import com.restoran.repository.RestaurantRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
+import java.util.Map;
+
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class OrderService {
+
+    private final OrderRepository orderRepository;
+    private final UserRepository userRepository;
+    private final FoodRepository foodRepository;
+    private final RestaurantRepository restaurantRepository;
+
+    private static final double REST_LAT = 38.866127;
+    private static final double REST_LNG = 65.816309;
+    private static final double BASE_FEE = 10000.0;
+    private static final double PER_KM_FEE = 1800.0;
+
+    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+        final int R = 6371; // Earth radius in km
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+    public Order createOrder(Long userId, OrderRequest request) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("Foydalanuvchi topilmadi: " + userId));
+
+        Long restId = request.getRestaurantId();
+        if (restId == null && request.getItems() != null && !request.getItems().isEmpty()) {
+            Food firstFood = foodRepository.findById(request.getItems().get(0).getFoodId())
+                .orElseThrow(() -> new RuntimeException("Taom topilmadi"));
+            if (firstFood.getRestaurant() != null) {
+                restId = firstFood.getRestaurant().getId();
+            }
+        }
+
+        Restaurant restaurant = null;
+        double restLat = REST_LAT;
+        double restLng = REST_LNG;
+
+        final Long finalRestId = restId;
+        if (finalRestId != null) {
+            restaurant = restaurantRepository.findById(finalRestId)
+                .orElseThrow(() -> new RuntimeException("Restoran topilmadi: " + finalRestId));
+            if (restaurant.getLatitude() != null && restaurant.getLongitude() != null) {
+                restLat = restaurant.getLatitude();
+                restLng = restaurant.getLongitude();
+            }
+        }
+
+        double distance = request.getDistance() != null ? request.getDistance() : 0.0;
+        double deliveryFee = request.getDeliveryFee() != null ? request.getDeliveryFee() : BASE_FEE;
+
+        if (distance == 0.0 && request.getLatitude() != null && request.getLongitude() != null && request.getLatitude() != 0 && request.getLongitude() != 0) {
+            distance = calculateDistance(restLat, restLng, request.getLatitude(), request.getLongitude());
+            distance = Math.round(distance * 10.0) / 10.0; // Round to 1 decimal place
+            deliveryFee = BASE_FEE + (distance * PER_KM_FEE);
+            deliveryFee = Math.round(deliveryFee / 100.0) * 100.0; // Round to nearest 100 so'm
+        }
+
+        Order order = Order.builder()
+            .user(user)
+            .restaurant(restaurant)
+            .status(OrderStatus.PENDING)
+            .deliveryAddress(request.getDeliveryAddress())
+            .latitude(request.getLatitude())
+            .longitude(request.getLongitude())
+            .distance(distance)
+            .deliveryFee(deliveryFee)
+            .note(request.getNote())
+            .build();
+
+        double total = 0;
+        for (OrderRequest.OrderItemRequest itemReq : request.getItems()) {
+            Food food = foodRepository.findById(itemReq.getFoodId())
+                .orElseThrow(() -> new RuntimeException("Taom topilmadi: " + itemReq.getFoodId()));
+
+            OrderItem item = OrderItem.builder()
+                .order(order)
+                .food(food)
+                .quantity(itemReq.getQuantity())
+                .price(food.getPrice())
+                .build();
+
+            order.getItems().add(item);
+            total += food.getPrice() * itemReq.getQuantity();
+        }
+
+        order.setTotalPrice(total);
+        return orderRepository.save(order);
+    }
+
+    public Order updateStatus(Long orderId, OrderStatus status) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Buyurtma topilmadi: " + orderId));
+        order.setStatus(status);
+
+        if (status == OrderStatus.PREPARING) {
+            // Auto-assign courier when restaurant accepts
+            if (order.getCourier() == null) {
+                autoAssignCourier(order);
+            }
+        } else if (status == OrderStatus.DELIVERED || status == OrderStatus.CANCELED) {
+            // When courier becomes free, check if there are other preparing orders without courier
+            if (order.getCourier() != null) {
+                backfillCourier(order.getCourier());
+            }
+        }
+
+        return orderRepository.save(order);
+    }
+
+    private void autoAssignCourier(Order order) {
+        List<User> couriers = userRepository.findByRole(Role.COURIER);
+        List<OrderStatus> activeStatuses = List.of(
+            OrderStatus.PREPARING,
+            OrderStatus.COURIER_ACCEPTED,
+            OrderStatus.COURIER_AT_RESTAURANT,
+            OrderStatus.DELIVERING,
+            OrderStatus.COURIER_AT_CLIENT
+        );
+        for (User courier : couriers) {
+            if (!orderRepository.existsByCourierAndStatusIn(courier, activeStatuses)) {
+                order.setCourier(courier);
+                break;
+            }
+        }
+    }
+
+    private void backfillCourier(User courier) {
+        List<Order> unassignedOrders = orderRepository.findByStatusOrderByCreatedAtAsc(OrderStatus.PREPARING);
+        for (Order o : unassignedOrders) {
+            if (o.getCourier() == null) {
+                o.setCourier(courier);
+                orderRepository.save(o);
+                break;
+            }
+        }
+    }
+
+    public Order acceptOrder(Long orderId, Long courierId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Buyurtma topilmadi: " + orderId));
+        User courier = userRepository.findById(courierId)
+            .orElseThrow(() -> new RuntimeException("Kuryer topilmadi: " + courierId));
+
+        if (order.getCourier() != null && !order.getCourier().getId().equals(courierId)) {
+            throw new RuntimeException("Bu buyurtmani boshqa kuryer allaqachon qabul qilgan!");
+        }
+
+        order.setCourier(courier);
+        order.setStatus(OrderStatus.COURIER_ACCEPTED);
+        return orderRepository.save(order);
+    }
+
+    public Order assignCourier(Long orderId, Long courierId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Buyurtma topilmadi: " + orderId));
+        User courier = userRepository.findById(courierId)
+            .orElseThrow(() -> new RuntimeException("Kuryer topilmadi: " + courierId));
+        order.setCourier(courier);
+        return orderRepository.save(order);
+    }
+
+    public List<Order> getAllOrders() {
+        return orderRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    public List<Order> getOrdersByUser(Long userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("Foydalanuvchi topilmadi: " + userId));
+        return orderRepository.findByUserOrderByCreatedAtDesc(user);
+    }
+
+    public List<Order> getOrdersByCourier(Long courierId) {
+        User courier = userRepository.findById(courierId)
+            .orElseThrow(() -> new RuntimeException("Kuryer topilmadi: " + courierId));
+        return orderRepository.findByCourierOrderByCreatedAtDesc(courier);
+    }
+
+    public List<Order> getAvailableOrders() {
+        return orderRepository.findByStatusOrderByCreatedAtAsc(OrderStatus.PREPARING).stream()
+            .filter(o -> o.getCourier() == null)
+            .toList();
+    }
+
+    public Map<String, Long> getStats() {
+        return Map.of(
+            "total", orderRepository.count(),
+            "pending", orderRepository.countByStatus(OrderStatus.PENDING),
+            "preparing", orderRepository.countByStatus(OrderStatus.PREPARING) 
+                         + orderRepository.countByStatus(OrderStatus.COURIER_ACCEPTED)
+                         + orderRepository.countByStatus(OrderStatus.COURIER_AT_RESTAURANT),
+            "delivering", orderRepository.countByStatus(OrderStatus.DELIVERING)
+                          + orderRepository.countByStatus(OrderStatus.COURIER_AT_CLIENT),
+            "delivered", orderRepository.countByStatus(OrderStatus.DELIVERED)
+        );
+    }
+}
