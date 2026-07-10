@@ -14,6 +14,8 @@ export interface Order {
   longitude?: number;
   deliveryFee?: number;
   distance?: number;
+  assignedAt?: string | null;
+  attemptedCourierIds?: string;
   note?: string;
   createdAt: string;
   items: OrderItem[];

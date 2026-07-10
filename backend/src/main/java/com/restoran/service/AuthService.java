@@ -72,6 +72,13 @@ public class AuthService {
             .role(user.getRole().name())
             .phone(user.getPhone())
             .address(user.getAddress())
+            .balance(user.getBalance())
             .build();
+    }
+
+    public AuthResponse getMe(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Foydalanuvchi topilmadi"));
+        return buildAuthResponse(null, user);
     }
 }

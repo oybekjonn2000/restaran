@@ -10,6 +10,7 @@ import com.restoran.repository.OrderRepository;
 import com.restoran.service.CategoryService;
 import com.restoran.service.FoodService;
 import com.restoran.service.OrderService;
+import com.restoran.service.SlotService;
 import lombok.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,6 +33,7 @@ public class AdminController {
     private final PasswordEncoder passwordEncoder;
     private final RestaurantRepository restaurantRepository;
     private final OrderRepository orderRepository;
+    private final SlotService slotService;
 
     // =================== BUYURTMALAR ===================
 
@@ -244,8 +246,65 @@ public class AdminController {
     }
 
     @GetMapping("/managers")
-    public ResponseEntity<List<User>> getManagers() {
-        return ResponseEntity.ok(userRepository.findByRole(Role.MANAGER));
+    public ResponseEntity<List<ManagerStatsResponse>> getManagers() {
+        List<User> managers = userRepository.findByRole(Role.MANAGER);
+        List<ManagerStatsResponse> response = managers.stream().map(m -> {
+            Restaurant rest = restaurantRepository.findByOwnerId(m.getId()).orElse(null);
+            String restName = rest != null ? rest.getName() : "Biriktirilmagan";
+            Long restId = rest != null ? rest.getId() : null;
+            long ordersCount = rest != null ? orderRepository.findByRestaurantIdOrderByCreatedAtDesc(rest.getId()).size() : 0;
+
+            return ManagerStatsResponse.builder()
+                .id(m.getId())
+                .name(m.getName())
+                .email(m.getEmail())
+                .phone(m.getPhone())
+                .restaurantName(restName)
+                .restaurantId(restId)
+                .restaurantOrdersCount(ordersCount)
+                .build();
+        }).toList();
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/managers/{id}")
+    public ResponseEntity<User> updateManager(@PathVariable Long id, @RequestBody ManagerUpdateRequest request) {
+        User manager = userRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Menejer topilmadi: " + id));
+        if (manager.getRole() != Role.MANAGER) {
+            throw new RuntimeException("Foydalanuvchi menejer emas!");
+        }
+
+        manager.setName(request.getName());
+        manager.setPhone(request.getPhone());
+        
+        if (request.getEmail() != null && !request.getEmail().trim().isEmpty() && !request.getEmail().equalsIgnoreCase(manager.getEmail())) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new RuntimeException("Email allaqachon band: " + request.getEmail());
+            }
+            manager.setEmail(request.getEmail());
+        }
+
+        return ResponseEntity.ok(userRepository.save(manager));
+    }
+
+    @DeleteMapping("/managers/{id}")
+    public ResponseEntity<MessageResponse> deleteManager(@PathVariable Long id) {
+        User manager = userRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Menejer topilmadi: " + id));
+        if (manager.getRole() != Role.MANAGER) {
+            throw new RuntimeException("Foydalanuvchi menejer emas!");
+        }
+
+        Restaurant rest = restaurantRepository.findByOwner(manager).orElse(null);
+        if (rest != null) {
+            rest.setOwner(null);
+            restaurantRepository.save(rest);
+        }
+
+        userRepository.delete(manager);
+        return ResponseEntity.ok(MessageResponse.ok("Menejer muvaffaqiyatli o'chirildi"));
     }
 
     // =================== MIJOZLAR (CLIENTS MANAGEMENT) ===================
@@ -354,8 +413,54 @@ public class AdminController {
     }
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor
+    public static class ManagerUpdateRequest {
+        private String name;
+        private String email;
+        private String phone;
+    }
+
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class ManagerStatsResponse {
+        private Long id;
+        private String name;
+        private String email;
+        private String phone;
+        private String restaurantName;
+        private Long restaurantId;
+        private long restaurantOrdersCount;
+    }
+
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor
     static class CategoryRequest {
         private String name;
         private String imageUrl;
+    }
+
+    // =================== SMENALAR (SLOTS) ===================
+
+    @GetMapping("/slots")
+    public ResponseEntity<List<Slot>> getAllSlots() {
+        return ResponseEntity.ok(slotService.getAllSlots());
+    }
+
+    @GetMapping("/slots/today")
+    public ResponseEntity<List<Slot>> getTodaySlots() {
+        return ResponseEntity.ok(slotService.getTodaySlots());
+    }
+
+    @PostMapping("/slots")
+    public ResponseEntity<Slot> createSlot(@RequestBody SlotService.SlotRequest request) {
+        return ResponseEntity.ok(slotService.createSlot(request));
+    }
+
+    @PutMapping("/slots/{id}")
+    public ResponseEntity<Slot> updateSlot(@PathVariable Long id, @RequestBody SlotService.SlotRequest request) {
+        return ResponseEntity.ok(slotService.updateSlot(id, request));
+    }
+
+    @DeleteMapping("/slots/{id}")
+    public ResponseEntity<MessageResponse> deleteSlot(@PathVariable Long id) {
+        slotService.deleteSlot(id);
+        return ResponseEntity.ok(MessageResponse.ok("Smena o'chirildi"));
     }
 }

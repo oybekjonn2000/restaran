@@ -31,6 +31,18 @@ export class AuthService {
     );
   }
 
+  fetchMe(): Observable<AuthResponse> {
+    return this.http.get<AuthResponse>(`${API}/me`).pipe(
+      tap(res => {
+        const current = this._user();
+        if (current) {
+          res.token = current.token;
+        }
+        this.saveUser(res);
+      })
+    );
+  }
+
   logout(): void {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);

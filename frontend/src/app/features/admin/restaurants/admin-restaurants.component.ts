@@ -187,7 +187,7 @@ import { User } from '../../../core/models/user.model';
 })
 export class AdminRestaurantsComponent implements OnInit {
   restaurants = signal<Restaurant[]>([]);
-  managers = signal<User[]>([]);
+  managers = signal<any[]>([]);
   loading = signal(true);
   showForm = signal(false);
   editId = signal<number | null>(null);

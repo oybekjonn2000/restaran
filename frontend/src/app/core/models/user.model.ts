@@ -5,6 +5,7 @@ export interface User {
   role: 'CLIENT' | 'COURIER' | 'ADMIN' | 'MANAGER';
   phone?: string;
   address?: string;
+  balance?: number;
 }
 
 export interface AuthResponse {
@@ -16,6 +17,7 @@ export interface AuthResponse {
   role: string;
   phone?: string;
   address?: string;
+  balance?: number;
 }
 
 export interface LoginRequest {
@@ -50,4 +52,14 @@ export interface ClientStats {
   address?: string;
   totalOrdersCount: number;
   totalSpent: number;
+}
+
+export interface ManagerStats {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string;
+  restaurantName: string;
+  restaurantId?: number;
+  restaurantOrdersCount: number;
 }

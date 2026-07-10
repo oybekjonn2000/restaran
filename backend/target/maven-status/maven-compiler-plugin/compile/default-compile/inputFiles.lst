@@ -5,6 +5,8 @@ D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\m
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\service\CategoryService.java
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\controller\RestaurantController.java
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\repository\RestaurantRepository.java
+D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\dto\request\ProfileUpdateRequest.java
+D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\entity\Slot.java
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\security\UserDetailsImpl.java
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\entity\OrderStatus.java
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\controller\CategoryController.java
@@ -12,9 +14,11 @@ D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\m
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\controller\FoodController.java
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\repository\OrderRepository.java
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\repository\CategoryRepository.java
+D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\service\SlotService.java
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\security\UserDetailsServiceImpl.java
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\entity\Category.java
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\dto\request\OrderRequest.java
+D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\dto\request\PasswordChangeRequest.java
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\controller\ManagerController.java
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\dto\response\MessageResponse.java
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\security\JwtUtils.java
@@ -30,6 +34,7 @@ D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\m
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\dto\response\AuthResponse.java
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\RestaurantApplication.java
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\controller\AuthController.java
+D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\repository\SlotRepository.java
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\service\AuthService.java
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\dto\request\LoginRequest.java
 D:\NOUT\Oybek dokument\antigravity_loyihalar\restoran_mijoz_kuryer\backend\src\main\java\com\restoran\controller\CourierController.java

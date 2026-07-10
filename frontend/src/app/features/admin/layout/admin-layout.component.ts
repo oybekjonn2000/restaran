@@ -59,6 +59,16 @@ import { AuthService } from '../../../core/services/auth.service';
             <span class="nav-icon">👥</span>
             <span>Mijozlar</span>
           </a>
+          <a routerLink="/admin/managers" routerLinkActive="active" (click)="menuOpen.set(false)"
+             class="nav-item" id="admin-nav-managers">
+            <span class="nav-icon">👤</span>
+            <span>Menejerlar</span>
+          </a>
+          <a routerLink="/admin/slots" routerLinkActive="active" (click)="menuOpen.set(false)"
+             class="nav-item" id="admin-nav-slots">
+            <span class="nav-icon">⏰</span>
+            <span>Smenalar</span>
+          </a>
         </nav>
 
         <div class="sidebar-footer">

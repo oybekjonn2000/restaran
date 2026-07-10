@@ -30,6 +30,14 @@ export const ADMIN_ROUTES: Routes = [
       {
         path: 'clients',
         loadComponent: () => import('./clients/admin-clients.component').then(m => m.AdminClientsComponent)
+      },
+      {
+        path: 'managers',
+        loadComponent: () => import('./managers/admin-managers.component').then(m => m.AdminManagersComponent)
+      },
+      {
+        path: 'slots',
+        loadComponent: () => import('./slots/admin-slots.component').then(m => m.AdminSlotsComponent)
       }
     ]
   }

@@ -40,6 +40,12 @@ public class Order {
     private Double deliveryFee;
     private Double distance;
 
+    @Column(name = "assigned_at")
+    private LocalDateTime assignedAt;
+
+    @Column(name = "attempted_courier_ids", length = 1000)
+    private String attemptedCourierIds;
+
     @Column(length = 500)
     private String note;
 

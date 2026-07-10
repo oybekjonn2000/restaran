@@ -117,8 +117,21 @@ public class OrderService {
             if (order.getCourier() == null) {
                 autoAssignCourier(order);
             }
-        } else if (status == OrderStatus.DELIVERED || status == OrderStatus.CANCELED) {
-            // When courier becomes free, check if there are other preparing orders without courier
+        } else if (status == OrderStatus.DELIVERED) {
+            // Balansni oshirish
+            if (order.getCourier() != null) {
+                User courier = order.getCourier();
+                long currentBalance = courier.getBalance() != null ? courier.getBalance() : 0L;
+                double fee = order.getDeliveryFee() != null ? order.getDeliveryFee() : 0.0;
+                courier.setBalance(currentBalance + (long) fee);
+                userRepository.save(courier);
+            }
+
+            // Free courier to take other orders
+            if (order.getCourier() != null) {
+                backfillCourier(order.getCourier());
+            }
+        } else if (status == OrderStatus.CANCELED) {
             if (order.getCourier() != null) {
                 backfillCourier(order.getCourier());
             }
@@ -136,10 +149,35 @@ public class OrderService {
             OrderStatus.DELIVERING,
             OrderStatus.COURIER_AT_CLIENT
         );
+
+        String attempted = order.getAttemptedCourierIds() != null ? order.getAttemptedCourierIds() : "";
+        boolean assigned = false;
+
         for (User courier : couriers) {
+            String idStr = "[" + courier.getId() + "]";
+            if (attempted.contains(idStr)) {
+                continue;
+            }
+
             if (!orderRepository.existsByCourierAndStatusIn(courier, activeStatuses)) {
                 order.setCourier(courier);
+                order.setAssignedAt(java.time.LocalDateTime.now());
+                order.setAttemptedCourierIds(attempted + idStr + ",");
+                assigned = true;
                 break;
+            }
+        }
+
+        // Agar hamma kuryerlar urinib ko'rilgan bo'lsa va topshirilmagan bo'lsa, ro'yxatni tozalab qaytadan urinamiz
+        if (!assigned && !couriers.isEmpty() && attempted.length() > 0) {
+            order.setAttemptedCourierIds("");
+            for (User courier : couriers) {
+                if (!orderRepository.existsByCourierAndStatusIn(courier, activeStatuses)) {
+                    order.setCourier(courier);
+                    order.setAssignedAt(java.time.LocalDateTime.now());
+                    order.setAttemptedCourierIds("[" + courier.getId() + "],");
+                    break;
+                }
             }
         }
     }
@@ -148,9 +186,14 @@ public class OrderService {
         List<Order> unassignedOrders = orderRepository.findByStatusOrderByCreatedAtAsc(OrderStatus.PREPARING);
         for (Order o : unassignedOrders) {
             if (o.getCourier() == null) {
-                o.setCourier(courier);
-                orderRepository.save(o);
-                break;
+                String attempted = o.getAttemptedCourierIds() != null ? o.getAttemptedCourierIds() : "";
+                if (!attempted.contains("[" + courier.getId() + "]")) {
+                    o.setCourier(courier);
+                    o.setAssignedAt(java.time.LocalDateTime.now());
+                    o.setAttemptedCourierIds(attempted + "[" + courier.getId() + "],");
+                    orderRepository.save(o);
+                    break;
+                }
             }
         }
     }
@@ -167,6 +210,7 @@ public class OrderService {
 
         order.setCourier(courier);
         order.setStatus(OrderStatus.COURIER_ACCEPTED);
+        order.setAssignedAt(null); // Qabul qilingach sanoq to'xtaydi
         return orderRepository.save(order);
     }
 
@@ -176,7 +220,30 @@ public class OrderService {
         User courier = userRepository.findById(courierId)
             .orElseThrow(() -> new RuntimeException("Kuryer topilmadi: " + courierId));
         order.setCourier(courier);
+        order.setAssignedAt(java.time.LocalDateTime.now());
+        String attempted = order.getAttemptedCourierIds() != null ? order.getAttemptedCourierIds() : "";
+        order.setAttemptedCourierIds(attempted + "[" + courierId + "],");
         return orderRepository.save(order);
+    }
+
+    /** 
+     * Har 5 soniyada qabul qilinmagan buyurtmalarni tekshiradi.
+     * Agar 2 daqiqa o'tgan bo'lsa, kuryerdan qaytarib olib boshqasiga auto-assign qiladi.
+     */
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 5000)
+    public void checkOrderAcceptTimeouts() {
+        List<Order> activeOrders = orderRepository.findByStatusOrderByCreatedAtAsc(OrderStatus.PREPARING);
+        for (Order order : activeOrders) {
+            if (order.getCourier() != null && order.getAssignedAt() != null) {
+                if (order.getAssignedAt().plusMinutes(2).isBefore(java.time.LocalDateTime.now())) {
+                    System.out.println(">>> Timeout: #" + order.getId() + " buyurtma kuryer tomonidan 2 daqiqa ichida qabul qilinmadi. Qayta taqsimlanmoqda...");
+                    order.setCourier(null);
+                    order.setAssignedAt(null);
+                    autoAssignCourier(order);
+                    orderRepository.save(order);
+                }
+            }
+        }
     }
 
     public List<Order> getAllOrders() {

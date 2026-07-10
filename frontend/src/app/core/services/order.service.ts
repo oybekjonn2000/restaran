@@ -2,9 +2,10 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Order, OrderRequest } from '../models/order.model';
-import { User, CourierStats, ClientStats, RegisterRequest } from '../models/user.model';
+import { User, CourierStats, ClientStats, ManagerStats, RegisterRequest } from '../models/user.model';
 import { Food } from '../models/food.model';
 import { Restaurant, RestaurantAdminRequest } from '../models/restaurant.model';
+import { Slot, SlotRequest, ActiveSlotResponse, CancelResult } from '../models/slot.model';
 
 const BASE = 'http://localhost:8080/api';
 
@@ -147,8 +148,16 @@ export class OrderService {
     return this.http.delete<any>(`${BASE}/admin/restaurants/${id}`);
   }
 
-  adminGetManagers(): Observable<User[]> {
-    return this.http.get<User[]>(`${BASE}/admin/managers`);
+  adminGetManagers(): Observable<ManagerStats[]> {
+    return this.http.get<ManagerStats[]>(`${BASE}/admin/managers`);
+  }
+
+  adminUpdateManager(id: number, req: any): Observable<User> {
+    return this.http.put<User>(`${BASE}/admin/managers/${id}`, req);
+  }
+
+  adminDeleteManager(id: number): Observable<any> {
+    return this.http.delete<any>(`${BASE}/admin/managers/${id}`);
   }
 
   // ===== SUPER ADMIN CLIENTS CRUD =====
@@ -162,5 +171,61 @@ export class OrderService {
 
   adminDeleteClient(id: number): Observable<any> {
     return this.http.delete<any>(`${BASE}/admin/clients/${id}`);
+  }
+
+  // ===== SMENALAR (SLOTS) =====
+
+  // Admin smenalar
+  adminGetSlots(): Observable<Slot[]> {
+    return this.http.get<Slot[]>(`${BASE}/admin/slots`);
+  }
+
+  adminGetTodaySlots(): Observable<Slot[]> {
+    return this.http.get<Slot[]>(`${BASE}/admin/slots/today`);
+  }
+
+  adminCreateSlot(req: SlotRequest): Observable<Slot> {
+    return this.http.post<Slot>(`${BASE}/admin/slots`, req);
+  }
+
+  adminUpdateSlot(id: number, req: SlotRequest): Observable<Slot> {
+    return this.http.put<Slot>(`${BASE}/admin/slots/${id}`, req);
+  }
+
+  adminDeleteSlot(id: number): Observable<any> {
+    return this.http.delete<any>(`${BASE}/admin/slots/${id}`);
+  }
+
+  // Kuryer smenalar
+  getCourierAvailableSlots(): Observable<Slot[]> {
+    return this.http.get<Slot[]>(`${BASE}/courier/slots/available`);
+  }
+
+  getCourierActiveSlot(): Observable<ActiveSlotResponse> {
+    return this.http.get<ActiveSlotResponse>(`${BASE}/courier/slots/active`);
+  }
+
+  startSlot(slotId: number): Observable<Slot> {
+    return this.http.post<Slot>(`${BASE}/courier/slots/${slotId}/start`, {});
+  }
+
+  endSlot(slotId: number): Observable<Slot> {
+    return this.http.post<Slot>(`${BASE}/courier/slots/${slotId}/end`, {});
+  }
+
+  bookSlot(slotId: number): Observable<Slot> {
+    return this.http.post<Slot>(`${BASE}/courier/slots/${slotId}/book`, {});
+  }
+
+  cancelSlot(slotId: number): Observable<CancelResult> {
+    return this.http.post<CancelResult>(`${BASE}/courier/slots/${slotId}/cancel`, {});
+  }
+
+  getCourierBookedSlots(): Observable<Slot[]> {
+    return this.http.get<Slot[]>(`${BASE}/courier/slots/my-booked`);
+  }
+
+  getCourierAllSlots(): Observable<Slot[]> {
+    return this.http.get<Slot[]>(`${BASE}/courier/slots/all`);
   }
 }

@@ -33,6 +33,10 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Long balance = 0L;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
