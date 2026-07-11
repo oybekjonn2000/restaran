@@ -17,6 +17,7 @@ export interface Order {
   assignedAt?: string | null;
   attemptedCourierIds?: string;
   note?: string;
+  cancelReason?: string;
   createdAt: string;
   items: OrderItem[];
 }

@@ -60,6 +60,9 @@ public class Order {
     @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
 
+    @Column(length = 500)
+    private String cancelReason;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {

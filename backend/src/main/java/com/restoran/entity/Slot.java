@@ -70,6 +70,15 @@ public class Slot {
     @Builder.Default
     private boolean penaltyApplied = false;
 
+    /** Jarima qo'llanilgan kuryer (smena bekor bo'lsa yoki no-show bo'lsa) */
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "penalized_courier_id")
+    private User penalizedCourier;
+
+    /** Jarima qo'llanilgan vaqt */
+    @Column(name = "penalized_at")
+    private LocalDateTime penalizedAt;
+
     /** Smenani boshlagan vaqt */
     @Column(name = "started_at")
     private LocalDateTime startedAt;

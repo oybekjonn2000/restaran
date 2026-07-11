@@ -73,18 +73,27 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
                   </td>
                   <td class="price-cell">{{ order.totalPrice | number:'1.0-0' }} so'm</td>
                   <td>
-                    <select class="status-select" [ngModel]="order.status"
-                            (change)="changeStatus(order.id, $any($event.target).value)"
-                            [id]="'status-select-' + order.id">
-                      @for (s of statuses; track s) {
-                        <option [value]="s">{{ statusLabel(s) }}</option>
+                    @if (order.status === 'CANCELED') {
+                      <span class="canceled-badge">❌ Bekor qilindi</span>
+                      @if (order.cancelReason) {
+                        <div class="cancel-reason-chip" [title]="order.cancelReason">
+                          💬 {{ order.cancelReason | slice:0:25 }}{{ order.cancelReason!.length > 25 ? '...' : '' }}
+                        </div>
                       }
-                    </select>
+                    } @else {
+                      <select class="status-select" [ngModel]="order.status"
+                              (change)="changeStatus(order.id, $any($event.target).value)"
+                              [id]="'status-select-' + order.id">
+                        @for (s of statuses; track s) {
+                          <option [value]="s">{{ statusLabel(s) }}</option>
+                        }
+                      </select>
+                    }
                   </td>
                   <td>
                     @if (order.courier) {
                       <span class="courier-chip">🏍️ {{ order.courier.name }}</span>
-                    } @else {
+                    } @else if (order.status !== 'CANCELED') {
                       <select class="courier-select" (change)="assignCourier(order.id, +$any($event.target).value)"
                               [id]="'courier-select-' + order.id">
                         <option value="">-- Kuryer tayinla --</option>
@@ -92,11 +101,18 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
                           <option [value]="c.id">🏍️ {{ c.name }}</option>
                         }
                       </select>
+                    } @else {
+                      <span style="color: var(--text-muted); font-size: 0.8rem;">—</span>
                     }
                   </td>
                   <td>
                     <div class="action-btns">
                       <button class="icon-btn view-btn" title="Ko'rish" (click)="viewOrder(order)">👁️</button>
+                      @if (order.status !== 'CANCELED' && order.status !== 'DELIVERED') {
+                        <button class="icon-btn cancel-btn" title="Sabab bilan bekor qilish"
+                                (click)="openCancelModal(order)"
+                                [id]="'cancel-btn-' + order.id">🚫</button>
+                      }
                     </div>
                   </td>
                 </tr>
@@ -126,6 +142,12 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
               <p><strong>Manzil:</strong> {{ selectedOrder()!.deliveryAddress || '—' }}</p>
               <p><strong>Izoh:</strong> {{ selectedOrder()!.note || '—' }}</p>
               <p><strong>Holat:</strong> {{ statusLabel(selectedOrder()!.status) }}</p>
+              @if (selectedOrder()!.cancelReason) {
+                <div class="cancel-reason-box">
+                  <span>⚠️ Bekor qilish sababi:</span>
+                  <p>{{ selectedOrder()!.cancelReason }}</p>
+                </div>
+              }
               <hr style="border-color: var(--border); margin: 12px 0;">
               <h3>Taomlar:</h3>
               @for (item of selectedOrder()!.items; track item.id) {
@@ -137,6 +159,58 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
               }
               <div class="modal-total">
                 Jami: {{ selectedOrder()!.totalPrice | number:'1.0-0' }} so'm
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Cancel with reason modal -->
+      @if (cancelModalOrder()) {
+        <div class="modal-overlay" (click)="closeCancelModal()">
+          <div class="modal-card cancel-modal animate-in" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h2>🚫 Buyurtma #{{ cancelModalOrder()!.id }} ni bekor qilish</h2>
+              <button class="close-btn" (click)="closeCancelModal()">✕</button>
+            </div>
+            <div class="modal-body">
+              <p style="color: var(--text-muted); margin-bottom: 16px;">
+                Mijozga ko'rsatiladigan bekor qilish sababini kiriting.
+                Bu xabar yuborilganda buyurtma avtomatik bekor bo'ladi.
+              </p>
+              <div class="reason-presets">
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Tezkor sabablar:</p>
+                <div class="preset-btns">
+                  @for (preset of cancelPresets; track preset) {
+                    <button class="preset-btn" (click)="cancelReason = preset">{{ preset }}</button>
+                  }
+                </div>
+              </div>
+              <div class="reason-input-wrap">
+                <label style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; display: block;">
+                  Sabab matni:
+                </label>
+                <textarea
+                  class="reason-textarea"
+                  [(ngModel)]="cancelReason"
+                  placeholder="Masalan: Kuryer topilmadi, iltimos qayta urinib ko'ring..."
+                  rows="4"
+                  id="cancel-reason-textarea"
+                  maxlength="500"
+                ></textarea>
+                <div style="text-align: right; font-size: 0.75rem; color: var(--text-muted);">
+                  {{ cancelReason.length }}/500
+                </div>
+              </div>
+              <div class="modal-actions">
+                <button class="btn btn-outline" (click)="closeCancelModal()">Bekor</button>
+                <button class="btn-danger"
+                        [disabled]="!cancelReason.trim() || canceling()"
+                        (click)="confirmCancel()"
+                        id="confirm-cancel-btn">
+                  @if (canceling()) { ⏳ Bekor qilinmoqda... }
+                  @else { 🚫 Xabar yuborib bekor qilish }
+                </button>
               </div>
             </div>
           </div>
@@ -233,6 +307,31 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
       white-space: nowrap;
     }
 
+    .canceled-badge {
+      background: rgba(239,68,68,0.1);
+      color: #ef4444;
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      display: inline-block;
+    }
+
+    .cancel-reason-chip {
+      margin-top: 4px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: rgba(239,68,68,0.05);
+      border: 1px solid rgba(239,68,68,0.15);
+      border-radius: 6px;
+      padding: 2px 8px;
+      max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: help;
+    }
+
     .action-btns { display: flex; gap: 6px; }
     .icon-btn {
       background: var(--bg-card2);
@@ -244,6 +343,7 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
       transition: var(--transition);
     }
     .icon-btn:hover { background: var(--border); }
+    .cancel-btn:hover { background: rgba(239,68,68,0.15) !important; border-color: rgba(239,68,68,0.4) !important; }
 
     .modal-overlay {
       position: fixed;
@@ -267,6 +367,8 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
       overflow-y: auto;
     }
 
+    .cancel-modal { max-width: 520px; }
+
     .modal-header {
       display: flex;
       align-items: center;
@@ -278,7 +380,7 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
     .close-btn {
       background: var(--bg-card2); border: 1px solid var(--border);
       border-radius: 8px; padding: 6px 10px; cursor: pointer;
-      transition: var(--transition);
+      transition: var(--transition); color: var(--text);
     }
     .close-btn:hover { background: var(--danger); color: white; border-color: var(--danger); }
 
@@ -306,6 +408,79 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
       color: var(--primary);
       text-align: right;
     }
+
+    .cancel-reason-box {
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: #fca5a5;
+    }
+    .cancel-reason-box span { font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 6px; }
+    .cancel-reason-box p { margin: 0; font-size: 0.9rem; }
+
+    .reason-presets { margin-bottom: 4px; }
+    .preset-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .preset-btn {
+      padding: 5px 12px;
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      cursor: pointer;
+      font-family: 'Poppins', sans-serif;
+      transition: var(--transition);
+    }
+    .preset-btn:hover {
+      border-color: rgba(239,68,68,0.5);
+      color: #fca5a5;
+      background: rgba(239,68,68,0.08);
+    }
+
+    .reason-input-wrap { display: flex; flex-direction: column; gap: 4px; }
+    .reason-textarea {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      padding: 12px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      resize: vertical;
+      outline: none;
+      transition: var(--transition);
+      line-height: 1.5;
+    }
+    .reason-textarea:focus { border-color: rgba(249,115,22,0.5); }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 8px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      border: none;
+    }
+    .btn-danger:hover:not(:disabled) { background: #dc2626; }
+    .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
   `]
 })
 export class AdminOrdersComponent implements OnInit, OnDestroy {
@@ -314,8 +489,19 @@ export class AdminOrdersComponent implements OnInit, OnDestroy {
   loading = signal(true);
   filterStatus: OrderStatus | null = null;
   selectedOrder = signal<Order | null>(null);
+  cancelModalOrder = signal<Order | null>(null);
+  canceling = signal(false);
+  cancelReason = '';
   statuses = ALL_STATUSES;
   private pollInterval: any;
+
+  cancelPresets = [
+    'Kuryer topilmadi',
+    'Restoran yopiq',
+    'Hududda yetkazish imkonsiz',
+    "Buyurtma noto'g'ri kiritilgan",
+    'Texnik muammo sababli',
+  ];
 
   get filteredOrders(): Order[] {
     if (!this.filterStatus) return this.orders();
@@ -333,9 +519,7 @@ export class AdminOrdersComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-    }
+    if (this.pollInterval) clearInterval(this.pollInterval);
   }
 
   load(showLoader = true): void {
@@ -345,9 +529,7 @@ export class AdminOrdersComponent implements OnInit, OnDestroy {
         this.orders.set(orders);
         if (showLoader) this.loading.set(false);
       },
-      error: () => {
-        if (showLoader) this.loading.set(false);
-      }
+      error: () => { if (showLoader) this.loading.set(false); }
     });
     this.orderService.getCouriers().subscribe(c => this.couriers.set(c));
   }
@@ -373,8 +555,34 @@ export class AdminOrdersComponent implements OnInit, OnDestroy {
     });
   }
 
-  viewOrder(order: Order): void {
-    this.selectedOrder.set(order);
+  viewOrder(order: Order): void { this.selectedOrder.set(order); }
+
+  openCancelModal(order: Order): void {
+    this.cancelModalOrder.set(order);
+    this.cancelReason = '';
+  }
+
+  closeCancelModal(): void {
+    this.cancelModalOrder.set(null);
+    this.cancelReason = '';
+  }
+
+  confirmCancel(): void {
+    const order = this.cancelModalOrder();
+    if (!order || !this.cancelReason.trim()) return;
+    this.canceling.set(true);
+    this.orderService.cancelOrderWithReason(order.id, this.cancelReason.trim()).subscribe({
+      next: (updated) => {
+        this.orders.update(list => list.map(o => o.id === order.id ? updated : o));
+        this.canceling.set(false);
+        this.closeCancelModal();
+        this.snack.open('✅ Buyurtma bekor qilindi, mijozga sabab yuborildi', '', { duration: 3000 });
+      },
+      error: () => {
+        this.canceling.set(false);
+        this.snack.open('❌ Xatolik yuz berdi', '', { duration: 2000 });
+      }
+    });
   }
 
   statusLabel(s: OrderStatus | string): string {

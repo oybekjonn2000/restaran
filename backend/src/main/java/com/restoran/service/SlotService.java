@@ -32,6 +32,11 @@ public class SlotService {
     // ====== ADMIN AMALLAR ======
 
     public Slot createSlot(SlotRequest request) {
+        LocalDateTime startDateTime = LocalDateTime.of(request.getDate(), request.getStartTime());
+        if (startDateTime.isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Smenani o'tib ketgan sana yoki vaqt bilan yaratib bo'lmaydi! Faqat kelajak vaqti bo'lishi kerak.");
+        }
+
         User courier = null;
         if (request.getCourierId() != null) {
             courier = userRepository.findById(request.getCourierId())
@@ -61,6 +66,11 @@ public class SlotService {
         Slot slot = slotRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Smena topilmadi: " + id));
 
+        LocalDateTime startDateTime = LocalDateTime.of(request.getDate(), request.getStartTime());
+        if (startDateTime.isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Smenani o'tib ketgan sana yoki vaqt bilan tahrirlab bo'lmaydi! Faqat kelajak vaqti bo'lishi kerak.");
+        }
+
         User courier = null;
         if (request.getCourierId() != null) {
             courier = userRepository.findById(request.getCourierId())
@@ -80,7 +90,17 @@ public class SlotService {
     }
 
     public void deleteSlot(Long id) {
-        slotRepository.deleteById(id);
+        Slot slot = slotRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Smena topilmadi! ID: " + id));
+
+        if (slot.isFinished()) {
+            throw new RuntimeException("Yakunlangan smenani o'chirib bo'lmaydi!");
+        }
+        if (slot.getCourier() != null || slot.getBookedBy() != null) {
+            throw new RuntimeException("Kuryer tanlagan yoki biriktirilgan smenani o'chirib bo'lmaydi!");
+        }
+
+        slotRepository.delete(slot);
     }
 
     public List<Slot> getAllSlots() {
@@ -179,17 +199,26 @@ public class SlotService {
         // Jarima hisoblash
         long penalty = calculatePenalty(slot);
 
-        slot.setCancelled(true);
-        slot.setCancelledAt(LocalDateTime.now());
-        slot.setPenaltyAmount(penalty);
-        slot.setPenaltyApplied(true);
-
+        // Jarimani kuryerning balansidan ayiramiz
         User user = slot.getBookedBy() != null ? slot.getBookedBy() : slot.getCourier();
-        if (user != null) {
+        if (user != null && penalty > 0) {
             long currentBalance = user.getBalance() != null ? user.getBalance() : 0L;
             user.setBalance(currentBalance - penalty);
             userRepository.save(user);
         }
+
+        // Smenani ochiq holatga qaytaramiz (bekor qilmaymiz!)
+        // Kuryer ma'lumotlarini tozalaymiz — smena boshqa kuryer olaoladi
+        slot.setCancelled(false);   // smena yo'qolmaydi
+        slot.setBookedBy(null);
+        slot.setBookedAt(null);
+        slot.setCourier(null);
+        slot.setCancelledAt(null);
+        // Jarima hisobi saqlanadi
+        slot.setPenaltyAmount(penalty);
+        slot.setPenaltyApplied(penalty > 0);
+        slot.setPenalizedCourier(user);
+        slot.setPenalizedAt(LocalDateTime.now());
 
         slotRepository.save(slot);
 
@@ -212,27 +241,25 @@ public class SlotService {
             throw new RuntimeException("Bu smena bekor qilingan!");
         }
 
-        // Smena bugun uchunmi?
-        if (!slot.getDate().equals(LocalDate.now())) {
-            throw new RuntimeException("Bu smena bugungi emas! Sana: " + slot.getDate());
+        LocalDateTime startDateTime = LocalDateTime.of(slot.getDate(), slot.getStartTime());
+        LocalDateTime endDateTime = LocalDateTime.of(slot.getDate(), slot.getEndTime());
+        LocalDateTime nowDateTime = LocalDateTime.now();
+
+        // Smena tugash vaqti o'tib ketgan bo'lsa
+        if (nowDateTime.isAfter(endDateTime)) {
+            throw new RuntimeException("Smena vaqti allaqachon tugagan!");
         }
 
-        // Vaqt tekshiruvi: hali kelmagan
-        if (now.isBefore(slot.getStartTime())) {
+        // Hali boshlanish vaqti kelmagan bo'lsa
+        if (nowDateTime.isBefore(startDateTime)) {
             throw new RuntimeException(
-                "Smena hali boshlanmagan! Smena vaqti: "
-                + slot.getStartTime().toString().substring(0, 5)
-                + ". Hozirgi vaqt: "
-                + now.toString().substring(0, 5)
+                "Smena hali boshlanmagan! Boshlanish vaqti: " + slot.getStartTime().toString().substring(0, 5)
             );
         }
 
-        // Vaqt tekshiruvi: o'tib ketgan
-        if (now.isAfter(slot.getEndTime())) {
-            throw new RuntimeException(
-                "Smena vaqti tugagan! Tugash vaqti: "
-                + slot.getEndTime().toString().substring(0, 5)
-            );
+        // Boshlanish vaqtidan 1 soat o'tib ketgan bo'lsa
+        if (nowDateTime.isAfter(startDateTime.plusHours(1))) {
+            throw new RuntimeException("Smenaga chiqish vaqti 1 soatdan o'tib ketdi (maksimal kechikish vaqti 1 soat)!");
         }
 
         if (slot.isStarted()) {
@@ -362,6 +389,47 @@ public class SlotService {
                     slotRepository.save(slot);
                     System.out.println(">>> Smena vaqti tugadi va faol buyurtmalar yo'qligi uchun #" + slot.getId() + " smena yopildi.");
                 }
+            }
+        }
+    }
+
+    /**
+     * Har 5 soniyada boshlanmagan smenalarni tekshiradi.
+     * Agar boshlanish vaqtidan 1 soat o'tgan bo'lsa, smenani avtomatik bekor qiladi va jarimalaydi.
+     */
+    @Scheduled(fixedDelay = 5000)
+    public void cancelNoShowSlotsRealtime() {
+        List<Slot> pendingSlots = slotRepository.findByStartedFalseAndCancelledFalseAndFinishedFalse();
+        LocalDateTime now = LocalDateTime.now();
+        for (Slot slot : pendingSlots) {
+            // Faqat kuryer band qilgan yoki biriktirilgan smenalarni tekshiramiz
+            if (slot.getBookedBy() == null && slot.getCourier() == null) continue;
+
+            LocalDateTime startDateTime = LocalDateTime.of(slot.getDate(), slot.getStartTime());
+            if (now.isAfter(startDateTime.plusHours(1))) {
+                System.out.println(">>> Auto no-show: #" + slot.getId() + " smenaga 1 soat davomida chiqilmadi. Jarima qo'llanilmoqda, smena qayta ochilmoqda...");
+                long penalty = calculatePenalty(slot);
+
+                // Jarimani kuryerga yozamiz
+                User user = slot.getBookedBy() != null ? slot.getBookedBy() : slot.getCourier();
+                if (user != null && penalty > 0) {
+                    long currentBalance = user.getBalance() != null ? user.getBalance() : 0L;
+                    user.setBalance(currentBalance - penalty);
+                    userRepository.save(user);
+                }
+
+                // Smenani ochiq holatga qaytaramiz
+                slot.setBookedBy(null);
+                slot.setBookedAt(null);
+                slot.setCourier(null);
+                slot.setCancelled(false);
+                slot.setCancelledAt(null);
+                slot.setPenaltyAmount(penalty);
+                slot.setPenaltyApplied(penalty > 0);
+                slot.setPenalizedCourier(user);
+                slot.setPenalizedAt(now);
+
+                slotRepository.save(slot);
             }
         }
     }

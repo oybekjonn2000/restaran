@@ -54,6 +54,11 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
                   @if (!slotCanStart(slot)) {
                     <span class="my-slot-dot">·</span>
                     <span class="my-slot-wait">{{ timeUntilSlot(slot) }}</span>
+                  } @else {
+                    <span class="my-slot-dot">·</span>
+                    <span class="delay-timer" style="color: #ef4444; font-weight: 600; animation: blink 1s infinite;">
+                      ⚠️ Kechikish: {{ getDelayTime(slot) }}
+                    </span>
                   }
                 </div>
               </div>
@@ -156,10 +161,6 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
                     </div>
                   </div>
                 </div>
-
-                <button class="smena-end-inline-btn" (click)="endCurrentSlot()">
-                  Smenani tugatish
-                </button>
 
               } @else {
                 <!-- Normal active delivery order card view -->
@@ -465,13 +466,29 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
             </div>
           </div>
 
-          <!-- Big Earnings Value -->
-          <div class="earnings-big-value-box">
-            <div class="earnings-big-num">{{ filteredEarningsTotal | number:'1.0-0' }}</div>
-            <div class="earnings-big-lbl">so'm</div>
+          <!-- Davr Navigatsiyasi (Strelkalar bilan) -->
+          <div class="earnings-nav-header">
+            <button class="earn-nav-btn" (click)="navigatePeriod(-1)">
+              ‹
+            </button>
+            <span class="earn-period-title">{{ getPeriodLabel() }}</span>
+            <button class="earn-nav-btn" (click)="navigatePeriod(1)">
+              ›
+            </button>
           </div>
 
-          <!-- Week Days Calendar Slider (Only show when 'kun' tab is active for selecting day) -->
+          <!-- Big Earnings Value -->
+          <div class="earnings-big-value-box">
+            <div class="earnings-big-num" [style.color]="(filteredEarningsTotal - filteredPenaltyTotal) < 0 ? '#ef4444' : 'var(--primary)'">
+              {{ (filteredEarningsTotal - filteredPenaltyTotal) | number:'1.0-0' }}
+            </div>
+            <div class="earnings-big-lbl">so'm (sof)</div>
+            @if (filteredPenaltyTotal > 0) {
+              <div class="earnings-penalty-sub">⚠️ {{ filteredPenaltyTotal | number:'1.0-0' }} so'm jarima ayirildi</div>
+            }
+          </div>
+
+          <!-- Week Days Calendar Slider (Faqat 'kun' tanlanganda chiqadi) -->
           @if (earningsTab() === 'kun') {
             <div class="earnings-calendar-slider">
               @for (day of weekDays; track day.date) {
@@ -485,18 +502,40 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
 
           <!-- Stats list -->
           <div class="earnings-stats-list">
-            <div class="earnings-stat-item" (click)="openFirstShiftDetail()" style="cursor: pointer;">
-              <div class="earnings-stat-left">
-                <span class="arrow-down-icon">▼</span>
-                <span class="stat-item-title">Smena uchun daromad</span>
-              </div>
+            <div class="earnings-stat-item">
+              <span class="stat-item-title">
+                @if (earningsTab() === 'kun') { Smena uchun daromad }
+                @else if (earningsTab() === 'hafta') { Haftalik smena daromadi }
+                @else { Oylik smena daromadi }
+              </span>
               <span class="stat-item-value">{{ filteredEarningsTotal | number:'1.0-0' }} so'm</span>
             </div>
 
+            @if (filteredPenaltyTotal > 0) {
+              <div class="earnings-stat-item">
+                <span class="stat-item-title" style="color: #ef4444;">⚠️ Jarimalar (bekor qilingan smenalar)</span>
+                <span class="stat-item-value" style="color: #ef4444;">-{{ filteredPenaltyTotal | number:'1.0-0' }} so'm</span>
+              </div>
+            }
+
+            <div class="earnings-stat-item" style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 2px;">
+              <span class="stat-item-title" style="font-weight: 700;">Sof daromad</span>
+              <span class="stat-item-value" [style.color]="(filteredEarningsTotal - filteredPenaltyTotal) < 0 ? '#ef4444' : '#10b981'">
+                {{ (filteredEarningsTotal - filteredPenaltyTotal) | number:'1.0-0' }} so'm
+              </span>
+            </div>
+
             <div class="earnings-stat-item">
-              <span class="stat-item-title">Yakunlangan smenalar</span>
+              <span class="stat-item-title">Smenalar soni</span>
               <span class="stat-item-value-black">{{ filteredEarningsSlotsCount }} Ta</span>
             </div>
+
+            @if (filteredCancelledSlotsCount > 0) {
+              <div class="earnings-stat-item">
+                <span class="stat-item-title" style="color: #ef4444;">Bekor qilingan smenalar</span>
+                <span class="stat-item-value-black" style="color: #ef4444;">{{ filteredCancelledSlotsCount }} Ta</span>
+              </div>
+            }
 
             <div class="earnings-stat-item">
               <span class="stat-item-title">Yetkazilgan buyurtmalar</span>
@@ -504,32 +543,46 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
             </div>
           </div>
 
-          <!-- Bottom detailed list of slots -->
+          <!-- Bottom detailed list of slots/days -->
           <div class="earnings-details-list">
             <div class="earnings-list-header">
-              {{ selectedDate() | date:'d MMMM':'':'uz' || selectedDate() }}
+              @if (earningsTab() === 'kun') {
+                Yakunlangan smenalar
+              } @else if (earningsTab() === 'hafta') {
+                Haftalik kunlik hisobotlar
+              } @else {
+                Oylik kunlik hisobotlar
+              }
             </div>
             
             <div class="earnings-list-items">
-              @for (item of filteredEarningsSlotsList; track item.id) {
-                <div class="earnings-list-row" (click)="selectedShiftDetailId.set(item.id)" style="cursor: pointer;">
+              @for (item of groupedEarningsReport; track item.id) {
+                <div class="earnings-list-row" 
+                     [style.background]="item.isCancelled ? 'rgba(239,68,68,0.06)' : ''"
+                     [style.border-left]="item.isCancelled ? '3px solid #ef4444' : '3px solid transparent'"
+                     (click)="item.isCancelled ? null : (item.type === 'slot' ? selectedShiftDetailId.set(item.id) : selectDayFromReport(item.date))" 
+                     [style.cursor]="item.isCancelled ? 'default' : 'pointer'">
                   <div class="earnings-row-left">
-                    <div class="clock-circle-icon">
-                      <span>⏰</span>
+                    <div class="clock-circle-icon" [style.background]="item.isCancelled ? 'rgba(239,68,68,0.12)' : (item.type === 'day' ? '#eef4ff' : '#f5f5f7')">
+                      <span>{{ item.isCancelled ? '🚫' : (item.type === 'day' ? '📅' : '⏰') }}</span>
                     </div>
                     <div class="earnings-row-text">
-                      <div class="earnings-row-time">{{ item.timeRange }}</div>
-                      <div class="earnings-row-sub">{{ item.date }} · {{ item.name }}</div>
+                      <div class="earnings-row-time" [style.color]="item.isCancelled ? '#ef4444' : ''">{{ item.title }}</div>
+                      <div class="earnings-row-sub">{{ item.subtitle }}</div>
                     </div>
                   </div>
                   <div class="earnings-row-right">
-                    <span class="earnings-row-amount">{{ item.earnings | number:'1.0-0' }} so'm</span>
-                    <span class="chevron-right">➔</span>
+                    <span class="earnings-row-amount" [style.color]="item.isCancelled ? '#ef4444' : (item.amount > 0 ? '#10b981' : '#777')">
+                      {{ item.isCancelled ? '' : '' }}{{ item.amount | number:'1.0-0' }} so'm
+                    </span>
+                    @if (!item.isCancelled) {
+                      <span class="chevron-right">➔</span>
+                    }
                   </div>
                 </div>
               } @empty {
                 <div class="earnings-empty-row">
-                  Ushbu davrda yakunlangan smenalar mavjud emas
+                  Ushbu davrda hech qanday ma'lumot topilmadi
                 </div>
               }
             </div>
@@ -580,9 +633,17 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
                   <span class="cell-label">Buyurtmalar yetkazmasi uchun ⓘ</span>
                   <span class="cell-val">{{ detail.earnings | number:'1.0-0' }} so'm</span>
                 </div>
+                @if (detail.penalty && detail.penalty > 0) {
+                  <div class="grid-cell" style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25);">
+                    <span class="cell-label" style="color: #ef4444;">⚠️ Jarima (bekor qilish)</span>
+                    <span class="cell-val" style="color: #ef4444;">-{{ detail.penalty | number:'1.0-0' }} so'm</span>
+                  </div>
+                }
                 <div class="grid-cell full-width-cell">
                   <span class="cell-label">To'lovga ⓘ</span>
-                  <span class="cell-val-blue">{{ detail.earnings | number:'1.0-0' }} so'm</span>
+                  <span class="cell-val-blue" [style.color]="detail.netEarnings < 0 ? '#ef4444' : ''">
+                    {{ detail.netEarnings | number:'1.0-0' }} so'm
+                  </span>
                 </div>
               </div>
 
@@ -833,11 +894,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
 
           <!-- Footer -->
           <div class="slot-details-footer">
-            @if (selectedDetailSlot()!.started) {
-              <button class="end-slot-action-btn" (click)="endSlotFromDetails(selectedDetailSlot()!.id)">
-                🔴 Smenani tugatish
-              </button>
-            } @else {
+            @if (!selectedDetailSlot()!.started) {
               <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
                 @if (slotCanStart(selectedDetailSlot()!) && !activeSlot()) {
                   <button class="start-slot-action-btn" (click)="startSlotFromDetails(selectedDetailSlot()!.id)">
@@ -847,6 +904,10 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
                 <button class="cancel-slot-action-btn" (click)="cancelSlotFromDetails(selectedDetailSlot()!.id)">
                   Bekor qilish
                 </button>
+              </div>
+            } @else {
+              <div style="text-align: center; color: #777; font-size: 0.82rem; width: 100%; padding: 6px; font-weight: 500; font-family: 'Poppins', sans-serif;">
+                🟢 Smena faol holatda. Uni faqat admin bekor qilishi mumkin.
               </div>
             }
           </div>
@@ -859,7 +920,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     :host {
       display: block;
       height: 100vh;
-      background: #f5f5f7;
+      background: var(--bg);
       font-family: 'Poppins', -apple-system, sans-serif;
     }
 
@@ -867,7 +928,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       height: 100%;
       display: flex;
       flex-direction: column;
-      background: #f5f5f7;
+      background: var(--bg);
       position: relative;
     }
 
@@ -888,36 +949,37 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     /* ===== JADVAL TAB ===== */
     .jadval-header {
       padding: 20px 16px 8px;
-      background: #fff;
-      border-bottom: 1px solid #e5e5e5;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
     }
     .jadval-title {
       font-size: 1.1rem;
       font-weight: 700;
-      color: #111;
+      color: var(--text);
       margin: 0;
     }
 
     /* Smena kartochkasi (jadval) */
     .my-slot-card {
       margin: 10px 16px 0;
-      background: #fff;
+      background: var(--bg-card);
       border-radius: 14px;
       padding: 14px 16px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
       position: relative;
     }
     .my-slot-card.slot-can-start {
-      border-left: 3px solid #4b6bfb;
+      border-left: 3px solid var(--primary);
     }
     .my-slot-card.active-my-slot {
-      border-left: 3px solid #10b981;
-      background: linear-gradient(135deg, rgba(16,185,129,0.04), #fff);
+      border-left: 3px solid var(--success);
+      background: linear-gradient(135deg, rgba(16,185,129,0.08), var(--bg-card));
     }
     .my-slot-date {
       font-size: 0.95rem;
       font-weight: 700;
-      color: #111;
+      color: var(--text);
       margin-bottom: 4px;
     }
     .my-slot-meta {
@@ -927,11 +989,11 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       font-size: 0.82rem;
       flex-wrap: wrap;
     }
-    .my-slot-name  { color: #555; }
-    .my-slot-dot   { color: #aaa; }
-    .my-slot-status { color: #10b981; font-weight: 600; }
-    .my-slot-booked-status { color: #4b6bfb; font-weight: 600; }
-    .my-slot-wait  { color: #f59e0b; }
+    .my-slot-name  { color: var(--text-muted); }
+    .my-slot-dot   { color: var(--border); }
+    .my-slot-status { color: var(--success); font-weight: 600; }
+    .my-slot-booked-status { color: var(--primary); font-weight: 600; }
+    .my-slot-wait  { color: var(--warning); }
 
     .slot-actions-inline {
       display: flex;
@@ -939,7 +1001,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       margin-top: 10px;
     }
     .start-slot-inline {
-      background: #4b6bfb;
+      background: var(--primary);
       color: #fff;
       border: none;
       border-radius: 10px;
@@ -952,7 +1014,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     }
     .cancel-slot-inline {
       background: rgba(239,68,68,0.08);
-      color: #ef4444;
+      color: var(--danger);
       border: 1px solid rgba(239,68,68,0.15);
       border-radius: 10px;
       padding: 8px 18px;
@@ -969,16 +1031,17 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       margin: 16px 16px 4px;
       font-size: 0.78rem;
       font-weight: 700;
-      color: #888;
+      color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.06em;
     }
     .order-mini-card {
       margin: 8px 16px 0;
-      background: #fff;
+      background: var(--bg-card);
       border-radius: 14px;
       padding: 14px 16px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
     }
     .order-mini-top {
       display: flex;
@@ -989,8 +1052,8 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .order-countdown {
       font-size: 0.78rem;
       font-weight: 700;
-      color: #4b6bfb;
-      background: rgba(75, 107, 251, 0.08);
+      color: var(--primary);
+      background: rgba(249, 115, 22, 0.1);
       padding: 3px 8px;
       border-radius: 6px;
       display: inline-flex;
@@ -999,7 +1062,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       font-family: monospace;
     }
     .countdown-critical {
-      color: #ef4444 !important;
+      color: var(--danger) !important;
       background: rgba(239, 68, 68, 0.08) !important;
       animation: blinkText 1s infinite;
     }
@@ -1007,23 +1070,23 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       0%, 100% { opacity: 1; }
       50% { opacity: 0.4; }
     }
-    .order-mini-num  { font-weight: 700; color: #111; font-size: 0.9rem; }
-    .order-mini-time { font-size: 0.8rem; color: #999; }
+    .order-mini-num  { font-weight: 700; color: var(--text); font-size: 0.9rem; }
+    .order-mini-time { font-size: 0.8rem; color: var(--text-muted); }
     .order-mini-restaurant {
       font-size: 0.9rem;
       font-weight: 700;
-      color: #111;
+      color: var(--text);
       margin: 6px 0 3px;
       display: flex;
       align-items: center;
       gap: 6px;
     }
-    .order-mini-addr { font-size: 0.85rem; color: #555; margin-bottom: 4px; }
-    .order-mini-price { font-size: 0.85rem; color: #4b6bfb; font-weight: 600; margin-bottom: 10px; }
+    .order-mini-addr { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px; }
+    .order-mini-price { font-size: 0.85rem; color: var(--primary); font-weight: 600; margin-bottom: 10px; }
 
     .accept-mini-btn {
       width: 100%;
-      background: #4b6bfb;
+      background: var(--primary);
       color: #fff;
       border: none;
       border-radius: 10px;
@@ -1036,7 +1099,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       transition: opacity 0.2s;
     }
     .need-slot-warn {
-      text-align: center; font-size: 0.82rem; color: #f59e0b; font-weight: 500;
+      text-align: center; font-size: 0.82rem; color: var(--warning); font-weight: 500;
       background: rgba(245,158,11,0.08); border-radius: 8px; padding: 8px;
     }
 
@@ -1044,11 +1107,11 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .empty-slots {
       text-align: center;
       padding: 60px 20px 20px;
-      color: #888;
+      color: var(--text-muted);
     }
     .empty-slots-icon { font-size: 3rem; margin-bottom: 12px; }
-    .empty-slots p    { font-size: 0.95rem; font-weight: 600; color: #555; margin-bottom: 6px; }
-    .empty-slots span { font-size: 0.82rem; color: #aaa; }
+    .empty-slots p    { font-size: 0.95rem; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .empty-slots span { font-size: 0.82rem; color: var(--text-muted); }
 
     /* Pastki tugma */
     .bottom-action-bar {
@@ -1071,14 +1134,14 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .main-map {
       width: 100%;
       height: 280px;
-      background: #dde8f0;
+      background: var(--bg-card2);
     }
     .map-route-btn {
       position: absolute;
       bottom: 16px;
       left: 50%;
       transform: translateX(-50%);
-      background: #4b6bfb;
+      background: var(--primary);
       color: #fff;
       border: none;
       border-radius: 24px;
@@ -1088,16 +1151,18 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       font-size: 0.9rem;
       cursor: pointer;
       display: flex; align-items: center; gap: 8px;
-      box-shadow: 0 4px 20px rgba(75,107,251,0.4);
+      box-shadow: 0 4px 20px rgba(249,115,22,0.4);
       white-space: nowrap;
     }
 
     .smena-info-panel {
-      background: #fff;
+      background: var(--bg-card);
       border-radius: 20px 20px 0 0;
       margin-top: -12px;
       padding: 20px 16px;
       flex: 1;
+      border: 1px solid var(--border);
+      border-bottom: none;
     }
     .smena-info-header {
       display: flex;
@@ -1107,7 +1172,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     }
     .smena-info-label {
       font-size: 0.75rem;
-      color: #aaa;
+      color: var(--text-muted);
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -1116,58 +1181,63 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .smena-info-name {
       font-size: 1.1rem;
       font-weight: 700;
-      color: #111;
+      color: var(--text);
     }
     .smena-info-time-badge {
-      background: #f0f0f5;
+      background: var(--bg-card2);
       border-radius: 10px;
       padding: 6px 12px;
       font-size: 0.82rem;
-      color: #555;
+      color: var(--text);
       font-weight: 600;
       white-space: nowrap;
+      border: 1px solid var(--border);
     }
     .smena-stats-row {
       display: flex;
       align-items: center;
       gap: 16px;
-      background: #f8f8fb;
+      background: var(--bg-card2);
       border-radius: 14px;
       padding: 14px 16px;
       margin-bottom: 16px;
+      border: 1px solid var(--border);
     }
     .smena-stat { display: flex; align-items: center; gap: 10px; flex: 1; }
     .smena-stat-icon { font-size: 1.4rem; }
-    .smena-stat-val { font-size: 0.92rem; font-weight: 700; color: #111; }
-    .smena-stat-lbl { font-size: 0.75rem; color: #999; margin-top: 1px; }
-    .smena-divider { width: 1px; height: 36px; background: #e0e0e0; flex-shrink: 0; }
+    .smena-stat-val { font-size: 0.92rem; font-weight: 700; color: var(--text); }
+    .smena-stat-lbl { font-size: 0.75rem; color: var(--text-muted); margin-top: 1px; }
+    .smena-divider { width: 1px; height: 36px; background: var(--border); flex-shrink: 0; }
 
     .active-order-card {
-      background: #f8f8fb;
+      background: var(--bg-card2);
       border-radius: 14px;
       padding: 14px;
       margin-bottom: 14px;
-      border-left: 3px solid #4b6bfb;
+      border-left: 3px solid var(--primary);
+      border-top: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
     }
     .active-order-top {
       display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;
     }
-    .active-order-num { font-weight: 700; color: #111; font-size: 0.9rem; }
-    .active-order-addr { font-size: 0.85rem; color: #666; margin-bottom: 12px; }
+    .active-order-num { font-weight: 700; color: var(--text); font-size: 0.9rem; }
+    .active-order-addr { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; }
     .active-order-actions { display: flex; gap: 8px; }
 
     .status-pill {
       font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 20px;
     }
-    .pill-courier_accepted    { background: rgba(75,107,251,0.12); color: #4b6bfb; }
-    .pill-courier_at_restaurant { background: rgba(245,158,11,0.12); color: #f59e0b; }
-    .pill-delivering          { background: rgba(16,185,129,0.12); color: #10b981; }
-    .pill-courier_at_client   { background: rgba(99,102,241,0.12); color: #6366f1; }
-    .pill-delivered           { background: rgba(16,185,129,0.12); color: #10b981; }
+    .pill-courier_accepted    { background: rgba(249,115,22,0.12); color: var(--primary); }
+    .pill-courier_at_restaurant { background: rgba(245,158,11,0.12); color: var(--warning); }
+    .pill-delivering          { background: rgba(16,185,129,0.12); color: var(--success); }
+    .pill-courier_at_client   { background: rgba(99,102,241,0.12); color: #818cf8; }
+    .pill-delivered           { background: rgba(16,185,129,0.12); color: var(--success); }
 
     .action-pill-btn {
       flex: 1;
-      background: #4b6bfb;
+      background: var(--primary);
       color: #fff;
       border: none;
       border-radius: 12px;
@@ -1177,13 +1247,13 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       font-size: 0.82rem;
       cursor: pointer;
     }
-    .success-pill { background: #10b981 !important; }
+    .success-pill { background: var(--success) !important; }
 
     .end-slot-btn {
       width: 100%;
       background: rgba(239,68,68,0.08);
       border: 1.5px solid rgba(239,68,68,0.3);
-      color: #ef4444;
+      color: var(--danger);
       border-radius: 14px;
       padding: 14px;
       font-family: 'Poppins', sans-serif;
@@ -1198,26 +1268,26 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       text-align: center;
       padding: 20px 0 24px;
     }
-    .no-smena-label { font-size: 0.75rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.05em; }
-    .no-smena-text  { font-size: 1.2rem; font-weight: 700; color: #111; margin: 6px 0 4px; }
-    .no-smena-sub   { font-size: 0.85rem; color: #999; }
+    .no-smena-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .no-smena-text  { font-size: 1.2rem; font-weight: 700; color: var(--text); margin: 6px 0 4px; }
+    .no-smena-sub   { font-size: 0.85rem; color: var(--text-muted); }
 
     /* ===== PROFIL TAB ===== */
     .profil-header {
-      background: #fff;
+      background: var(--bg-card);
       padding: 28px 16px 20px;
       text-align: center;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid var(--border);
     }
     .profil-avatar-wrap { display: flex; justify-content: center; margin-bottom: 12px; }
     .profil-avatar {
       width: 72px; height: 72px; border-radius: 50%;
-      background: linear-gradient(135deg, #4b6bfb, #7c3aed);
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
       display: flex; align-items: center; justify-content: center;
       font-size: 1.8rem; font-weight: 800; color: #fff;
     }
-    .profil-name  { font-size: 1.05rem; font-weight: 800; color: #111; margin-bottom: 2px; }
-    .profil-phone { font-size: 0.85rem; color: #888; }
+    .profil-name  { font-size: 1.05rem; font-weight: 800; color: var(--text); margin-bottom: 2px; }
+    .profil-phone { font-size: 0.85rem; color: var(--text-muted); }
 
     .yandex-profile-cards {
       display: grid;
@@ -1226,13 +1296,14 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       margin: 14px 16px 0;
     }
     .yandex-card {
-      background: #fff;
+      background: var(--bg-card);
       border-radius: 16px;
       padding: 14px 16px;
       display: flex;
       align-items: center;
       gap: 10px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
       text-align: left;
     }
     .yandex-card-icon {
@@ -1244,68 +1315,70 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     }
     .yandex-card-lbl {
       font-size: 0.72rem;
-      color: #999;
+      color: var(--text-muted);
       font-weight: 500;
     }
     .yandex-card-val {
       font-size: 0.88rem;
       font-weight: 700;
-      color: #111;
+      color: var(--text);
       margin-top: 1px;
     }
 
 
     .earnings-card {
       margin: 14px 16px 0;
-      background: #111;
+      background: var(--bg-card2);
       border-radius: 18px;
       padding: 20px;
-      color: #fff;
+      color: var(--text);
+      border: 1px solid var(--border);
     }
     .earnings-header {
       display: flex; justify-content: space-between; align-items: center;
-      font-size: 0.9rem; color: rgba(255,255,255,0.7); margin-bottom: 10px;
+      font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px;
     }
-    .earnings-amount { font-size: 2rem; font-weight: 800; color: #fff; }
+    .earnings-amount { font-size: 2rem; font-weight: 800; color: var(--text); }
 
     .profil-stats-row {
       display: grid; grid-template-columns: repeat(3,1fr); gap: 10px;
       margin: 12px 16px 0;
     }
     .profil-stat-card {
-      background: #fff; border-radius: 14px; padding: 14px 10px;
-      text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      background: var(--bg-card); border-radius: 14px; padding: 14px 10px;
+      text-align: center; box-shadow: var(--shadow); border: 1px solid var(--border);
     }
     .profil-stat-icon { font-size: 1.3rem; margin-bottom: 6px; }
-    .profil-stat-val  { font-size: 0.82rem; font-weight: 700; color: #111; margin-bottom: 2px; }
-    .profil-stat-lbl  { font-size: 0.7rem; color: #aaa; }
+    .profil-stat-val  { font-size: 0.82rem; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+    .profil-stat-lbl  { font-size: 0.7rem; color: var(--text-muted); }
 
     .profil-menu {
       margin: 14px 16px 0;
-      background: #fff;
+      background: var(--bg-card);
       border-radius: 14px;
       overflow: hidden;
+      border: 1px solid var(--border);
     }
     .profil-menu-item {
       display: flex; align-items: center; gap: 12px;
       padding: 15px 16px;
       cursor: pointer;
-      border-bottom: 1px solid #f5f5f5;
+      border-bottom: 1px solid var(--border);
     }
     .profil-menu-icon { font-size: 1.1rem; width: 28px; text-align: center; }
-    .profil-menu-item span:nth-child(2) { flex: 1; font-size: 0.92rem; font-weight: 500; color: #333; }
-    .profil-chevron { font-size: 1.1rem; color: #ccc; }
+    .profil-menu-item span:nth-child(2) { flex: 1; font-size: 0.92rem; font-weight: 500; color: var(--text); }
+    .profil-chevron { font-size: 1.1rem; color: var(--text-muted); }
 
     /* ===== PASTKI NAVIGATSIYA ===== */
     .bottom-nav {
       position: fixed;
       bottom: 0; left: 0; right: 0;
       height: 64px;
-      background: #fff;
-      border-top: 1px solid #e8e8e8;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
       display: flex;
       z-index: 100;
-      box-shadow: 0 -2px 16px rgba(0,0,0,0.06);
+      box-shadow: 0 -2px 16px rgba(0,0,0,0.3);
     }
     .nav-btn {
       flex: 1;
@@ -1317,16 +1390,16 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       background: none;
       border: none;
       cursor: pointer;
-      color: #aaa;
+      color: var(--text-muted);
       position: relative;
     }
-    .nav-btn.nav-active { color: #4b6bfb; }
+    .nav-btn.nav-active { color: var(--primary); }
     .nav-icon-svg { display: flex; }
     .nav-label { font-size: 0.68rem; font-weight: 600; }
     .nav-badge {
       position: absolute;
       top: 6px; right: calc(50% - 18px);
-      background: #ef4444;
+      background: var(--danger);
       color: #fff;
       font-size: 0.6rem;
       font-weight: 700;
@@ -1338,7 +1411,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     /* Modal trigger button */
     .open-schedule-btn {
       width: 100%;
-      background: #4b6bfb;
+      background: var(--primary);
       color: #fff;
       border: none;
       border-radius: 14px;
@@ -1347,18 +1420,18 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       font-weight: 700;
       font-size: 0.95rem;
       cursor: pointer;
-      box-shadow: 0 4px 16px rgba(75,107,251,0.3);
+      box-shadow: 0 4px 16px rgba(249,115,22,0.3);
     }
 
     .center-spinner { display: flex; justify-content: center; padding: 40px; }
     .center-tab { display: flex; align-items: center; justify-content: center; }
-    .coming-soon { text-align: center; color: #aaa; }
+    .coming-soon { text-align: center; color: var(--text-muted); }
     .coming-icon { font-size: 3rem; margin-bottom: 12px; }
 
     /* ===== JADVAL MODAL (FULL SCREEN) ===== */
     .schedule-overlay {
       position: fixed; inset: 0;
-      background: #fff;
+      background: var(--bg);
       z-index: 1000;
       display: flex;
       align-items: stretch;
@@ -1368,7 +1441,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .schedule-modal {
       width: 100%;
       height: 100vh;
-      background: #fff;
+      background: var(--bg);
       display: flex;
       flex-direction: column;
       animation: slideUpModal 0.25s ease-out;
@@ -1384,20 +1457,20 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       align-items: center;
       justify-content: space-between;
       padding: 16px 16px 12px;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid var(--border);
     }
     .schedule-modal-title {
       font-size: 1rem;
       font-weight: 700;
-      color: #111;
+      color: var(--text);
     }
     .modal-back, .modal-filter {
-      background: none; border: none; cursor: pointer; color: #555;
+      background: none; border: none; cursor: pointer; color: var(--text);
       width: 36px; height: 36px;
       display: flex; align-items: center; justify-content: center;
       border-radius: 10px;
     }
-    .modal-back:hover, .modal-filter:hover { background: #f5f5f5; }
+    .modal-back:hover, .modal-filter:hover { background: var(--bg-card2); }
 
     .calendar-nav-header {
       display: flex;
@@ -1406,16 +1479,16 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       padding: 10px 16px 2px;
     }
     .cal-nav-btn {
-      background: none; border: none; cursor: pointer; color: #4b6bfb;
+      background: none; border: none; cursor: pointer; color: var(--primary);
       width: 32px; height: 32px;
       display: flex; align-items: center; justify-content: center;
       border-radius: 8px;
     }
-    .cal-nav-btn:hover { background: rgba(75, 107, 251, 0.08); }
+    .cal-nav-btn:hover { background: rgba(249, 115, 22, 0.08); }
     .cal-month-title {
       font-size: 0.9rem;
       font-weight: 800;
-      color: #111;
+      color: var(--text);
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
@@ -1436,15 +1509,15 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       cursor: pointer;
       position: relative;
     }
-    .week-day:hover { background: #f5f5f5; }
-    .week-day-active { background: #4b6bfb !important; }
+    .week-day:hover { background: var(--bg-card2); }
+    .week-day-active { background: var(--primary) !important; }
     .week-day-active .week-day-name,
     .week-day-active .week-day-num { color: #fff !important; }
-    .week-day-name { font-size: 0.68rem; font-weight: 600; color: #999; }
-    .week-day-num  { font-size: 0.9rem; font-weight: 700; color: #222; }
+    .week-day-name { font-size: 0.68rem; font-weight: 600; color: var(--text-muted); }
+    .week-day-num  { font-size: 0.9rem; font-weight: 700; color: var(--text); }
     .week-day-dot  {
       width: 5px; height: 5px; border-radius: 50%;
-      background: #4b6bfb;
+      background: var(--primary);
       position: absolute;
       bottom: 4px;
     }
@@ -1465,7 +1538,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       text-align: center;
       font-size: 0.95rem;
       font-weight: 600;
-      color: #666;
+      color: var(--text-muted);
       line-height: 1.5;
     }
 
@@ -1474,34 +1547,34 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       align-items: center;
       justify-content: space-between;
       padding: 14px 16px;
-      border-bottom: 1px solid #f5f5f5;
+      border-bottom: 1px solid var(--border);
       gap: 12px;
     }
-    .schedule-slot-item:hover { background: #fafafa; }
+    .schedule-slot-item:hover { background: var(--bg-card2); }
     .schedule-slot-item.schedule-slot-booked {
-      border-left: 3px solid #4b6bfb;
-      background: rgba(75, 107, 251, 0.03);
+      border-left: 3px solid var(--primary);
+      background: rgba(249, 115, 22, 0.03);
     }
     .schedule-slot-left { flex: 1; }
     .schedule-slot-time {
       font-size: 0.92rem;
       font-weight: 700;
-      color: #111;
+      color: var(--text);
       margin-bottom: 3px;
     }
     .schedule-slot-meta {
       font-size: 0.8rem;
-      color: #888;
+      color: var(--text-muted);
       display: flex; gap: 4px; flex-wrap: wrap;
     }
-    .schedule-booked-tag { color: #4b6bfb; font-weight: 600; }
-    .schedule-assigned-tag { color: #f59e0b; font-weight: 500; }
-    .schedule-open-tag { color: #22c55e; font-weight: 500; }
+    .schedule-booked-tag { color: var(--primary); font-weight: 600; }
+    .schedule-assigned-tag { color: var(--warning); font-weight: 500; }
+    .schedule-open-tag { color: var(--success); font-weight: 500; }
 
     .schedule-slot-right { flex-shrink: 0; }
     .schedule-btn-group { display: flex; gap: 8px; }
     .schedule-start-btn {
-      background: #4b6bfb;
+      background: var(--primary);
       color: #fff;
       border: none;
       border-radius: 10px;
@@ -1513,7 +1586,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     }
     .schedule-cancel-btn {
       background: rgba(239,68,68,0.08);
-      color: #ef4444;
+      color: var(--danger);
       border: 1px solid rgba(239,68,68,0.15);
       border-radius: 10px;
       padding: 8px 16px;
@@ -1523,7 +1596,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       cursor: pointer;
     }
     .schedule-book-btn {
-      background: #4b6bfb;
+      background: var(--primary);
       color: #fff;
       border: none;
       border-radius: 10px;
@@ -1533,17 +1606,17 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       font-size: 0.82rem;
       cursor: pointer;
     }
-    .schedule-wait-tag   { font-size: 0.78rem; color: #f59e0b; font-weight: 600; }
-    .schedule-active-tag { font-size: 0.78rem; color: #10b981; font-weight: 600; }
+    .schedule-wait-tag   { font-size: 0.78rem; color: var(--warning); font-weight: 600; }
+    .schedule-active-tag { font-size: 0.78rem; color: var(--success); font-weight: 600; }
 
     .schedule-modal-footer {
       padding: 12px 16px;
-      border-top: 1px solid #f0f0f0;
+      border-top: 1px solid var(--border);
     }
     .notify-btn {
       width: 100%;
-      background: #f0f0f5;
-      color: #4b6bfb;
+      background: var(--bg-card2);
+      color: var(--primary);
       border: none;
       border-radius: 14px;
       padding: 16px;
@@ -1551,12 +1624,13 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       font-weight: 700;
       font-size: 0.95rem;
       cursor: pointer;
+      border: 1px solid var(--border);
     }
 
     /* ===== CUSTOM CONFIRM DIALOG ===== */
     .confirm-overlay {
       position: fixed; inset: 0;
-      background: rgba(0, 0, 0, 0.55);
+      background: rgba(0, 0, 0, 0.7);
       backdrop-filter: blur(4px);
       z-index: 2000;
       display: flex; align-items: center; justify-content: center;
@@ -1564,12 +1638,13 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       animation: overlayFadeIn 0.2s ease;
     }
     .confirm-card {
-      background: #fff;
+      background: var(--bg-card);
       border-radius: 20px;
       width: 100%;
       max-width: 340px;
       padding: 24px 20px;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -1586,7 +1661,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       width: 48px; height: 48px;
       border-radius: 50%;
       background: rgba(245, 158, 11, 0.1);
-      color: #f59e0b;
+      color: var(--warning);
       font-size: 1.5rem;
       display: flex; align-items: center; justify-content: center;
       margin-bottom: 12px;
@@ -1594,35 +1669,36 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .confirm-heading {
       font-size: 1.05rem;
       font-weight: 800;
-      color: #111;
+      color: var(--text);
       margin: 0 0 8px;
     }
     .confirm-body {
       font-size: 0.85rem;
-      color: #555;
+      color: var(--text-muted);
       line-height: 1.5;
       width: 100%;
     }
     .confirm-stats-box {
-      background: #f8f8fb;
+      background: var(--bg-card2);
       border-radius: 12px;
       padding: 10px 14px;
       margin: 12px 0;
       display: flex;
       flex-direction: column;
       gap: 6px;
+      border: 1px solid var(--border);
     }
     .confirm-stat-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    .confirm-stat-lbl { color: #888; font-weight: 500; }
-    .confirm-stat-val { font-weight: 700; color: #111; }
-    .confirm-stat-val.penalty-alert { color: #ef4444; }
+    .confirm-stat-lbl { color: var(--text-muted); font-weight: 500; }
+    .confirm-stat-val { font-weight: 700; color: var(--text); }
+    .confirm-stat-val.penalty-alert { color: var(--danger); }
     .confirm-hint {
       font-size: 0.76rem;
-      color: #999;
+      color: var(--text-muted);
       margin: 0;
     }
     .confirm-actions {
@@ -1633,7 +1709,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       margin-top: 18px;
     }
     .confirm-btn-yes {
-      background: #ef4444;
+      background: var(--danger);
       color: #fff;
       border: none;
       border-radius: 12px;
@@ -1647,8 +1723,8 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     }
     .confirm-btn-yes:hover { opacity: 0.9; }
     .confirm-btn-no {
-      background: #f0f0f5;
-      color: #4b6bfb;
+      background: var(--bg-card2);
+      color: var(--primary);
       border: none;
       border-radius: 12px;
       padding: 12px;
@@ -1658,6 +1734,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       cursor: pointer;
       width: 100%;
       transition: opacity 0.2s;
+      border: 1px solid var(--border);
     }
     .confirm-btn-no:hover { opacity: 0.9; }
 
@@ -1677,18 +1754,19 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .slot-details-name {
       font-size: 1.25rem;
       font-weight: 800;
-      color: #111;
+      color: var(--text);
       margin: 0 0 24px;
     }
     .slot-details-list {
       width: 100%;
-      background: #f8f8fb;
+      background: var(--bg-card2);
       border-radius: 16px;
       padding: 16px;
       display: flex;
       flex-direction: column;
       gap: 12px;
       margin-bottom: 20px;
+      border: 1px solid var(--border);
     }
     .slot-details-item {
       display: flex;
@@ -1696,8 +1774,8 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       align-items: center;
       font-size: 0.88rem;
     }
-    .details-lbl { color: #888; font-weight: 500; }
-    .details-val { color: #111; font-weight: 700; text-align: right; }
+    .details-lbl { color: var(--text-muted); font-weight: 500; }
+    .details-val { color: var(--text); font-weight: 700; text-align: right; }
     
     .slot-cancel-warning-box {
       background: rgba(239, 68, 68, 0.05);
@@ -1705,7 +1783,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       border-radius: 12px;
       padding: 12px 16px;
       font-size: 0.78rem;
-      color: #ef4444;
+      color: var(--danger);
       line-height: 1.45;
       text-align: center;
       width: 100%;
@@ -1713,7 +1791,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
 
     .slot-details-footer {
       padding: 16px 20px;
-      border-top: 1px solid #f0f0f0;
+      border-top: 1px solid var(--border);
       display: flex;
       justify-content: center;
       width: 100%;
@@ -1724,7 +1802,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       width: 100%;
       background: rgba(239,68,68,0.08);
       border: 1.5px solid rgba(239,68,68,0.3);
-      color: #ef4444;
+      color: var(--danger);
       border-radius: 14px;
       padding: 14px;
       font-family: 'Poppins', sans-serif;
@@ -1735,7 +1813,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
 
     .start-slot-action-btn {
       width: 100%;
-      background: #4b6bfb;
+      background: var(--primary);
       color: #fff;
       border: none;
       border-radius: 14px;
@@ -1749,7 +1827,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .cancel-slot-action-btn {
       width: 100%;
       background: rgba(239,68,68,0.08);
-      color: #ef4444;
+      color: var(--danger);
       border: 1px solid rgba(239,68,68,0.15);
       border-radius: 14px;
       padding: 14px;
@@ -1763,7 +1841,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .swipe-container {
       width: 100%;
       height: 52px;
-      background: #f0f0f5;
+      background: var(--bg-card2);
       border-radius: 26px;
       position: relative;
       overflow: hidden;
@@ -1771,7 +1849,8 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       align-items: center;
       cursor: pointer;
       user-select: none;
-      box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+      border: 1px solid var(--border);
     }
     .swipe-track {
       width: 100%;
@@ -1786,7 +1865,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       left: 0;
       top: 0;
       bottom: 0;
-      background: linear-gradient(90deg, #4b6bfb, #7c3aed);
+      background: linear-gradient(90deg, var(--primary), var(--primary-dark));
       border-radius: 26px;
       transition: width 0.1s ease-out;
     }
@@ -1796,8 +1875,8 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       width: 48px;
       height: 48px;
       border-radius: 50%;
-      background: #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      background: var(--text);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1806,14 +1885,14 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     }
     .swipe-arrow {
       font-size: 1.1rem;
-      color: #4b6bfb;
+      color: var(--primary);
       font-weight: 700;
     }
     .swipe-text {
       position: relative;
       font-size: 0.86rem;
       font-weight: 700;
-      color: #4b6bfb;
+      color: var(--primary);
       z-index: 1;
       pointer-events: none;
       transition: color 0.1s ease-out;
@@ -1826,19 +1905,20 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       top: 20px;
       left: 50%;
       transform: translateX(-50%);
-      background: #fff;
+      background: var(--bg-card);
       border-radius: 20px;
       padding: 8px 16px;
       display: flex;
       align-items: center;
       gap: 8px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      box-shadow: var(--shadow);
       z-index: 10;
+      border: 1px solid var(--border);
     }
     .searching-pulse-dot {
       width: 8px;
       height: 8px;
-      background-color: #10b981;
+      background-color: var(--success);
       border-radius: 50%;
       display: inline-block;
       animation: pulseSearching 1.5s infinite;
@@ -1851,7 +1931,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .searching-pill-text {
       font-size: 0.82rem;
       font-weight: 700;
-      color: #333;
+      color: var(--text);
       font-family: 'Poppins', sans-serif;
     }
     .map-menu-btn {
@@ -1860,28 +1940,28 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       right: 20px;
       width: 38px;
       height: 38px;
-      background: #fff;
+      background: var(--bg-card);
       border-radius: 50%;
-      border: none;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 1.25rem;
       font-weight: bold;
-      color: #333;
+      color: var(--text);
       cursor: pointer;
       z-index: 10;
       transition: background 0.1s;
     }
     .map-menu-btn:active {
-      background: #f5f5f5;
+      background: var(--bg-card2);
     }
     .map-start-point-btn {
       position: absolute;
       bottom: 20px;
       left: 20px;
-      background: #4b6bfb;
+      background: var(--primary);
       color: #fff;
       border-radius: 20px;
       padding: 10px 16px;
@@ -1890,7 +1970,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       font-size: 0.84rem;
       font-weight: 700;
       border: none;
-      box-shadow: 0 4px 15px rgba(75, 107, 251, 0.3);
+      box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
       cursor: pointer;
       z-index: 10;
       font-family: 'Poppins', sans-serif;
@@ -1911,32 +1991,34 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .map-ctrl-btn {
       width: 36px;
       height: 36px;
-      background: #fff;
+      background: var(--bg-card);
       border-radius: 50%;
-      border: none;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 0.95rem;
       cursor: pointer;
       font-weight: 700;
-      color: #333;
+      color: var(--text);
       transition: background 0.1s;
     }
     .map-ctrl-btn:active {
-      background: #f5f5f5;
+      background: var(--bg-card2);
     }
     .bottom-sheet-searching {
       border-radius: 28px 28px 0 0 !important;
       padding: 12px 20px 24px !important;
-      background: #fff !important;
-      box-shadow: 0 -8px 24px rgba(0,0,0,0.06) !important;
+      background: var(--bg-card) !important;
+      box-shadow: var(--shadow) !important;
+      border: 1px solid var(--border) !important;
+      border-bottom: none !important;
     }
     .bottom-sheet-handle {
       width: 40px;
       height: 4px;
-      background: #e0e0e0;
+      background: var(--border);
       border-radius: 2px;
       margin: 0 auto 18px;
     }
@@ -1951,8 +2033,8 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       width: 48px;
       height: 48px;
       border-radius: 50%;
-      background: #f8f8fb;
-      border: 1px solid #f0f0f5;
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1968,12 +2050,12 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .searching-title {
       font-size: 1.15rem;
       font-weight: 800;
-      color: #111;
+      color: var(--text);
       font-family: 'Poppins', sans-serif;
     }
     .searching-subtitle {
       font-size: 0.84rem;
-      color: #777;
+      color: var(--text-muted);
       font-weight: 500;
       font-family: 'Poppins', sans-serif;
     }
@@ -1984,8 +2066,8 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       margin-bottom: 16px;
     }
     .searching-info-card {
-      background: #fdfdfd;
-      border: 1px solid #f0f0f5;
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
       border-radius: 16px;
       padding: 14px;
       display: flex;
@@ -2004,24 +2086,24 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .search-card-label {
       font-size: 0.72rem;
       font-weight: 700;
-      color: #777;
+      color: var(--text-muted);
       font-family: 'Poppins', sans-serif;
     }
     .search-card-value {
       font-size: 0.86rem;
       font-weight: 800;
-      color: #111;
+      color: var(--text);
       font-family: 'Poppins', sans-serif;
     }
     .smena-end-inline-btn {
       width: 100%;
-      background: #fafafa;
-      border: 1px solid #e2e2e7;
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
       border-radius: 14px;
       padding: 12px;
       font-weight: 700;
       font-size: 0.85rem;
-      color: #666;
+      color: var(--text);
       cursor: pointer;
       margin-top: 6px;
       font-family: 'Poppins', sans-serif;
@@ -2203,7 +2285,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .earnings-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.4);
+      background: rgba(0, 0, 0, 0.7);
       backdrop-filter: blur(8px);
       z-index: 1000;
       display: flex;
@@ -2213,7 +2295,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .earnings-modal {
       width: 100%;
       height: 100vh;
-      background: #fff;
+      background: var(--bg);
       display: flex;
       flex-direction: column;
       overflow-y: auto;
@@ -2230,22 +2312,22 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       align-items: center;
       justify-content: space-between;
       padding: 16px;
-      border-bottom: 1px solid #f2f2f7;
+      border-bottom: 1px solid var(--border);
     }
     .earnings-back-btn, .earnings-info-btn {
-      background: none; border: none; cursor: pointer; color: #333;
+      background: none; border: none; cursor: pointer; color: var(--text);
       width: 36px; height: 36px;
       display: flex; align-items: center; justify-content: center;
       border-radius: 50%;
       transition: background 0.1s;
     }
     .earnings-back-btn:active, .earnings-info-btn:active {
-      background: #f2f2f7;
+      background: var(--bg-card2);
     }
     .earnings-title {
       font-size: 1.1rem;
       font-weight: 800;
-      color: #111;
+      color: var(--text);
       font-family: 'Poppins', sans-serif;
     }
     .earnings-info-btn span {
@@ -2258,56 +2340,89 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       margin: 20px 0 10px;
     }
     .earnings-tabs {
-      background: #f2f2f7;
+      background: var(--bg-card);
       border-radius: 12px;
       padding: 2px;
       display: flex;
       gap: 2px;
+      border: 1px solid var(--border);
     }
     .earnings-tab-btn {
       background: none; border: none; border-radius: 10px;
       padding: 8px 24px;
       font-size: 0.86rem;
       font-weight: 700;
-      color: #666;
+      color: var(--text-muted);
       cursor: pointer;
       font-family: 'Poppins', sans-serif;
       transition: background 0.15s, color 0.15s;
     }
     .earnings-tab-btn.active {
-      background: #fff;
-      color: #111;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+      background: var(--bg-card2);
+      color: var(--text);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
     }
     .earnings-big-value-box {
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin: 24px 0 16px;
+      margin: 12px 0 16px;
     }
     .earnings-big-num {
       font-size: 2.8rem;
       font-weight: 800;
-      color: #111;
+      color: var(--text);
       line-height: 1;
       letter-spacing: -0.02em;
       font-family: 'Poppins', sans-serif;
     }
     .earnings-big-lbl {
       font-size: 0.95rem;
-      color: #777;
+      color: var(--text-muted);
       font-weight: 600;
       margin-top: 6px;
       font-family: 'Poppins', sans-serif;
+    }
+    .earnings-nav-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 20px 2px;
+    }
+    .earn-nav-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--primary);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .earn-nav-btn:active { background: var(--bg-card2); }
+    .earn-period-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text);
+      font-family: 'Poppins', sans-serif;
+      flex: 1;
+      text-align: center;
     }
     .earnings-calendar-slider {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
       gap: 6px;
       padding: 8px 16px;
-      background: #f8f8fb;
+      background: var(--bg-card);
       border-radius: 16px;
       margin: 0 16px 20px;
+      border: 1px solid var(--border);
     }
     .earnings-cal-day {
       display: flex;
@@ -2319,7 +2434,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       transition: background 0.15s;
     }
     .earnings-cal-day.active {
-      background: #4b6bfb;
+      background: var(--primary) !important;
     }
     .earnings-cal-day.active .earnings-cal-dayNum,
     .earnings-cal-day.active .earnings-cal-label {
@@ -2328,12 +2443,12 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .earnings-cal-dayNum {
       font-size: 0.9rem;
       font-weight: 800;
-      color: #111;
+      color: var(--text);
       font-family: 'Poppins', sans-serif;
     }
     .earnings-cal-label {
       font-size: 0.65rem;
-      color: #777;
+      color: var(--text-muted);
       font-weight: 700;
       margin-top: 2px;
       font-family: 'Poppins', sans-serif;
@@ -2349,7 +2464,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       justify-content: space-between;
       align-items: center;
       padding: 16px 0;
-      border-bottom: 1px solid #f2f2f7;
+      border-bottom: 1px solid var(--border);
     }
     .earnings-stat-left {
       display: flex;
@@ -2358,39 +2473,40 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     }
     .arrow-down-icon {
       font-size: 0.75rem;
-      color: #777;
+      color: var(--text-muted);
     }
     .stat-item-title {
       font-size: 0.9rem;
       font-weight: 600;
-      color: #333;
+      color: var(--text-muted);
       font-family: 'Poppins', sans-serif;
     }
     .stat-item-value {
       font-size: 0.95rem;
       font-weight: 800;
-      color: #4b6bfb;
+      color: var(--primary);
       font-family: 'Poppins', sans-serif;
     }
     .stat-item-value-black {
       font-size: 0.95rem;
       font-weight: 800;
-      color: #111;
+      color: var(--text);
       font-family: 'Poppins', sans-serif;
     }
     .earnings-details-list {
-      background: #f8f8fb;
+      background: var(--bg-card);
       flex: 1;
       border-radius: 28px 28px 0 0;
       padding: 20px 16px;
       display: flex;
       flex-direction: column;
       gap: 12px;
+      border-top: 1px solid var(--border);
     }
     .earnings-list-header {
       font-size: 0.95rem;
       font-weight: 800;
-      color: #111;
+      color: var(--text);
       text-align: left;
       padding-left: 4px;
       font-family: 'Poppins', sans-serif;
@@ -2401,13 +2517,14 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       gap: 10px;
     }
     .earnings-list-row {
-      background: #fff;
+      background: var(--bg-card2);
       border-radius: 18px;
       padding: 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
     }
     .earnings-row-left {
       display: flex;
@@ -2419,7 +2536,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       width: 38px;
       height: 38px;
       border-radius: 50%;
-      background: #f2f2f7;
+      background: var(--bg-card);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -2433,12 +2550,12 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .earnings-row-time {
       font-size: 0.92rem;
       font-weight: 800;
-      color: #111;
+      color: var(--text);
       font-family: 'Poppins', sans-serif;
     }
     .earnings-row-sub {
       font-size: 0.76rem;
-      color: #777;
+      color: var(--text-muted);
       font-weight: 600;
       font-family: 'Poppins', sans-serif;
     }
@@ -2450,16 +2567,16 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .earnings-row-amount {
       font-size: 0.92rem;
       font-weight: 800;
-      color: #111;
+      color: var(--text);
       font-family: 'Poppins', sans-serif;
     }
     .chevron-right {
       font-size: 0.8rem;
-      color: #c7c7cc;
+      color: var(--text-muted);
     }
     .earnings-empty-row {
       font-size: 0.86rem;
-      color: #777;
+      color: var(--text-muted);
       text-align: center;
       padding: 24px;
       font-weight: 500;
@@ -2470,7 +2587,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .shift-detail-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.4);
+      background: rgba(0, 0, 0, 0.7);
       backdrop-filter: blur(8px);
       z-index: 1100;
       display: flex;
@@ -2481,12 +2598,14 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       width: 100%;
       max-width: 480px;
       max-height: 85vh;
-      background: #fff;
+      background: var(--bg-card);
       border-radius: 24px 24px 0 0;
       display: flex;
       flex-direction: column;
       overflow-y: auto;
-      box-shadow: 0 -8px 30px rgba(0,0,0,0.15);
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+      border-bottom: none;
     }
     .animate-shift-detail {
       animation: slideUpShiftDetail 0.28s cubic-bezier(0.32, 0.94, 0.6, 1);
@@ -2498,7 +2617,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .shift-detail-handle {
       width: 36px;
       height: 4px;
-      background: #dcdce2;
+      background: var(--border);
       border-radius: 2px;
       margin: 8px auto 0;
     }
@@ -2507,17 +2626,17 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       justify-content: space-between;
       align-items: center;
       padding: 12px 18px;
-      border-bottom: 1px solid #f2f2f7;
+      border-bottom: 1px solid var(--border);
     }
     .shift-detail-title {
       font-size: 1.15rem;
       font-weight: 800;
-      color: #111;
+      color: var(--text);
       font-family: 'Poppins', sans-serif;
     }
     .shift-detail-close-btn {
-      background: #f2f2f7;
-      border: none;
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
       border-radius: 50%;
       width: 30px;
       height: 30px;
@@ -2526,7 +2645,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       justify-content: center;
       font-size: 0.85rem;
       font-weight: 700;
-      color: #666;
+      color: var(--text);
       cursor: pointer;
     }
     .shift-detail-content {
@@ -2538,7 +2657,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .detail-section-title {
       font-size: 1.05rem;
       font-weight: 800;
-      color: #111;
+      color: var(--text);
       text-align: left;
       display: flex;
       align-items: center;
@@ -2546,14 +2665,14 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       font-family: 'Poppins', sans-serif;
     }
     .blue-chevron {
-      color: #4b6bfb;
+      color: var(--primary);
       font-size: 0.75rem;
     }
     .shift-detail-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 14px;
-      border-bottom: 1px solid #f2f2f7;
+      border-bottom: 1px solid var(--border);
       padding-bottom: 16px;
     }
     .grid-cell {
@@ -2567,20 +2686,20 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     }
     .cell-label {
       font-size: 0.8rem;
-      color: #777;
+      color: var(--text-muted);
       font-weight: 600;
       font-family: 'Poppins', sans-serif;
     }
-    .cell-val {
+    .grid-cell .cell-val {
       font-size: 0.98rem;
       font-weight: 800;
-      color: #111;
+      color: var(--text);
       font-family: 'Poppins', sans-serif;
     }
     .cell-val-blue {
       font-size: 0.98rem;
       font-weight: 800;
-      color: #4b6bfb;
+      color: var(--primary);
       font-family: 'Poppins', sans-serif;
     }
     .shift-orders-list {
@@ -2589,10 +2708,10 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       gap: 14px;
     }
     .shift-order-card {
-      background: #f8f8fb;
+      background: var(--bg-card2);
       border-radius: 20px;
       padding: 16px;
-      border: 1px solid #f0f0f5;
+      border: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -2605,12 +2724,12 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .shift-order-id {
       font-size: 1.05rem;
       font-weight: 800;
-      color: #111;
+      color: var(--text);
       font-family: 'Poppins', sans-serif;
     }
     .shift-order-time-pill {
-      background: #eef0fa;
-      color: #4b6bfb;
+      background: rgba(249, 115, 22, 0.1);
+      color: var(--primary);
       font-size: 0.74rem;
       font-weight: 700;
       padding: 2px 8px;
@@ -2618,7 +2737,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     }
     .shift-order-restaurant {
       font-size: 0.84rem;
-      color: #777;
+      color: var(--text-muted);
       font-weight: 600;
       text-align: left;
       font-family: 'Poppins', sans-serif;
@@ -2627,19 +2746,19 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid #eef0fa;
+      border-bottom: 1px solid var(--border);
       padding-bottom: 8px;
     }
     .earned-label {
       font-size: 0.86rem;
-      color: #111;
+      color: var(--text);
       font-weight: 700;
       font-family: 'Poppins', sans-serif;
     }
     .earned-val {
       font-size: 0.92rem;
       font-weight: 800;
-      color: #111;
+      color: var(--text);
       font-family: 'Poppins', sans-serif;
     }
     .shift-order-breakdown {
@@ -2654,33 +2773,37 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     }
     .breakdown-lbl {
       font-size: 0.78rem;
-      color: #777;
+      color: var(--text-muted);
       font-weight: 600;
       font-family: 'Poppins', sans-serif;
     }
     .breakdown-val-black {
       font-size: 0.8rem;
-      color: #111;
+      color: var(--text);
       font-weight: 800;
       font-family: 'Poppins', sans-serif;
     }
     .shift-order-status-btn {
       width: 100%;
-      background: #eef4ff;
-      color: #4b6bfb;
-      border: none;
+      background: rgba(249, 115, 22, 0.1);
+      color: var(--primary);
+      border: 1px solid rgba(249, 115, 22, 0.2);
       border-radius: 12px;
       padding: 10px;
       font-size: 0.84rem;
       font-weight: 800;
       font-family: 'Poppins', sans-serif;
     }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
   `]
 })
 export class CourierDashboardComponent implements OnInit, OnDestroy {
   activeTab = signal<TabType>('jadval');
   showScheduleModal = signal(false);
-  selectedDate = signal<string>(new Date().toISOString().split('T')[0]);
+  selectedDate = signal<string>(this.toLocalDateStr(new Date()));
   currentWeekMonday = signal<Date>(new Date());
 
   // Swipe-to-Confirm uchun o'zgaruvchilar va signallar
@@ -2733,8 +2856,8 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
       const sun = new Date(mon);
       sun.setDate(mon.getDate() + 6);
       
-      const monStr = mon.toISOString().split('T')[0];
-      const sunStr = sun.toISOString().split('T')[0];
+      const monStr = this.toLocalDateStr(mon);
+      const sunStr = this.toLocalDateStr(sun);
       
       return orders.filter(o => {
         const dStr = o.createdAt.split('T')[0];
@@ -2767,8 +2890,8 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
       const mon = new Date(this.currentWeekMonday());
       const sun = new Date(mon);
       sun.setDate(mon.getDate() + 6);
-      const monStr = mon.toISOString().split('T')[0];
-      const sunStr = sun.toISOString().split('T')[0];
+      const monStr = this.toLocalDateStr(mon);
+      const sunStr = this.toLocalDateStr(sun);
       return slots.filter(s => s.date >= monStr && s.date <= sunStr).length;
     } else { // 'oy'
       const year = selDate.getFullYear();
@@ -2777,6 +2900,46 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
         const d = new Date(s.date);
         return d.getFullYear() === year && d.getMonth() === month;
       }).length;
+    }
+  }
+
+  get filteredPenaltyTotal(): number {
+    const tab = this.earningsTab();
+    const selDate = new Date(this.selectedDate());
+    const cancelled = this.myBookedSlots().filter(s => s.penaltyApplied && s.penaltyAmount && s.penaltyAmount > 0);
+    if (tab === 'kun') {
+      return cancelled.filter(s => s.date === this.selectedDate()).reduce((sum, s) => sum + (s.penaltyAmount || 0), 0);
+    } else if (tab === 'hafta') {
+      const mon = new Date(this.currentWeekMonday());
+      const sun = new Date(mon);
+      sun.setDate(mon.getDate() + 6);
+      const monStr = this.toLocalDateStr(mon);
+      const sunStr = this.toLocalDateStr(sun);
+      return cancelled.filter(s => s.date >= monStr && s.date <= sunStr).reduce((sum, s) => sum + (s.penaltyAmount || 0), 0);
+    } else {
+      const year = selDate.getFullYear();
+      const month = selDate.getMonth();
+      return cancelled.filter(s => { const d = new Date(s.date); return d.getFullYear() === year && d.getMonth() === month; }).reduce((sum, s) => sum + (s.penaltyAmount || 0), 0);
+    }
+  }
+
+  get filteredCancelledSlotsCount(): number {
+    const tab = this.earningsTab();
+    const selDate = new Date(this.selectedDate());
+    const cancelled = this.myBookedSlots().filter(s => s.penaltyApplied && s.penaltyAmount && s.penaltyAmount > 0);
+    if (tab === 'kun') {
+      return cancelled.filter(s => s.date === this.selectedDate()).length;
+    } else if (tab === 'hafta') {
+      const mon = new Date(this.currentWeekMonday());
+      const sun = new Date(mon);
+      sun.setDate(mon.getDate() + 6);
+      const monStr = this.toLocalDateStr(mon);
+      const sunStr = this.toLocalDateStr(sun);
+      return cancelled.filter(s => s.date >= monStr && s.date <= sunStr).length;
+    } else {
+      const year = selDate.getFullYear();
+      const month = selDate.getMonth();
+      return cancelled.filter(s => { const d = new Date(s.date); return d.getFullYear() === year && d.getMonth() === month; }).length;
     }
   }
 
@@ -2793,8 +2956,8 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
       const mon = new Date(this.currentWeekMonday());
       const sun = new Date(mon);
       sun.setDate(mon.getDate() + 6);
-      const monStr = mon.toISOString().split('T')[0];
-      const sunStr = sun.toISOString().split('T')[0];
+      const monStr = this.toLocalDateStr(mon);
+      const sunStr = this.toLocalDateStr(sun);
       filteredSlots = slots.filter(s => s.date >= monStr && s.date <= sunStr);
     } else {
       const year = selDate.getFullYear();
@@ -2816,6 +2979,136 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
         earnings: slotEarnings
       };
     });
+  }
+
+  get groupedEarningsReport() {
+    const tab = this.earningsTab();
+    const orders = this.allOrders().filter(o => o.status === 'DELIVERED');
+    // Yakunlangan va boshlangan smenalar
+    const completedSlots = this.myBookedSlots().filter(s => s.finished || s.started);
+    // Bekor qilingan (jarima bilan) smenalar
+    const cancelledSlots = this.myBookedSlots().filter(s => s.penaltyApplied && s.penaltyAmount && s.penaltyAmount > 0);
+
+    if (tab === 'kun') {
+      const targetStr = this.selectedDate();
+      const targetSlots = completedSlots.filter(s => s.date === targetStr);
+      const targetCancelled = cancelledSlots.filter(s => s.date === targetStr);
+      const result = [
+        ...targetSlots.map(s => {
+          const dayOrders = orders.filter(o => o.createdAt.startsWith(s.date));
+          const slotOrders = dayOrders.filter(o => {
+            const oTime = o.createdAt.split('T')[1]?.substring(0, 5);
+            return oTime >= s.startTime.substring(0, 5) && oTime <= s.endTime.substring(0, 5);
+          });
+          const slotEarnings = slotOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+          return { type: 'slot', id: s.id, title: s.name, subtitle: `${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)}`, amount: slotEarnings, ordersCount: slotOrders.length, date: s.date, isCancelled: false };
+        }),
+        ...targetCancelled.map(s => ({
+          type: 'slot-cancelled', id: s.id,
+          title: `🚫 ${s.name} (bekor)`,
+          subtitle: `${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)} · Jarima`,
+          amount: -(s.penaltyAmount || 0), ordersCount: 0, date: s.date, isCancelled: true
+        }))
+      ];
+      return result;
+    }
+
+    // Hafta va Oy uchun — yakunlangan + bekor qilingan smenalar ro'yxati
+    let filteredSlots: typeof completedSlots = [];
+    let filteredCancelled: typeof cancelledSlots = [];
+    if (tab === 'hafta') {
+      const mon = new Date(this.currentWeekMonday());
+      const sun = new Date(mon);
+      sun.setDate(mon.getDate() + 6);
+      const monStr = this.toLocalDateStr(mon);
+      const sunStr = this.toLocalDateStr(sun);
+      filteredSlots = completedSlots.filter(s => s.date >= monStr && s.date <= sunStr);
+      filteredCancelled = cancelledSlots.filter(s => s.date >= monStr && s.date <= sunStr);
+    } else { // oy
+      const selDate = new Date(this.selectedDate());
+      const year = selDate.getFullYear();
+      const month = selDate.getMonth();
+      filteredSlots = completedSlots.filter(s => {
+        const d = new Date(s.date);
+        return d.getFullYear() === year && d.getMonth() === month;
+      });
+      filteredCancelled = cancelledSlots.filter(s => {
+        const d = new Date(s.date);
+        return d.getFullYear() === year && d.getMonth() === month;
+      });
+    }
+
+    // Sanasi bo'yicha eng yangi smenadan eski smenaga tartibda
+    filteredSlots = [...filteredSlots].sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime));
+
+    const monthsShort = ['yan','fev','mar','apr','may','iyn','iyl','avg','sen','okt','noy','dek'];
+    const weekdayShort = ['Yak','Dush','Sesh','Chor','Pay','Jum','Shan'];
+
+    const completedItems = filteredSlots.map(s => {
+      const dayOrders = orders.filter(o => o.createdAt.startsWith(s.date));
+      const slotOrders = dayOrders.filter(o => {
+        const oTime = o.createdAt.split('T')[1]?.substring(0, 5);
+        return oTime >= s.startTime.substring(0, 5) && oTime <= s.endTime.substring(0, 5);
+      });
+      const slotEarnings = slotOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+      const d = new Date(s.date);
+      const dateLabel = `${weekdayShort[d.getDay()]}, ${d.getDate()}-${monthsShort[d.getMonth()]}`;
+      return { type: 'slot', id: s.id, title: s.name, subtitle: `${dateLabel} · ${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)}`, amount: slotEarnings, ordersCount: slotOrders.length, date: s.date, isCancelled: false };
+    });
+
+    const cancelledItems = filteredCancelled.map(s => {
+      const d = new Date(s.date);
+      const dateLabel = `${weekdayShort[d.getDay()]}, ${d.getDate()}-${monthsShort[d.getMonth()]}`;
+      return { type: 'slot-cancelled', id: s.id, title: `🚫 ${s.name} (bekor)`, subtitle: `${dateLabel} · ${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)} · Jarima`, amount: -(s.penaltyAmount || 0), ordersCount: 0, date: s.date, isCancelled: true };
+    });
+
+    return [...completedItems, ...cancelledItems].sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  navigatePeriod(dir: number): void {
+    const tab = this.earningsTab();
+    if (tab === 'kun' || tab === 'hafta') {
+      const mon = new Date(this.currentWeekMonday());
+      mon.setDate(mon.getDate() + (dir * 7));
+      this.currentWeekMonday.set(mon);
+      this.buildWeekDays();
+      if (tab === 'kun') {
+        this.selectedDate.set(this.toLocalDateStr(mon));
+      }
+    } else if (tab === 'oy') {
+      const selDate = new Date(this.selectedDate());
+      selDate.setMonth(selDate.getMonth() + dir);
+      this.selectedDate.set(this.toLocalDateStr(selDate));
+    }
+  }
+
+  getPeriodLabel(): string {
+    const tab = this.earningsTab();
+    const months = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
+    if (tab === 'kun') {
+      const d = new Date(this.selectedDate());
+      return `${d.getDate()}-${months[d.getMonth()]} ${d.getFullYear()}-yil`;
+    } else if (tab === 'hafta') {
+      const mon = new Date(this.currentWeekMonday());
+      const sun = new Date(mon);
+      sun.setDate(mon.getDate() + 6);
+      return `${mon.getDate()}-${months[mon.getMonth()].substring(0, 3)} – ${sun.getDate()}-${months[sun.getMonth()]} ${sun.getFullYear()}`;
+    } else { // 'oy'
+      const d = new Date(this.selectedDate());
+      return `${months[d.getMonth()]} ${d.getFullYear()}`;
+    }
+  }
+
+  selectDayFromReport(dateStr: string): void {
+    this.selectedDate.set(dateStr);
+    this.earningsTab.set('kun');
+    const d = new Date(dateStr);
+    
+    const dayOfWeek = d.getDay() === 0 ? 6 : d.getDay() - 1;
+    const monday = new Date(d);
+    monday.setDate(d.getDate() - dayOfWeek);
+    this.currentWeekMonday.set(monday);
+    this.buildWeekDays();
   }
 
   openEarningsModal(): void {
@@ -2861,6 +3154,8 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     const duration = this.getShiftDuration(s.startTime, s.endTime);
     const guarantee = this.getShiftGuarantee(s.startTime, s.endTime);
     const orderEarnings = dayOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+    const penalty = s.penaltyAmount || 0;
+    const netEarnings = orderEarnings - penalty;
     
     const mappedOrders = dayOrders.map(o => {
       const orderTime = new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -2893,6 +3188,8 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
       guarantee: guarantee,
       ordersCount: dayOrders.length,
       earnings: orderEarnings,
+      penalty: penalty,
+      netEarnings: netEarnings,
       orders: mappedOrders
     };
   }
@@ -3027,7 +3324,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
       return {
         label,
         dayNum: d.getDate(),
-        date: d.toISOString().split('T')[0],
+        date: this.toLocalDateStr(d),
         isToday: d.toDateString() === today.toDateString(),
         hasSlot: false
       };
@@ -3039,7 +3336,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     mon.setDate(mon.getDate() - 7);
     this.currentWeekMonday.set(mon);
     this.buildWeekDays();
-    this.selectedDate.set(mon.toISOString().split('T')[0]);
+    this.selectedDate.set(this.toLocalDateStr(mon));
   }
 
   nextWeek(): void {
@@ -3047,13 +3344,18 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     mon.setDate(mon.getDate() + 7);
     this.currentWeekMonday.set(mon);
     this.buildWeekDays();
-    this.selectedDate.set(mon.toISOString().split('T')[0]);
+    this.selectedDate.set(this.toLocalDateStr(mon));
   }
 
   currentWeekMonthLabel(): string {
     const mon = this.currentWeekMonday();
     const months = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
     return `${months[mon.getMonth()]} ${mon.getFullYear()}`;
+  }
+
+  /** Date obyektidan mahalliy (local) sana stringini qaytaradi: YYYY-MM-DD */
+  toLocalDateStr(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
   selectCalendarDay(day: { date: string; isToday: boolean }): void {
@@ -3224,10 +3526,37 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
 
   slotCanStart(slot: Slot): boolean {
     const now = new Date();
+    // Sanani solishtirish
+    const todayStr = now.getFullYear() + '-' + 
+      String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+      String(now.getDate()).padStart(2, '0');
+    
+    if (slot.date !== todayStr) {
+      return false;
+    }
+
     const nowMin = now.getHours() * 60 + now.getMinutes();
     const [sh, sm] = slot.startTime.split(':').map(Number);
     const [eh, em] = slot.endTime.split(':').map(Number);
     return nowMin >= sh * 60 + sm && nowMin < eh * 60 + em;
+  }
+
+  getDelayTime(slot: Slot): string {
+    this.timeTick(); // dynamic reactivity uchun
+    const now = new Date();
+    const [sh, sm] = slot.startTime.split(':').map(Number);
+    const start = new Date(slot.date);
+    start.setHours(sh, sm, 0, 0);
+
+    const diffMs = now.getTime() - start.getTime();
+    if (diffMs <= 0) return '00:00';
+
+    const totalSeconds = Math.floor(diffMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    const pad = (num: number) => num < 10 ? '0' + num : num;
+    return `${pad(minutes)}:${pad(seconds)}`;
   }
 
   timeUntilSlot(slot: Slot): string {

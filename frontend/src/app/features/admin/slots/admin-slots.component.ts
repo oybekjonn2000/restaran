@@ -125,7 +125,9 @@ import { User } from '../../../core/models/user.model';
                       </td>
                       <td class="actions-cell">
                         <button class="icon-btn edit-btn" (click)="openEdit(slot)" [id]="'edit-slot-' + slot.id" title="Tahrirlash">✏️</button>
-                        <button class="icon-btn delete-btn" (click)="confirmDelete(slot)" [id]="'delete-slot-' + slot.id" title="O'chirish">🗑️</button>
+                        @if (!slot.finished && !slot.courier && !slot.bookedBy) {
+                          <button class="icon-btn delete-btn" (click)="confirmDelete(slot)" [id]="'delete-slot-' + slot.id" title="O'chirish">🗑️</button>
+                        }
                       </td>
                     </tr>
                   }
@@ -438,7 +440,8 @@ export class AdminSlotsComponent implements OnInit {
 
   openCreate(): void {
     this.editingSlot = null;
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     this.form = { name: '', date: today, startTime: '08:00', endTime: '17:00', courierId: null };
     this.showModal.set(true);
   }
@@ -463,6 +466,14 @@ export class AdminSlotsComponent implements OnInit {
   saveSlot(): void {
     if (!this.form.name || !this.form.date || !this.form.startTime || !this.form.endTime) {
       this.snack.open('❌ Barcha majburiy maydonlarni to\'ldiring!', '', { duration: 3000 });
+      return;
+    }
+
+    // Kelajak vaqti ekanligini tekshirish
+    const now = new Date();
+    const inputStartDateTime = new Date(`${this.form.date}T${this.form.startTime}:00`);
+    if (inputStartDateTime.getTime() < now.getTime()) {
+      this.snack.open("❌ O'tib ketgan sana yoki vaqt bilan smena yaratib bo'lmaydi! Faqat kelajak vaqti bo'lishi kerak.", '', { duration: 4000 });
       return;
     }
 

@@ -61,6 +61,13 @@ public class AdminController {
         return ResponseEntity.ok(orderService.getStats());
     }
 
+    @PutMapping("/orders/{id}/cancel")
+    public ResponseEntity<Order> cancelOrder(
+            @PathVariable Long id,
+            @RequestParam String reason) {
+        return ResponseEntity.ok(orderService.cancelOrderWithReason(id, reason));
+    }
+
     // =================== TAOMLAR ===================
 
     @GetMapping("/foods")

@@ -140,6 +140,19 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
+    public Order cancelOrderWithReason(Long orderId, String reason) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Buyurtma topilmadi: " + orderId));
+        order.setStatus(OrderStatus.CANCELED);
+        order.setCancelReason(reason);
+
+        if (order.getCourier() != null) {
+            backfillCourier(order.getCourier());
+        }
+
+        return orderRepository.save(order);
+    }
+
     private void autoAssignCourier(Order order) {
         List<User> couriers = userRepository.findByRole(Role.COURIER);
         List<OrderStatus> activeStatuses = List.of(

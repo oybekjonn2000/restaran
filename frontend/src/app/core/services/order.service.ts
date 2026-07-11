@@ -68,6 +68,14 @@ export class OrderService {
     return this.http.get<Record<string, number>>(`${BASE}/admin/orders/stats`);
   }
 
+  cancelOrderWithReason(orderId: number, reason: string): Observable<Order> {
+    return this.http.put<Order>(`${BASE}/admin/orders/${orderId}/cancel?reason=${encodeURIComponent(reason)}`, {});
+  }
+
+  cancelManagerOrderWithReason(orderId: number, reason: string): Observable<Order> {
+    return this.http.put<Order>(`${BASE}/manager/orders/${orderId}/cancel?reason=${encodeURIComponent(reason)}`, {});
+  }
+
   getCouriers(): Observable<User[]> {
     return this.http.get<User[]>(`${BASE}/admin/couriers`);
   }

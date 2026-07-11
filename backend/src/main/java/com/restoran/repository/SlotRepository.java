@@ -43,11 +43,12 @@ public interface SlotRepository extends JpaRepository<Slot, Long> {
     """)
     List<Slot> findBookedSlotsForCourier(@Param("courierId") Long courierId);
 
-    /** Kuryerga tegishli bo'lgan barcha smenalar (aktiv, band qilingan, yakunlangan va bekor qilingan) */
+    /** Kuryerga tegishli bo'lgan barcha smenalar (aktiv, band qilingan, yakunlangan, bekor qilingan va jarimalangan) */
     @Query("""
         SELECT s FROM Slot s WHERE
-          s.courier.id = :courierId OR
-          s.bookedBy.id = :courierId
+          (s.courier IS NOT NULL AND s.courier.id = :courierId) OR
+          (s.bookedBy IS NOT NULL AND s.bookedBy.id = :courierId) OR
+          (s.penalizedCourier IS NOT NULL AND s.penalizedCourier.id = :courierId)
         ORDER BY s.date DESC, s.startTime DESC
     """)
     List<Slot> findAllSlotsForCourier(@Param("courierId") Long courierId);
@@ -65,6 +66,9 @@ public interface SlotRepository extends JpaRepository<Slot, Long> {
 
     /** Boshlangan lekin tugallanmagan faol smenalar */
     List<Slot> findByStartedTrueAndFinishedFalse();
+
+    /** Boshlanmagan, bekor qilinmagan va tugallanmagan smenalar */
+    List<Slot> findByStartedFalseAndCancelledFalseAndFinishedFalse();
 
     /** Jarima qo'llanilmagan, vaqti o'tib ketgan, boshlash bo'lmagan, bekor qilinmagan band smenalar */
     @Query("""

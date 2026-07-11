@@ -136,4 +136,11 @@ public class CourierController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         return ResponseEntity.ok(slotService.getBookedSlotsForCourier(userDetails.getId()));
     }
+
+    /** Kuryerga tegishli barcha smenalar (band qilingan + boshlangan + tugagan) */
+    @GetMapping("/slots/all")
+    public ResponseEntity<List<Slot>> getAllMySlots(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(slotService.getAllSlotsForCourier(userDetails.getId()));
+    }
 }

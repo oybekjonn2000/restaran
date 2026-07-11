@@ -80,6 +80,17 @@ import { Order, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, OrderStatus } from '..
                   </div>
                 </div>
 
+                <!-- Bekor qilish sababi -->
+                @if (order.status === 'CANCELED' && order.cancelReason) {
+                  <div class="cancel-reason-banner">
+                    <span class="cancel-icon">⚠️</span>
+                    <div class="cancel-content">
+                      <div class="cancel-title">Admin xabari:</div>
+                      <div class="cancel-text">{{ order.cancelReason }}</div>
+                    </div>
+                  </div>
+                }
+
                 <!-- Progress bar -->
                 <div class="progress-bar">
                   <div class="progress-fill" [style.width]="progressWidth(order.status)"></div>
@@ -174,6 +185,21 @@ import { Order, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, OrderStatus } from '..
       background: linear-gradient(90deg, var(--primary), var(--primary-dark));
       transition: width 0.5s ease;
     }
+
+    .cancel-reason-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin: 0 20px 12px;
+      padding: 12px 16px;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 10px;
+    }
+    .cancel-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
+    .cancel-content { display: flex; flex-direction: column; gap: 3px; }
+    .cancel-title { font-size: 0.75rem; font-weight: 600; color: #ef4444; text-transform: uppercase; letter-spacing: 0.5px; }
+    .cancel-text { font-size: 0.875rem; color: #fca5a5; line-height: 1.4; }
   `]
 })
 export class ClientOrdersComponent implements OnInit, OnDestroy {

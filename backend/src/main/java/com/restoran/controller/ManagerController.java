@@ -145,6 +145,22 @@ public class ManagerController {
         return ResponseEntity.ok(orderService.updateStatus(id, status));
     }
 
+    @PutMapping("/orders/{id}/cancel")
+    public ResponseEntity<Order> cancelMyOrder(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @PathVariable Long id,
+            @RequestParam String reason) {
+        Restaurant restaurant = restaurantRepository.findByOwnerId(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("Sizga tegishli restoran topilmadi!"));
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Buyurtma topilmadi"));
+        if (!order.getRestaurant().getId().equals(restaurant.getId())) {
+            throw new RuntimeException("Ruxsat berilmagan!");
+        }
+
+        return ResponseEntity.ok(orderService.cancelOrderWithReason(id, reason));
+    }
+
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor
     public static class RestaurantUpdateRequest {
         private String name;

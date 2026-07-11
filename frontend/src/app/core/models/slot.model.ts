@@ -22,6 +22,13 @@ export interface Slot {
   cancelled: boolean;
   penaltyAmount?: number;
   penaltyApplied: boolean;
+  penalizedCourier?: {
+    id: number;
+    name: string;
+    email: string;
+    phone?: string;
+  } | null;
+  penalizedAt?: string | null;
   startedAt?: string | null;
   finishedAt?: string | null;
   cancelledAt?: string | null;
