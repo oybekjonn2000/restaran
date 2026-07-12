@@ -85,7 +85,7 @@ public class OrderService {
             .latitude(request.getLatitude())
             .longitude(request.getLongitude())
             .distance(distance)
-            .deliveryFee(deliveryFee)
+            .deliveryFee(0.0)
             .note(request.getNote())
             .build();
 
@@ -120,13 +120,17 @@ public class OrderService {
                 autoAssignCourier(order);
             }
         } else if (status == OrderStatus.DELIVERED) {
-            // Balansni oshirish
+            // Balansni oshirish — faqat kuryer smenada faol bo'lsa yetkazish summasi balansga qo'shiladi!
             if (order.getCourier() != null) {
                 User courier = order.getCourier();
-                long currentBalance = courier.getBalance() != null ? courier.getBalance() : 0L;
-                double fee = order.getDeliveryFee() != null ? order.getDeliveryFee() : 0.0;
-                courier.setBalance(currentBalance + (long) fee);
-                userRepository.save(courier);
+                boolean isActive = slotRepository.findActiveSlotForCourier(courier.getId()).isPresent();
+                order.setCourierActiveOnShift(isActive);
+                if (isActive) {
+                    long currentBalance = courier.getBalance() != null ? courier.getBalance() : 0L;
+                    double fee = order.getDeliveryFee() != null ? order.getDeliveryFee() : 0.0;
+                    courier.setBalance(currentBalance + (long) fee);
+                    userRepository.save(courier);
+                }
             }
 
             // Free courier to take other orders
@@ -139,6 +143,9 @@ public class OrderService {
             }
         }
 
+        if (order.getCourier() != null) {
+            order.setCourierActiveOnShift(slotRepository.findActiveSlotForCourier(order.getCourier().getId()).isPresent());
+        }
         return orderRepository.save(order);
     }
 
@@ -152,6 +159,9 @@ public class OrderService {
             backfillCourier(order.getCourier());
         }
 
+        if (order.getCourier() != null) {
+            order.setCourierActiveOnShift(slotRepository.findActiveSlotForCourier(order.getCourier().getId()).isPresent());
+        }
         return orderRepository.save(order);
     }
 
@@ -190,7 +200,7 @@ public class OrderService {
             }
 
             if (!orderRepository.existsByCourierAndStatusIn(courier, activeStatuses)) {
-                order.setCourier(courier);
+                setCourierOnOrder(order, courier);
                 order.setAssignedAt(java.time.LocalDateTime.now());
                 order.setAttemptedCourierIds(attempted + idStr + ",");
                 assigned = true;
@@ -208,7 +218,7 @@ public class OrderService {
                 }
 
                 if (!orderRepository.existsByCourierAndStatusIn(courier, activeStatuses)) {
-                    order.setCourier(courier);
+                    setCourierOnOrder(order, courier);
                     order.setAssignedAt(java.time.LocalDateTime.now());
                     order.setAttemptedCourierIds("[" + courier.getId() + "],");
                     break;
@@ -228,7 +238,7 @@ public class OrderService {
             if (o.getCourier() == null) {
                 String attempted = o.getAttemptedCourierIds() != null ? o.getAttemptedCourierIds() : "";
                 if (!attempted.contains("[" + courier.getId() + "]")) {
-                    o.setCourier(courier);
+                    setCourierOnOrder(o, courier);
                     o.setAssignedAt(java.time.LocalDateTime.now());
                     o.setAttemptedCourierIds(attempted + "[" + courier.getId() + "],");
                     orderRepository.save(o);
@@ -253,7 +263,7 @@ public class OrderService {
             throw new RuntimeException("Bu buyurtmani boshqa kuryer allaqachon qabul qilgan!");
         }
 
-        order.setCourier(courier);
+        setCourierOnOrder(order, courier);
         order.setStatus(OrderStatus.COURIER_ACCEPTED);
         order.setAssignedAt(null); // Qabul qilingach sanoq to'xtaydi
         return orderRepository.save(order);
@@ -264,7 +274,7 @@ public class OrderService {
             .orElseThrow(() -> new RuntimeException("Buyurtma topilmadi: " + orderId));
         User courier = userRepository.findById(courierId)
             .orElseThrow(() -> new RuntimeException("Kuryer topilmadi: " + courierId));
-        order.setCourier(courier);
+        setCourierOnOrder(order, courier);
         order.setAssignedAt(java.time.LocalDateTime.now());
         String attempted = order.getAttemptedCourierIds() != null ? order.getAttemptedCourierIds() : "";
         order.setAttemptedCourierIds(attempted + "[" + courierId + "],");
@@ -282,7 +292,7 @@ public class OrderService {
             if (order.getCourier() != null && order.getAssignedAt() != null) {
                 if (order.getAssignedAt().plusMinutes(2).isBefore(java.time.LocalDateTime.now())) {
                     System.out.println(">>> Timeout: #" + order.getId() + " buyurtma kuryer tomonidan 2 daqiqa ichida qabul qilinmadi. Qayta taqsimlanmoqda...");
-                    order.setCourier(null);
+                    setCourierOnOrder(order, null);
                     order.setAssignedAt(null);
                     autoAssignCourier(order);
                     orderRepository.save(order);
@@ -330,5 +340,32 @@ public class OrderService {
     public boolean isAnyCourierOnShift() {
         return slotRepository.findByStartedTrueAndFinishedFalse().stream()
             .anyMatch(s -> s.getCourier() != null);
+    }
+
+    private void calculateAndSetDeliveryFee(Order order) {
+        double dist = order.getDistance() != null ? order.getDistance() : 0.0;
+        if (dist == 0.0 && order.getLatitude() != null && order.getLongitude() != null && order.getLatitude() != 0 && order.getLongitude() != 0) {
+            double rLat = REST_LAT;
+            double rLng = REST_LNG;
+            if (order.getRestaurant() != null && order.getRestaurant().getLatitude() != null && order.getRestaurant().getLongitude() != null) {
+                rLat = order.getRestaurant().getLatitude();
+                rLng = order.getRestaurant().getLongitude();
+            }
+            dist = calculateDistance(rLat, rLng, order.getLatitude(), order.getLongitude());
+            dist = Math.round(dist * 10.0) / 10.0;
+            order.setDistance(dist);
+        }
+        double deliveryFee = BASE_FEE + (dist * PER_KM_FEE);
+        deliveryFee = Math.round(deliveryFee / 100.0) * 100.0;
+        order.setDeliveryFee(deliveryFee);
+    }
+
+    private void setCourierOnOrder(Order order, User courier) {
+        order.setCourier(courier);
+        if (courier != null) {
+            calculateAndSetDeliveryFee(order);
+        } else {
+            order.setDeliveryFee(0.0);
+        }
     }
 }

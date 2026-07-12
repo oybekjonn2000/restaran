@@ -140,6 +140,10 @@ export class OrderService {
     return this.http.put<Order>(`${BASE}/manager/orders/${id}/status?status=${status}`, {});
   }
 
+  cancelManagerOrder(id: number, reason: string): Observable<Order> {
+    return this.http.put<Order>(`${BASE}/manager/orders/${id}/cancel?reason=${encodeURIComponent(reason)}`, {});
+  }
+
   // ===== SUPER ADMIN RESTAURANT CRUD =====
   adminGetRestaurants(): Observable<Restaurant[]> {
     return this.http.get<Restaurant[]>(`${BASE}/admin/restaurants`);

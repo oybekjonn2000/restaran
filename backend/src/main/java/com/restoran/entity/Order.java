@@ -67,6 +67,9 @@ public class Order {
     @Builder.Default
     private Boolean yandexDelivery = false;
 
+    @Transient
+    private boolean courierActiveOnShift;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {

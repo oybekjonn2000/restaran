@@ -7,6 +7,7 @@ import com.restoran.repository.FoodRepository;
 import com.restoran.repository.RestaurantRepository;
 import com.restoran.repository.UserRepository;
 import com.restoran.repository.OrderRepository;
+import com.restoran.repository.SlotRepository;
 import com.restoran.service.FoodService;
 import com.restoran.service.OrderService;
 import com.restoran.security.UserDetailsImpl;
@@ -31,6 +32,7 @@ public class ManagerController {
     private final OrderRepository orderRepository;
     private final OrderService orderService;
     private final UserRepository userRepository;
+    private final SlotRepository slotRepository;
 
     @GetMapping("/my-restaurant")
     public ResponseEntity<Restaurant> getMyRestaurant(@AuthenticationPrincipal UserDetailsImpl userDetails) {
@@ -126,7 +128,15 @@ public class ManagerController {
     public ResponseEntity<List<Order>> getMyOrders(@AuthenticationPrincipal UserDetailsImpl userDetails) {
         Restaurant restaurant = restaurantRepository.findByOwnerId(userDetails.getId())
                 .orElseThrow(() -> new RuntimeException("Sizga tegishli restoran topilmadi!"));
-        return ResponseEntity.ok(orderRepository.findByRestaurantIdOrderByCreatedAtDesc(restaurant.getId()));
+        List<Order> orders = orderRepository.findByRestaurantIdOrderByCreatedAtDesc(restaurant.getId());
+        for (Order order : orders) {
+            if (order.getCourier() != null) {
+                order.setCourierActiveOnShift(slotRepository.findActiveSlotForCourier(order.getCourier().getId()).isPresent());
+            } else {
+                order.setCourierActiveOnShift(false);
+            }
+        }
+        return ResponseEntity.ok(orders);
     }
 
     @PutMapping("/orders/{id}/status")
@@ -142,7 +152,11 @@ public class ManagerController {
             throw new RuntimeException("Ruxsat berilmagan!");
         }
 
-        return ResponseEntity.ok(orderService.updateStatus(id, status));
+        Order updated = orderService.updateStatus(id, status);
+        if (updated.getCourier() != null) {
+            updated.setCourierActiveOnShift(slotRepository.findActiveSlotForCourier(updated.getCourier().getId()).isPresent());
+        }
+        return ResponseEntity.ok(updated);
     }
 
     @PutMapping("/orders/{id}/cancel")
