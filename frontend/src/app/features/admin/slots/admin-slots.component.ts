@@ -566,7 +566,13 @@ export class AdminSlotsComponent implements OnInit {
     this.editingSlot = null;
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    this.form = { name: '', date: today, startTime: '08:00', endTime: '17:00', courierId: null };
+    // Hozirgi vaqtdan keyingi soatni taklif qilamiz
+    const nextHour = new Date(now.getTime() + 60 * 60 * 1000);
+    const startH = String(nextHour.getHours()).padStart(2, '0');
+    const startM = String(nextHour.getMinutes()).padStart(2, '0');
+    const endHour = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    const endH = String(Math.min(endHour.getHours(), 23)).padStart(2, '0');
+    this.form = { name: '', date: today, startTime: `${startH}:${startM}`, endTime: `${endH}:00`, courierId: null };
     this.showModal.set(true);
   }
 
@@ -593,11 +599,11 @@ export class AdminSlotsComponent implements OnInit {
       return;
     }
 
-    // Kelajak vaqti ekanligini tekshirish
+    // Tugash vaqti o'tib ketganligini tekshirish (boshlanish vaqti o'tgan bo'lsa ham ruxsat)
     const now = new Date();
-    const inputStartDateTime = new Date(`${this.form.date}T${this.form.startTime}:00`);
-    if (inputStartDateTime.getTime() < now.getTime()) {
-      this.snack.open("❌ O'tib ketgan sana yoki vaqt bilan smena yaratib bo'lmaydi! Faqat kelajak vaqti bo'lishi kerak.", '', { duration: 4000 });
+    const inputEndDateTime = new Date(`${this.form.date}T${this.form.endTime}:00`);
+    if (inputEndDateTime.getTime() < now.getTime()) {
+      this.snack.open("❌ Smenaning tugash vaqti o'tib ketgan! Kelajakda tugidigon smena kiriting.", '', { duration: 4000 });
       return;
     }
 

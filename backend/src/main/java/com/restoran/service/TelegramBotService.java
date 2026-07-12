@@ -108,7 +108,7 @@ public class TelegramBotService {
     }
 
     public void sendMessage(long chatId, String text) {
-        if (botToken == null || botToken.isEmpty() || botToken.contains("YOUR_TELEGRAM_BOT_TOKEN")) {
+        if (botToken == null || botToken.isEmpty() || botToken.contains("8988031463:AAHTgeEO9Bg1p6z3bYfy-GYrYmoJ0zFRCRo")) {
             return;
         }
         try {
@@ -118,7 +118,7 @@ public class TelegramBotService {
             body.put("text", text);
             body.put("parse_mode", "Markdown");
 
-            if (webAppUrl != null && !webAppUrl.isEmpty() && !webAppUrl.contains("YOUR_")) {
+            if (webAppUrl != null && !webAppUrl.isEmpty() && !webAppUrl.contains("https://6d993641634941a1-95-214-210-79.serveousercontent.com")) {
                 Map<String, Object> webApp = new HashMap<>();
                 webApp.put("url", webAppUrl);
 
