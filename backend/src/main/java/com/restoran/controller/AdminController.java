@@ -470,4 +470,16 @@ public class AdminController {
         slotService.deleteSlot(id);
         return ResponseEntity.ok(MessageResponse.ok("Smena o'chirildi"));
     }
+
+    /** Jarimani bekor qilish — kuryerga jarima summasi qaytariladi */
+    @PostMapping("/slots/{id}/reverse-penalty")
+    public ResponseEntity<Slot> reversePenalty(@PathVariable Long id) {
+        return ResponseEntity.ok(slotService.reversePenalty(id));
+    }
+
+    /** Admin: Kuryerning smenasini majburiy tugatish */
+    @PostMapping("/slots/{id}/force-end")
+    public ResponseEntity<Slot> forceEndSlot(@PathVariable Long id) {
+        return ResponseEntity.ok(slotService.adminForceEndSlot(id));
+    }
 }

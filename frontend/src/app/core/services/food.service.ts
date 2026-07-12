@@ -3,8 +3,9 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Category } from '../models/category.model';
 import { Food } from '../models/food.model';
+import { API_BASE } from '../config';
 
-const BASE = 'http://localhost:8080/api';
+const BASE = `${API_BASE}/api`;
 
 @Injectable({ providedIn: 'root' })
 export class FoodService {

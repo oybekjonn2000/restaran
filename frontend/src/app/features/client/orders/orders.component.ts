@@ -91,6 +91,17 @@ import { Order, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, OrderStatus } from '..
                   </div>
                 }
 
+                <!-- Yandex yetkazib berish xabari -->
+                @if (order.yandexDelivery && order.status !== 'CANCELED' && order.status !== 'DELIVERED') {
+                  <div class="yandex-delivery-banner animate-in">
+                    <span class="yandex-icon">🚕</span>
+                    <div class="yandex-content">
+                      <div class="yandex-title">Yandex Yetkazib berish</div>
+                      <div class="yandex-text">Kuryer ishga chiqmadi. Buyurtmangizni Yandex dostavka orqali yetkazib beramiz.</div>
+                    </div>
+                  </div>
+                }
+
                 <!-- Progress bar -->
                 <div class="progress-bar">
                   <div class="progress-fill" [style.width]="progressWidth(order.status)"></div>
@@ -200,6 +211,21 @@ import { Order, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, OrderStatus } from '..
     .cancel-content { display: flex; flex-direction: column; gap: 3px; }
     .cancel-title { font-size: 0.75rem; font-weight: 600; color: #ef4444; text-transform: uppercase; letter-spacing: 0.5px; }
     .cancel-text { font-size: 0.875rem; color: #fca5a5; line-height: 1.4; }
+
+    .yandex-delivery-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin: 0 20px 12px;
+      padding: 12px 16px;
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.25);
+      border-radius: 10px;
+    }
+    .yandex-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
+    .yandex-content { display: flex; flex-direction: column; gap: 3px; }
+    .yandex-title { font-size: 0.75rem; font-weight: 600; color: #f59e0b; text-transform: uppercase; letter-spacing: 0.5px; }
+    .yandex-text { font-size: 0.875rem; color: #fde68a; line-height: 1.4; }
   `]
 })
 export class ClientOrdersComponent implements OnInit, OnDestroy {

@@ -111,11 +111,73 @@ public class SlotService {
         return slotRepository.findByDateOrderByStartTimeAsc(LocalDate.now());
     }
 
+    /**
+     * ADMIN: Jarimani bekor qiladi — kuryerning balansiga jarima summasi qaytariladi.
+     */
+    public Slot reversePenalty(Long slotId) {
+        Slot slot = slotRepository.findById(slotId)
+            .orElseThrow(() -> new RuntimeException("Smena topilmadi: " + slotId));
+
+        if (!slot.isPenaltyApplied()) {
+            throw new RuntimeException("Bu smenada qo'llanilgan jarima yo'q!");
+        }
+
+        User penalizedCourier = slot.getPenalizedCourier();
+        if (penalizedCourier == null) {
+            throw new RuntimeException("Jarimani kim to'laganini aniqlab bo'lmadi!");
+        }
+
+        long amount = slot.getPenaltyAmount();
+        long currentBalance = penalizedCourier.getBalance() != null ? penalizedCourier.getBalance() : 0L;
+        penalizedCourier.setBalance(currentBalance + amount);
+        userRepository.save(penalizedCourier);
+
+        // Jarimani bekor qilingan deb belgilaymiz (asl miqdorni saqlaymiz, ko'rsatish uchun)
+        slot.setPenaltyReversedAmount(amount);  // asl jarima miqdori
+        slot.setPenaltyReversed(true);
+        slot.setPenaltyApplied(false);
+        // penaltyAmount ni 0 ga o'chirmaymiz — frontend ko'rsatishi uchun saqlaymiz
+        slot.setPenalizedCourier(null);
+        slot.setPenalizedAt(null);
+
+        return slotRepository.save(slot);
+    }
+
     // ====== KURYER AMALLAR ======
 
     /** Kuryer uchun mavjud smenalar (oldindan band qilsa bo'ladigan) */
     public List<Slot> getAvailableSlotsForCourier(Long courierId) {
-        return slotRepository.findAvailableSlotsForCourier(courierId);
+        List<Slot> rawAvailable = slotRepository.findAvailableSlotsForCourier(courierId);
+        
+        // Kuryerning haqiqatan faol/band qilingan smenalari
+        // (jarima qo'llanilgan yoki qaytarilgan smenalar — endi kuryer uchun bog'liq emas, jadvalda ko'rinishi kerak)
+        List<Slot> mySlots = slotRepository.findAllSlotsForCourier(courierId).stream()
+            .filter(s -> !s.isCancelled() && !s.isFinished() && !s.isPenaltyApplied() && !s.isPenaltyReversed())
+            .toList();
+
+        // Agar kuryerda faol/band qilingan smena bo'lsa, kesishadigan boshqa ochiq smenalarni ro'yxatdan olib tashlaymiz
+        return rawAvailable.stream()
+            .filter(slot -> {
+                // Agar smena kuryerning o'ziga tegishli bo'lsa, ro'yxatda tursin
+                boolean isMine = (slot.getCourier() != null && slot.getCourier().getId().equals(courierId)) || 
+                                 (slot.getBookedBy() != null && slot.getBookedBy().getId().equals(courierId));
+                if (isMine) {
+                    return true;
+                }
+
+                // Agar boshqa ochiq smena bo'lsa, kuryerning o'z smenalari bilan kesishmasligini tekshiramiz
+                for (Slot mySlot : mySlots) {
+                    if (slot.getDate().equals(mySlot.getDate())) {
+                        boolean overlaps = slot.getStartTime().isBefore(mySlot.getEndTime()) &&
+                                           mySlot.getStartTime().isBefore(slot.getEndTime());
+                        if (overlaps) {
+                            return false; // Vaqti kesishsa, ro'yxatda ko'rsatmaymiz
+                        }
+                    }
+                }
+                return true;
+            })
+            .toList();
     }
 
     /** Kuryer band qilgan (hali boshlanmagan) smenalar */
@@ -166,6 +228,25 @@ public class SlotService {
             throw new RuntimeException("Bir vaqtda 3 tadan ko'p smena band qila olmaysiz!");
         }
 
+        // Bir xil vaqtli yoki kesishadigan smenalarni tekshirish (overlap check)
+        List<Slot> courierDailySlots = slotRepository.findAll().stream()
+            .filter(s -> s.getDate().equals(slot.getDate()))
+            .filter(s -> !s.getId().equals(slot.getId()))
+            .filter(s -> !s.isCancelled() && !s.isFinished())
+            .filter(s -> (s.getCourier() != null && s.getCourier().getId().equals(courierId)) || 
+                         (s.getBookedBy() != null && s.getBookedBy().getId().equals(courierId)))
+            .toList();
+
+        for (Slot existingSlot : courierDailySlots) {
+            boolean overlaps = slot.getStartTime().isBefore(existingSlot.getEndTime()) &&
+                               existingSlot.getStartTime().isBefore(slot.getEndTime());
+            if (overlaps) {
+                throw new RuntimeException("Ushbu vaqt oralig'ida sizda boshqa faol yoki band qilingan smena mavjud (" 
+                    + existingSlot.getStartTime().toString().substring(0, 5) + " - " 
+                    + existingSlot.getEndTime().toString().substring(0, 5) + ")!");
+            }
+        }
+
         slot.setBookedBy(courier);
         slot.setBookedAt(LocalDateTime.now());
 
@@ -195,9 +276,15 @@ public class SlotService {
         if (slot.isStarted()) {
             throw new RuntimeException("Boshlangan smenani bekor qilib bo'lmaydi!");
         }
+        // Jarima hisoblash: Smenaga chiqishga 12 soatdan kam vaqt qolgan bo'lsagina jarima qo'llaniladi
+        LocalDateTime startDateTime = LocalDateTime.of(slot.getDate(), slot.getStartTime());
+        LocalDateTime nowDateTime = LocalDateTime.now();
+        long hoursUntilStart = ChronoUnit.HOURS.between(nowDateTime, startDateTime);
 
-        // Jarima hisoblash
-        long penalty = calculatePenalty(slot);
+        long penalty = 0L;
+        if (hoursUntilStart < 12) {
+            penalty = calculatePenalty(slot);
+        }
 
         // Jarimani kuryerning balansidan ayiramiz
         User user = slot.getBookedBy() != null ? slot.getBookedBy() : slot.getCourier();
@@ -208,17 +295,22 @@ public class SlotService {
         }
 
         // Smenani ochiq holatga qaytaramiz (bekor qilmaymiz!)
-        // Kuryer ma'lumotlarini tozalaymiz — smena boshqa kuryer olaoladi
-        slot.setCancelled(false);   // smena yo'qolmaydi
+        slot.setCancelled(false);
         slot.setBookedBy(null);
         slot.setBookedAt(null);
         slot.setCourier(null);
         slot.setCancelledAt(null);
+
         // Jarima hisobi saqlanadi
         slot.setPenaltyAmount(penalty);
         slot.setPenaltyApplied(penalty > 0);
-        slot.setPenalizedCourier(user);
-        slot.setPenalizedAt(LocalDateTime.now());
+        if (penalty > 0) {
+            slot.setPenalizedCourier(user);
+            slot.setPenalizedAt(LocalDateTime.now());
+        } else {
+            slot.setPenalizedCourier(null);
+            slot.setPenalizedAt(null);
+        }
 
         slotRepository.save(slot);
 
@@ -299,6 +391,28 @@ public class SlotService {
 
         if (!slot.isStarted()) {
             throw new RuntimeException("Smena hali boshlanmagan!");
+        }
+
+        if (slot.isFinished()) {
+            throw new RuntimeException("Smena allaqachon tugagan!");
+        }
+
+        slot.setFinished(true);
+        slot.setFinishedAt(LocalDateTime.now());
+
+        return slotRepository.save(slot);
+    }
+
+    /**
+     * ADMIN: Kuryerning smenasini majburiy tugatadi.
+     * Kuryerni tekshirmaydi — admin istalgan faol smenani tugatishi mumkin.
+     */
+    public Slot adminForceEndSlot(Long slotId) {
+        Slot slot = slotRepository.findById(slotId)
+            .orElseThrow(() -> new RuntimeException("Smena topilmadi: " + slotId));
+
+        if (!slot.isStarted()) {
+            throw new RuntimeException("Smena hali boshlanmagan — tugatib bo'lmaydi!");
         }
 
         if (slot.isFinished()) {
@@ -433,6 +547,45 @@ public class SlotService {
             }
         }
     }
+
+    /**
+     * Har 10 soniyada vaqti o'tgan smenalarni avtomatik o'chiradi.
+     * Faqat faol bo'lmagan (started=true va finished=false bo'lmagan) va faol jarimasi bo'lmagan smenalar o'chiriladi.
+     */
+    @Scheduled(fixedDelay = 10000)
+    public void deleteExpiredSlots() {
+        List<Slot> allSlots = slotRepository.findAll();
+        LocalDateTime now = LocalDateTime.now();
+        for (Slot slot : allSlots) {
+            LocalDateTime startDateTime = LocalDateTime.of(slot.getDate(), slot.getStartTime());
+            LocalDateTime endDateTime = LocalDateTime.of(slot.getDate(), slot.getEndTime());
+
+            // 1-holat: Smenaning tugash vaqti o'tib ketgan bo'lsa
+            if (now.isAfter(endDateTime)) {
+                // Hali tugallanmagan faol smenalarni o'chirmaymiz (autoCloseExpiredSlots yopguncha kutamiz)
+                if (slot.isStarted() && !slot.isFinished()) {
+                    continue;
+                }
+                // Faol jarimasi bor smenalarni o'chirmaymiz (admin bekor qilishi uchun imkoniyat qolishi kerak)
+                if (slot.isPenaltyApplied()) {
+                    continue;
+                }
+                slotRepository.delete(slot);
+                continue;
+            }
+
+            // 2-holat: Smenaning boshlanish vaqti kelgan/o'tgan bo'lsa va u ochiq (hech kim band qilmagan) bo'lsa
+            if (now.isAfter(startDateTime)) {
+                // Hech kim band qilmagan yoki biriktirilmagan bo'lsa, hamda boshlanmagan bo'lsa
+                if (slot.getCourier() == null && slot.getBookedBy() == null && !slot.isStarted()) {
+                    if (!slot.isPenaltyApplied()) {
+                        slotRepository.delete(slot);
+                    }
+                }
+            }
+        }
+    }
+
 
     // ====== DTO ======
 

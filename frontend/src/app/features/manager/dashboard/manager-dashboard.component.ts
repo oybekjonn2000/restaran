@@ -71,45 +71,46 @@ import { Order, ORDER_STATUS_LABELS } from '../../../core/models/order.model';
               <tbody>
                 @for (order of orders(); track order.id) {
                   <tr [id]="'order-row-' + order.id">
-                    <td><strong>#{{ order.id }}</strong></td>
-                    <td>
+                    <td data-label="ID"><strong>#{{ order.id }}</strong></td>
+                    <td data-label="Mijoz">
                       <div class="client-info">
                         <span class="name">{{ order.user.name }}</span>
                         <span class="phone">{{ order.user.phone || 'Tel kiritilmagan' }}</span>
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Taomlar">
                       <div class="food-list">
                         @for (item of order.items; track item.id) {
                           <div class="food-item">{{ item.food.name }} x{{ item.quantity }}</div>
                         }
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Jami Narx">
                       <div class="price-info">
                         <strong>{{ (order.totalPrice + (order.deliveryFee || 0)) | number:'1.0-0' }} so'm</strong>
                         <span class="fee">(Kuryer: {{ order.deliveryFee | number:'1.0-0' }} so'm)</span>
                       </div>
                     </td>
-                    <td>{{ order.distance || 0 }} km</td>
-                    <td>
+                    <td data-label="Masofa">{{ order.distance || 0 }} km</td>
+                    <td data-label="Kuryer">
                       @if (order.courier) {
                         <span class="courier-tag">🏍️ {{ order.courier.name }}</span>
                       } @else {
                         <span class="no-courier">Tayinlanmagan</span>
                       }
                     </td>
-                    <td>
+                    <td data-label="Holat">
                       <span class="status-badge" [class]="'badge-' + order.status.toLowerCase()">
                         {{ getStatusLabel(order.status) }}
                       </span>
                     </td>
-                    <td>
+                    <td data-label="Amal">
                       @if (order.status === 'PENDING') {
                         <button 
                           class="btn btn-primary btn-sm" 
                           (click)="changeStatus(order.id, 'PREPARING')"
-                          id="prep-btn-{{ order.id }}">
+                          id="prep-btn-{{ order.id }}"
+                          style="white-space: nowrap;">
                           🍳 Tayyorlash
                         </button>
                       } @else if (order.status === 'PREPARING') {
@@ -205,6 +206,49 @@ import { Order, ORDER_STATUS_LABELS } from '../../../core/models/order.model';
     .status-done { font-size: 0.82rem; font-weight: 600; color: #10b981; }
 
     .btn-sm { padding: 6px 12px; font-size: 0.78rem; border-radius: 6px; }
+
+    @media (max-width: 768px) {
+      .orders-section { padding: 16px; }
+      .page-header { flex-direction: column; align-items: stretch; gap: 12px; }
+      .page-header button { width: 100%; }
+      
+      /* Turn table into card rows */
+      .data-table, .data-table thead, .data-table tbody, .data-table th, .data-table td, .data-table tr {
+        display: block;
+      }
+      .data-table thead {
+        display: none;
+      }
+      .data-table tr {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px;
+        margin-bottom: 12px;
+        background: var(--bg-card2);
+      }
+      .data-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px dashed var(--border);
+        text-align: right;
+      }
+      .data-table td:last-child {
+        border-bottom: none;
+        padding-top: 12px;
+        justify-content: flex-end;
+      }
+      .data-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        text-align: left;
+        margin-right: 12px;
+      }
+    }
   `]
 })
 export class ManagerDashboardComponent implements OnInit, OnDestroy {

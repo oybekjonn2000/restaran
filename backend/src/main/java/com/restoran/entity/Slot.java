@@ -79,6 +79,16 @@ public class Slot {
     @Column(name = "penalized_at")
     private LocalDateTime penalizedAt;
 
+    /** Jarima admin tomonidan qaytarilganmi */
+    @Column(name = "penalty_reversed", nullable = false)
+    @Builder.Default
+    private boolean penaltyReversed = false;
+
+    /** Qaytarilgan jarima summasi (asl jarima miqdori) */
+    @Column(name = "penalty_reversed_amount")
+    @Builder.Default
+    private Long penaltyReversedAmount = 0L;
+
     /** Smenani boshlagan vaqt */
     @Column(name = "started_at")
     private LocalDateTime startedAt;

@@ -63,6 +63,10 @@ public class Order {
     @Column(length = 500)
     private String cancelReason;
 
+    @Column(name = "yandex_delivery")
+    @Builder.Default
+    private Boolean yandexDelivery = false;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {

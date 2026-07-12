@@ -7,6 +7,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CartService } from '../../../core/services/cart.service';
 import { OrderService } from '../../../core/services/order.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { HttpClient } from '@angular/common/http';
+import { API_BASE } from '../../../core/config';
 
 @Component({
   selector: 'app-cart-sidebar',
@@ -63,7 +65,12 @@ import { AuthService } from '../../../core/services/auth.service';
             rows="2"
             id="delivery-address"></textarea>
 
-          <div id="yandex-map" style="width: 100%; height: 200px; border-radius: var(--radius); border: 1px solid var(--border); margin-top: 8px; overflow: hidden;"></div>
+          <div style="position: relative; margin-top: 8px;">
+            <div id="yandex-map" style="width: 100%; height: 200px; border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden;"></div>
+            <button type="button" class="locate-me-btn" (click)="locateMe()" id="locate-me-btn">
+              📍 Joylashuvni aniqlash
+            </button>
+          </div>
 
           <textarea
             [(ngModel)]="note"
@@ -80,14 +87,25 @@ import { AuthService } from '../../../core/services/auth.service';
             <span class="s-label">Taomlar summasi:</span>
             <span class="s-value">{{ cart.totalPrice() | number:'1.0-0' }} so'm</span>
           </div>
-          <div class="summary-row">
-            <span class="s-label">Yetkazib berish ({{ distance }} km):</span>
-            <span class="s-value">{{ deliveryFee | number:'1.0-0' }} so'm</span>
-          </div>
-          <div class="summary-row total">
-            <span class="s-label">Jami summa:</span>
-            <span class="s-value price">{{ (cart.totalPrice() + deliveryFee) | number:'1.0-0' }} so'm</span>
-          </div>
+          @if (courierActive) {
+            <div class="summary-row">
+              <span class="s-label">Yetkazib berish ({{ distance }} km):</span>
+              <span class="s-value">{{ deliveryFee | number:'1.0-0' }} so'm</span>
+            </div>
+            <div class="summary-row total">
+              <span class="s-label">Jami summa:</span>
+              <span class="s-value price">{{ (cart.totalPrice() + deliveryFee) | number:'1.0-0' }} so'm</span>
+            </div>
+          } @else {
+            <div class="summary-row yandex-fee-row">
+              <span class="s-label">Yetkazib berish:</span>
+              <span class="s-value yandex-label">🚕 Yandex dastavka summa</span>
+            </div>
+            <div class="summary-row total">
+              <span class="s-label">Jami summa:</span>
+              <span class="s-value price">{{ cart.totalPrice() | number:'1.0-0' }} so'm + <span class="yandex-inline">Yandex</span></span>
+            </div>
+          }
         </div>
 
         <!-- Actions -->
@@ -293,6 +311,41 @@ import { AuthService } from '../../../core/services/auth.service';
       color: var(--warning);
       padding-bottom: 8px;
     }
+    .locate-me-btn {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      z-index: 100;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--text);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      transition: var(--transition);
+      font-family: inherit;
+    }
+    .locate-me-btn:hover {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    .yandex-label {
+      color: #f59e0b;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    .yandex-fee-row .s-label { color: var(--text-muted); }
+    .yandex-inline {
+      color: #f59e0b;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
   `]
 })
 export class CartSidebarComponent {
@@ -300,6 +353,7 @@ export class CartSidebarComponent {
   @Input() set isOpen(value: boolean) {
     this._isOpen = value;
     if (value) {
+      this.checkCourierActive();
       setTimeout(() => this.initMap(), 300);
     }
   }
@@ -318,10 +372,12 @@ export class CartSidebarComponent {
   longitude = 65.816309;
   map: any;
   placemark: any;
+  restaurantPlacemark: any;
 
   // Real Yandex routing distance and calculated fee
   distance = 0;
   deliveryFee = 10000;
+  courierActive = true; // Default true, will be updated on open
 
   constructor(
     public cart: CartService,
@@ -329,12 +385,60 @@ export class CartSidebarComponent {
     public auth: AuthService,
     private snack: MatSnackBar,
     private ngZone: NgZone,
-    private router: Router
+    private router: Router,
+    private http: HttpClient
   ) {
     const user = this.auth.user();
     if (user?.address) {
       this.deliveryAddress = user.address;
     }
+  }
+
+  checkCourierActive(): void {
+    this.orderService.isCourierActive().subscribe({
+      next: (res) => {
+        this.ngZone.run(() => {
+          this.courierActive = res.active;
+        });
+      },
+      error: () => {
+        // Default: assume courier is active if API fails
+        this.courierActive = true;
+      }
+    });
+  }
+
+  locateMe(): void {
+    if (!navigator.geolocation) {
+      this.snack.open('⚠️ Geolokatsiya brauzeringiz tomonidan qo\'llab-quvvatlanmaydi', 'Yopish', { duration: 3000 });
+      return;
+    }
+
+    this.snack.open('🔍 Joylashuvingiz aniqlanmoqda...', 'Yopish', { duration: 2000 });
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const coords = [lat, lng];
+
+        this.ngZone.run(() => {
+          if (this.map) {
+            this.map.setCenter(coords, 15);
+            this.setMarker(coords);
+            this.snack.open('✅ Joylashuv aniqlandi!', 'Yopish', { duration: 2000 });
+          }
+        });
+      },
+      (error) => {
+        let msg = '⚠️ Joylashuvni aniqlab bo\'lmadi';
+        if (error.code === error.PERMISSION_DENIED) {
+          msg = '⚠️ Geolokatsiya uchun ruxsat berilmadi';
+        }
+        this.snack.open(msg, 'Yopish', { duration: 3000 });
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
   }
 
   initMap(): void {
@@ -345,14 +449,28 @@ export class CartSidebarComponent {
     }
 
     ymaps.ready(() => {
-      const defaultCoords = [this.latitude, this.longitude];
+      // Get restaurant coordinates from cart items
+      let restLat = 38.866127;
+      let restLng = 65.816309;
+      let restName = 'Restoran';
+      const items = this.cart.items();
+      if (items.length > 0 && items[0].food.restaurant) {
+        const rest = items[0].food.restaurant;
+        if (rest.latitude && rest.longitude) {
+          restLat = rest.latitude;
+          restLng = rest.longitude;
+        }
+        if (rest.name) restName = rest.name;
+      }
+
+      const restCoords = [restLat, restLng];
       const mapContainer = document.getElementById('yandex-map');
       if (!mapContainer) return;
 
       mapContainer.innerHTML = '';
 
       this.map = new ymaps.Map('yandex-map', {
-        center: defaultCoords,
+        center: restCoords,
         zoom: 13,
         controls: ['zoomControl']
       });
@@ -364,8 +482,36 @@ export class CartSidebarComponent {
         });
       });
 
-      this.setMarker(defaultCoords);
+      // Add restaurant marker first
+      this.addRestaurantMarker(restCoords, restName);
+
+      // Set default delivery marker at restaurant location
+      this.setMarker(restCoords);
     });
+  }
+
+  addRestaurantMarker(coords: number[], name: string): void {
+    const ymaps = (window as any).ymaps;
+    if (!ymaps || !this.map) return;
+
+    if (this.restaurantPlacemark) {
+      this.map.geoObjects.remove(this.restaurantPlacemark);
+    }
+
+    this.restaurantPlacemark = new ymaps.Placemark(
+      coords,
+      {
+        balloonContentHeader: `🍽️ ${name}`,
+        balloonContentBody: 'Buyurtmangiz shu restorandan tayyorlanadi',
+        hintContent: `🍽️ ${name}`
+      },
+      {
+        preset: 'islands#redFoodIcon',
+        iconColor: '#ff4444'
+      }
+    );
+
+    this.map.geoObjects.add(this.restaurantPlacemark);
   }
 
   setMarker(coords: number[]): void {
@@ -458,9 +604,20 @@ export class CartSidebarComponent {
       });
   }
 
+  calculateHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2); 
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+    return R * c; // Distance in km
+  }
+
   calculateYandexDistance(coords: number[]): void {
     const ymaps = (window as any).ymaps;
-    if (!ymaps) return;
 
     // Load coordinates of the selected restaurant dynamically
     let restLat = 38.866127;
@@ -475,6 +632,12 @@ export class CartSidebarComponent {
     }
 
     const restCoords = [restLat, restLng];
+
+    if (!ymaps) {
+      this.fallbackToHaversine(restLat, restLng, coords[0], coords[1]);
+      return;
+    }
+
     ymaps.route([restCoords, coords]).then((route: any) => {
       const distanceInMeters = route.getLength();
       const distanceInKm = distanceInMeters / 1000;
@@ -485,11 +648,25 @@ export class CartSidebarComponent {
         this.deliveryFee = Math.round(this.deliveryFee / 100) * 100; // Round to nearest 100 so'm
       });
     }, (err: any) => {
-      console.warn('Error calculating Yandex route distance, fallback to default', err);
-      this.ngZone.run(() => {
+      console.warn('Error calculating Yandex route distance, fallback to Haversine', err);
+      this.fallbackToHaversine(restLat, restLng, coords[0], coords[1]);
+    });
+  }
+
+  private fallbackToHaversine(restLat: number, restLng: number, targetLat: number, targetLng: number): void {
+    const straightDistance = this.calculateHaversineDistance(restLat, restLng, targetLat, targetLng);
+    // Driving distance is usually around 1.35 times straight-line distance due to roads
+    const estimatedDrivingDistance = straightDistance * 1.35;
+    
+    this.ngZone.run(() => {
+      this.distance = Math.round(estimatedDrivingDistance * 10) / 10;
+      if (this.distance < 0.1) {
         this.distance = 0;
         this.deliveryFee = 10000;
-      });
+      } else {
+        this.deliveryFee = 10000 + (this.distance * 1800);
+        this.deliveryFee = Math.round(this.deliveryFee / 100) * 100; // Round to nearest 100 so'm
+      }
     });
   }
 

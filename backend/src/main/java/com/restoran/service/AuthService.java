@@ -8,6 +8,9 @@ import com.restoran.entity.User;
 import com.restoran.repository.UserRepository;
 import com.restoran.security.JwtUtils;
 import com.restoran.security.UserDetailsImpl;
+import com.restoran.dto.request.TelegramUser;
+import com.restoran.security.TelegramUtils;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -24,6 +27,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
+    private final TelegramUtils telegramUtils;
 
     public AuthResponse login(LoginRequest request) {
         Authentication auth = authenticationManager.authenticate(
@@ -74,6 +78,35 @@ public class AuthService {
             .address(user.getAddress())
             .balance(user.getBalance())
             .build();
+    }
+
+    public AuthResponse loginWithTelegram(String initData) {
+        if (!telegramUtils.verifyInitData(initData)) {
+            throw new RuntimeException("Telegram ma'lumotlari haqiqiy emas!");
+        }
+
+        TelegramUser tgUser = telegramUtils.parseUser(initData);
+        if (tgUser == null || tgUser.getId() == null) {
+            throw new RuntimeException("Telegram foydalanuvchi ma'lumotlari o'qib bo'lmadi!");
+        }
+
+        User user = userRepository.findByTelegramId(tgUser.getId())
+                .orElseGet(() -> {
+                    String email = "telegram_" + tgUser.getId() + "@restoran.com";
+                    String name = tgUser.getFirstName() + (tgUser.getLastName() != null ? " " + tgUser.getLastName() : "");
+                    
+                    User newUser = User.builder()
+                            .name(name)
+                            .email(email)
+                            .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                            .role(Role.CLIENT)
+                            .telegramId(tgUser.getId())
+                            .build();
+                    return userRepository.save(newUser);
+                });
+
+        String token = jwtUtils.generateToken(user.getEmail());
+        return buildAuthResponse(token, user);
     }
 
     public AuthResponse getMe(Long userId) {

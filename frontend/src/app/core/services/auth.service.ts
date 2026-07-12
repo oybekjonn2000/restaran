@@ -3,8 +3,9 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { AuthResponse, LoginRequest, RegisterRequest, User } from '../models/user.model';
+import { API_BASE } from '../config';
 
-const API = 'http://localhost:8080/api/auth';
+const API = `${API_BASE}/api/auth`;
 const TOKEN_KEY = 'food_token';
 const USER_KEY = 'food_user';
 
@@ -27,6 +28,12 @@ export class AuthService {
 
   register(request: RegisterRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${API}/register`, request).pipe(
+      tap(res => this.saveUser(res))
+    );
+  }
+
+  telegramLogin(initData: string): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${API}/telegram`, { initData }).pipe(
       tap(res => this.saveUser(res))
     );
   }

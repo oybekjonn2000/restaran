@@ -6,6 +6,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { FoodService } from '../../../core/services/food.service';
 import { Food } from '../../../core/models/food.model';
 import { Category } from '../../../core/models/category.model';
+import { OrderService } from '../../../core/services/order.service';
+import { API_BASE } from '../../../core/config';
 
 @Component({
   selector: 'app-admin-menu',
@@ -38,7 +40,7 @@ import { Category } from '../../../core/models/category.model';
         <div class="foods-grid">
           @for (food of filteredFoods; track food.id) {
             <div class="food-card-admin" [id]="'admin-food-' + food.id">
-              <img [src]="food.imageUrl || fallbackImg" [alt]="food.name"
+              <img [src]="getFullUrl(food.imageUrl) || fallbackImg" [alt]="food.name"
                    class="food-img" (error)="onImgError($event)">
               <div class="food-body">
                 <div class="food-top">
@@ -48,7 +50,7 @@ import { Category } from '../../../core/models/category.model';
                     <p class="food-desc">{{ food.description }}</p>
                   </div>
                   <div class="food-status" [class.available]="food.available" [class.unavailable]="!food.available">
-                    {{ food.available ? '✅ Mavjud' : '❌ Yo\'q' }}
+                    {{ food.available ? '✅ Mavjud' : '❌ Yoq' }}
                   </div>
                 </div>
                 <div class="food-footer">
@@ -114,8 +116,17 @@ import { Category } from '../../../core/models/category.model';
                 </div>
                 <div class="form-group">
                   <label class="form-label">Rasm URL</label>
-                  <input formControlName="imageUrl" class="form-control"
-                         placeholder="https://..." id="food-form-image">
+                  <div style="display: flex; gap: 8px;">
+                    <input formControlName="imageUrl" class="form-control"
+                           placeholder="https://..." id="food-form-image" style="flex: 1;">
+                    <label class="btn btn-outline" style="cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; padding: 0 12px; margin: 0; white-space: nowrap; height: 38px;">
+                      📁 Yuklash
+                      <input type="file" (change)="onFileUpload($event)" accept="image/*" style="display: none;">
+                    </label>
+                  </div>
+                  @if (uploading()) {
+                    <div style="font-size: 0.75rem; color: var(--primary); margin-top: 4px;">Rasm yuklanmoqda...</div>
+                  }
                 </div>
                 <div class="form-check">
                   <input formControlName="available" type="checkbox" id="food-form-available">
@@ -126,7 +137,7 @@ import { Category } from '../../../core/models/category.model';
                   <button type="button" class="btn btn-outline" (click)="closeForm()">Bekor qilish</button>
                   <button type="submit" class="btn btn-primary" [disabled]="saving() || foodForm.invalid">
                     @if (saving()) { <mat-spinner diameter="16" color="accent"></mat-spinner> }
-                    {{ editId() ? 'Saqlash' : 'Qo\'shish' }}
+                    {{ editId() ? 'Saqlash' : 'Qoshish' }}
                   </button>
                 </div>
               </form>
@@ -243,7 +254,8 @@ import { Category } from '../../../core/models/category.model';
     .modal-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.6);
       backdrop-filter: blur(4px); z-index: 300;
-      display: flex; align-items: center; justify-content: center; padding: 20px;
+      display: flex; align-items: flex-start; justify-content: center;
+      padding: 30px 20px; overflow-y: auto;
     }
     .modal-card {
       background: var(--bg-card); border: 1px solid var(--border);
@@ -294,6 +306,7 @@ export class AdminMenuComponent implements OnInit {
   showForm = signal(false);
   editId = signal<number | null>(null);
   saving = signal(false);
+  uploading = signal(false);
   searchQ = '';
   fallbackImg = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400';
 
@@ -309,6 +322,7 @@ export class AdminMenuComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private foodService: FoodService,
+    private orderService: OrderService,
     private snack: MatSnackBar
   ) {
     this.foodForm = this.fb.group({
@@ -318,6 +332,34 @@ export class AdminMenuComponent implements OnInit {
       imageUrl:    [''],
       available:   [true],
       categoryId:  ['', Validators.required]
+    });
+  }
+
+  getFullUrl(url: string | null | undefined): string {
+    if (!url) return '';
+    if (url.startsWith('/uploads')) {
+      return `${API_BASE}${url}`;
+    }
+    return url;
+  }
+
+  onFileUpload(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    this.uploading.set(true);
+
+    this.orderService.uploadImage(file).subscribe({
+      next: (res) => {
+        this.foodForm.patchValue({ imageUrl: res.url });
+        this.uploading.set(false);
+        this.snack.open('✅ Rasm muvaffaqiyatli yuklandi!', '', { duration: 2500 });
+      },
+      error: (err) => {
+        this.uploading.set(false);
+        this.snack.open(`❌ Yuklashda xatolik: ${err.error?.message || 'Amal bajarilmadi'}`, '', { duration: 3000 });
+      }
     });
   }
 

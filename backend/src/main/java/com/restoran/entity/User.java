@@ -29,6 +29,9 @@ public class User {
     private String phone;
     private String address;
 
+    @Column(name = "telegram_id", unique = true)
+    private Long telegramId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;

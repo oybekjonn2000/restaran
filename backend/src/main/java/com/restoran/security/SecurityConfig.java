@@ -65,10 +65,16 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/foods/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/restaurants/**").permitAll()
+                // Public static files uploads
+                .requestMatchers("/uploads/**").permitAll()
                 // Admin/Manager only
                 .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "MANAGER")
                 // Courier only
                 .requestMatchers("/api/courier/**").hasRole("COURIER")
+                // Orders — courier-active is public (used in cart without login)
+                .requestMatchers(HttpMethod.GET, "/api/orders/courier-active").permitAll()
+                // Upload endpoint
+                .requestMatchers("/api/upload/**").authenticated()
                 // Orders — authenticated users
                 .requestMatchers("/api/orders/**").authenticated()
                 // Users info
@@ -84,11 +90,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(
-            "http://localhost:4200",
-            "http://localhost:4201",
-            "http://localhost:4202"
-        ));
+        config.setAllowedOriginPatterns(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

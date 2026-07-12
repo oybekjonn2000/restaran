@@ -6,6 +6,7 @@ import com.restoran.repository.FoodRepository;
 import com.restoran.repository.OrderRepository;
 import com.restoran.repository.UserRepository;
 import com.restoran.repository.RestaurantRepository;
+import com.restoran.repository.SlotRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
+    private final SlotRepository slotRepository;
     private final FoodRepository foodRepository;
     private final RestaurantRepository restaurantRepository;
 
@@ -154,6 +156,16 @@ public class OrderService {
     }
 
     private void autoAssignCourier(Order order) {
+        // Smenada faol kuryer bormi?
+        boolean anyCourierOnShift = slotRepository.findByStartedTrueAndFinishedFalse().stream()
+            .anyMatch(s -> s.getCourier() != null);
+
+        if (!anyCourierOnShift) {
+            order.setYandexDelivery(true);
+            return; // Smenada kuryer yo'qligi uchun Yandex yetkazib beradi
+        }
+        order.setYandexDelivery(false);
+
         List<User> couriers = userRepository.findByRole(Role.COURIER);
         List<OrderStatus> activeStatuses = List.of(
             OrderStatus.PREPARING,
@@ -172,6 +184,11 @@ public class OrderService {
                 continue;
             }
 
+            // Kuryer faol smenada (started=true, finished=false) ekanligini tekshiramiz
+            if (slotRepository.findActiveSlotForCourier(courier.getId()).isEmpty()) {
+                continue;
+            }
+
             if (!orderRepository.existsByCourierAndStatusIn(courier, activeStatuses)) {
                 order.setCourier(courier);
                 order.setAssignedAt(java.time.LocalDateTime.now());
@@ -185,6 +202,11 @@ public class OrderService {
         if (!assigned && !couriers.isEmpty() && attempted.length() > 0) {
             order.setAttemptedCourierIds("");
             for (User courier : couriers) {
+                // Kuryer faol smenada ekanligini tekshiramiz
+                if (slotRepository.findActiveSlotForCourier(courier.getId()).isEmpty()) {
+                    continue;
+                }
+
                 if (!orderRepository.existsByCourierAndStatusIn(courier, activeStatuses)) {
                     order.setCourier(courier);
                     order.setAssignedAt(java.time.LocalDateTime.now());
@@ -196,6 +218,11 @@ public class OrderService {
     }
 
     private void backfillCourier(User courier) {
+        // Faol smenada bo'lmasa, buyurtma biriktirmaymiz
+        if (slotRepository.findActiveSlotForCourier(courier.getId()).isEmpty()) {
+            return;
+        }
+
         List<Order> unassignedOrders = orderRepository.findByStatusOrderByCreatedAtAsc(OrderStatus.PREPARING);
         for (Order o : unassignedOrders) {
             if (o.getCourier() == null) {
@@ -216,6 +243,11 @@ public class OrderService {
             .orElseThrow(() -> new RuntimeException("Buyurtma topilmadi: " + orderId));
         User courier = userRepository.findById(courierId)
             .orElseThrow(() -> new RuntimeException("Kuryer topilmadi: " + courierId));
+
+        // Kuryer faol smenada ekanligini tekshiramiz
+        if (slotRepository.findActiveSlotForCourier(courierId).isEmpty()) {
+            throw new RuntimeException("Siz faol smenada emassiz! Buyurtmalarni qabul qilish uchun smenangizni boshlang.");
+        }
 
         if (order.getCourier() != null && !order.getCourier().getId().equals(courierId)) {
             throw new RuntimeException("Bu buyurtmani boshqa kuryer allaqachon qabul qilgan!");
@@ -292,5 +324,11 @@ public class OrderService {
                           + orderRepository.countByStatus(OrderStatus.COURIER_AT_CLIENT),
             "delivered", orderRepository.countByStatus(OrderStatus.DELIVERED)
         );
+    }
+
+    /** Hozir smenada faol kuryer bor-yo'qligini tekshiradi */
+    public boolean isAnyCourierOnShift() {
+        return slotRepository.findByStartedTrueAndFinishedFalse().stream()
+            .anyMatch(s -> s.getCourier() != null);
     }
 }

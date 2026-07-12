@@ -29,6 +29,8 @@ export interface Slot {
     phone?: string;
   } | null;
   penalizedAt?: string | null;
+  penaltyReversed?: boolean;
+  penaltyReversedAmount?: number;
   startedAt?: string | null;
   finishedAt?: string | null;
   cancelledAt?: string | null;

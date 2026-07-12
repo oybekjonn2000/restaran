@@ -5,12 +5,16 @@ E:\Loyiha\restaran\backend\src\main\java\com\restoran\service\AuthService.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\service\SlotService.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\controller\FoodController.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\dto\response\MessageResponse.java
+E:\Loyiha\restaran\backend\src\main\java\com\restoran\controller\UploadController.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\repository\FoodRepository.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\controller\CourierController.java
+E:\Loyiha\restaran\backend\src\main\java\com\restoran\dto\request\TelegramUser.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\entity\Restaurant.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\entity\Slot.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\dto\request\PasswordChangeRequest.java
+E:\Loyiha\restaran\backend\src\main\java\com\restoran\security\TelegramUtils.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\repository\OrderRepository.java
+E:\Loyiha\restaran\backend\src\main\java\com\restoran\service\TelegramBotService.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\entity\Food.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\repository\CategoryRepository.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\repository\SlotRepository.java
@@ -22,8 +26,10 @@ E:\Loyiha\restaran\backend\src\main\java\com\restoran\dto\request\OrderRequest.j
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\dto\response\AuthResponse.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\repository\UserRepository.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\entity\OrderStatus.java
+E:\Loyiha\restaran\backend\src\main\java\com\restoran\dto\request\TelegramAuthRequest.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\repository\RestaurantRepository.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\controller\RestaurantController.java
+E:\Loyiha\restaran\backend\src\main\java\com\restoran\config\WebConfig.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\security\SecurityConfig.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\entity\User.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\dto\request\ProfileUpdateRequest.java

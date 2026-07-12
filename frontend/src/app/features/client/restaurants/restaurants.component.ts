@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { OrderService } from '../../../core/services/order.service';
 import { Restaurant } from '../../../core/models/restaurant.model';
+import { API_BASE } from '../../../core/config';
 
 @Component({
   selector: 'app-restaurants',
@@ -40,7 +41,7 @@ import { Restaurant } from '../../../core/models/restaurant.model';
             <div class="restaurant-card" [routerLink]="['/client/menu', r.id]">
               <div class="card-image-wrap">
                 <img 
-                  [src]="r.imageUrl || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500'" 
+                  [src]="getFullUrl(r.imageUrl) || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500'" 
                   [alt]="r.name" 
                   class="card-image"
                   (error)="onImgError($event)">
@@ -179,6 +180,14 @@ export class RestaurantsComponent implements OnInit {
   searchQuery = '';
 
   constructor(private orderService: OrderService) {}
+
+  getFullUrl(url: string | null | undefined): string {
+    if (!url) return '';
+    if (url.startsWith('/uploads')) {
+      return `${API_BASE}${url}`;
+    }
+    return url;
+  }
 
   ngOnInit(): void {
     this.orderService.getRestaurants().subscribe({

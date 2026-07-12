@@ -18,6 +18,7 @@ export interface Order {
   attemptedCourierIds?: string;
   note?: string;
   cancelReason?: string;
+  yandexDelivery?: boolean;
   createdAt: string;
   items: OrderItem[];
 }

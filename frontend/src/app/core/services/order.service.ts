@@ -6,8 +6,9 @@ import { User, CourierStats, ClientStats, ManagerStats, RegisterRequest } from '
 import { Food } from '../models/food.model';
 import { Restaurant, RestaurantAdminRequest } from '../models/restaurant.model';
 import { Slot, SlotRequest, ActiveSlotResponse, CancelResult } from '../models/slot.model';
+import { API_BASE } from '../config';
 
-const BASE = 'http://localhost:8080/api';
+const BASE = `${API_BASE}/api`;
 
 @Injectable({ providedIn: 'root' })
 export class OrderService {
@@ -204,6 +205,16 @@ export class OrderService {
     return this.http.delete<any>(`${BASE}/admin/slots/${id}`);
   }
 
+  /** Admin: Jarimani bekor qilish — kuryer balansiga qaytarish */
+  adminReversePenalty(slotId: number): Observable<Slot> {
+    return this.http.post<Slot>(`${BASE}/admin/slots/${slotId}/reverse-penalty`, {});
+  }
+
+  /** Admin: Kuryerning smenasini majburiy tugatish */
+  adminForceEndSlot(slotId: number): Observable<Slot> {
+    return this.http.post<Slot>(`${BASE}/admin/slots/${slotId}/force-end`, {});
+  }
+
   // Kuryer smenalar
   getCourierAvailableSlots(): Observable<Slot[]> {
     return this.http.get<Slot[]>(`${BASE}/courier/slots/available`);
@@ -235,5 +246,17 @@ export class OrderService {
 
   getCourierAllSlots(): Observable<Slot[]> {
     return this.http.get<Slot[]>(`${BASE}/courier/slots/all`);
+  }
+
+  /** Smenada faol kuryer bor-yo'qligini tekshiradi */
+  isCourierActive(): Observable<{ active: boolean }> {
+    return this.http.get<{ active: boolean }>(`${BASE}/orders/courier-active`);
+  }
+
+  /** Rasm yuklash (MultipartFile) */
+  uploadImage(file: File): Observable<{ url: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<{ url: string }>(`${BASE}/upload`, formData);
   }
 }

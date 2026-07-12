@@ -49,4 +49,11 @@ public class OrderController {
     public ResponseEntity<Map<String, Long>> getStats() {
         return ResponseEntity.ok(orderService.getStats());
     }
+
+    /** Smenada faol kuryer bormi? (mijoz savatida foydalaniladi) */
+    @GetMapping("/courier-active")
+    public ResponseEntity<Map<String, Boolean>> isCourierActive() {
+        boolean active = orderService.isAnyCourierOnShift();
+        return ResponseEntity.ok(Map.of("active", active));
+    }
 }

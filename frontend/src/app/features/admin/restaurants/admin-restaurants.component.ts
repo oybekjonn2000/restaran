@@ -6,6 +6,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { OrderService } from '../../../core/services/order.service';
 import { Restaurant } from '../../../core/models/restaurant.model';
 import { User } from '../../../core/models/user.model';
+import { API_BASE } from '../../../core/config';
 
 @Component({
   selector: 'app-admin-restaurants',
@@ -31,7 +32,7 @@ import { User } from '../../../core/models/user.model';
         <div class="restaurants-list-grid">
           @for (r of restaurants(); track r.id) {
             <div class="restaurant-admin-card" [id]="'rest-card-' + r.id">
-              <img [src]="r.imageUrl || fallbackImg" [alt]="r.name" class="rest-cover" (error)="onImgError($event)">
+              <img [src]="getFullUrl(r.imageUrl) || fallbackImg" [alt]="r.name" class="rest-cover" (error)="onImgError($event)">
               <div class="rest-details">
                 <h3 class="rest-name">{{ r.name }}</h3>
                 <p class="rest-meta">📍 {{ r.address || 'Manzil kiritilmagan' }}</p>
@@ -82,7 +83,16 @@ import { User } from '../../../core/models/user.model';
                   </div>
                   <div class="form-group">
                     <label class="form-label">Muqova Rasm URL</label>
-                    <input formControlName="imageUrl" class="form-control" placeholder="https://..." id="rest-form-image">
+                    <div style="display: flex; gap: 8px;">
+                      <input formControlName="imageUrl" class="form-control" placeholder="https://..." id="rest-form-image" style="flex: 1;">
+                      <label class="btn btn-outline" style="cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; padding: 0 12px; margin: 0; white-space: nowrap; height: 38px;">
+                        📁 Yuklash
+                        <input type="file" (change)="onFileUpload($event)" accept="image/*" style="display: none;">
+                      </label>
+                    </div>
+                    @if (uploading()) {
+                      <div style="font-size: 0.75rem; color: var(--primary); margin-top: 4px;">Rasm yuklanmoqda...</div>
+                    }
                   </div>
                 </div>
 
@@ -192,6 +202,7 @@ export class AdminRestaurantsComponent implements OnInit {
   showForm = signal(false);
   editId = signal<number | null>(null);
   saving = signal(false);
+  uploading = signal(false);
   fallbackImg = 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500';
 
   restForm!: FormGroup;
@@ -204,6 +215,34 @@ export class AdminRestaurantsComponent implements OnInit {
     private snack: MatSnackBar,
     private ngZone: NgZone
   ) {}
+
+  getFullUrl(url: string | null | undefined): string {
+    if (!url) return '';
+    if (url.startsWith('/uploads')) {
+      return `${API_BASE}${url}`;
+    }
+    return url;
+  }
+
+  onFileUpload(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    this.uploading.set(true);
+
+    this.orderService.uploadImage(file).subscribe({
+      next: (res) => {
+        this.restForm.patchValue({ imageUrl: res.url });
+        this.uploading.set(false);
+        this.snack.open('✅ Rasm muvaffaqiyatli yuklandi!', '', { duration: 2500 });
+      },
+      error: (err) => {
+        this.uploading.set(false);
+        this.snack.open(`❌ Yuklashda xatolik: ${err.error?.message || 'Amal bajarilmadi'}`, '', { duration: 3000 });
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.load();

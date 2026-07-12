@@ -10,6 +10,7 @@ import { CartService } from '../../../core/services/cart.service';
 import { Category } from '../../../core/models/category.model';
 import { Food } from '../../../core/models/food.model';
 import { Restaurant } from '../../../core/models/restaurant.model';
+import { API_BASE } from '../../../core/config';
 
 @Component({
   selector: 'app-menu',
@@ -74,7 +75,7 @@ import { Restaurant } from '../../../core/models/restaurant.model';
             @for (food of displayedFoods(); track food.id; let i = $index) {
               <div class="food-card" [style.animation-delay]="(i * 0.05) + 's'"
                    [id]="'food-card-' + food.id">
-                <img [src]="food.imageUrl || fallbackImg" [alt]="food.name"
+                <img [src]="getFullUrl(food.imageUrl) || fallbackImg" [alt]="food.name"
                      class="food-card-img" loading="lazy"
                      (error)="onImgError($event)">
                 <div class="food-card-body">
@@ -373,6 +374,14 @@ export class MenuComponent implements OnInit {
     private route: ActivatedRoute
   ) {
     this.restaurantId = Number(this.route.snapshot.params['restaurantId']);
+  }
+
+  getFullUrl(url: string | null | undefined): string {
+    if (!url) return '';
+    if (url.startsWith('/uploads')) {
+      return `${API_BASE}${url}`;
+    }
+    return url;
   }
 
   ngOnInit(): void {

@@ -33,35 +33,35 @@ import { ClientStats } from '../../../core/models/user.model';
       }
 
       @if (!loading()) {
-        <div class="table-wrap" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden;">
+        <div class="table-wrap">
           <table class="data-table">
             <thead>
               <tr>
                 <th>Mijoz</th>
                 <th>Aloqa</th>
                 <th>Manzil</th>
-                <th>Buyurtmalar Soni</th>
-                <th>Jami Xarid (so'm)</th>
+                <th>Buyurtmalar</th>
+                <th>Jami Xarid</th>
                 <th>Amallar</th>
               </tr>
             </thead>
             <tbody>
               @for (c of filteredClients; track c.id) {
                 <tr [id]="'client-row-' + c.id">
-                  <td><strong>{{ c.name }}</strong></td>
-                  <td>
-                    <div style="display: flex; flex-direction: column;">
+                  <td data-label="Mijoz"><strong>{{ c.name }}</strong></td>
+                  <td data-label="Aloqa">
+                    <div class="contact-info">
                       <span>📧 {{ c.email }}</span>
-                      <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">📞 {{ c.phone || 'Kiritilmagan' }}</span>
+                      <span class="phone-text">📞 {{ c.phone || 'Kiritilmagan' }}</span>
                     </div>
                   </td>
-                  <td>{{ c.address || 'Kiritilmagan' }}</td>
-                  <td><span class="count-badge">{{ c.totalOrdersCount }} ta</span></td>
-                  <td><strong>{{ c.totalSpent | number:'1.0-0' }} so'm</strong></td>
-                  <td>
-                    <div style="display: flex; gap: 8px;">
+                  <td data-label="Manzil">{{ c.address || 'Kiritilmagan' }}</td>
+                  <td data-label="Buyurtmalar"><span class="count-badge">{{ c.totalOrdersCount }} ta</span></td>
+                  <td data-label="Jami Xarid"><strong>{{ c.totalSpent | number:'1.0-0' }} so'm</strong></td>
+                  <td data-label="Amallar">
+                    <div class="action-btns">
                       <button class="btn btn-outline btn-sm" (click)="openEditForm(c)">✏️ Tahrirlash</button>
-                      <button class="btn btn-outline btn-danger-outline btn-sm" (click)="deleteClient(c)">🗑️ O'chirish</button>
+                      <button class="btn btn-outline btn-danger-outline btn-sm" (click)="deleteClient(c)">🗑️</button>
                     </div>
                   </td>
                 </tr>
@@ -83,7 +83,7 @@ import { ClientStats } from '../../../core/models/user.model';
         <div class="modal-overlay" (click)="closeForm()">
           <div class="modal-card animate-in" (click)="$event.stopPropagation()">
             <div class="modal-header">
-              <h2>{{ editId() ? '✏️ Mijoz ma\\'lumotlarini tahrirlash' : '+ Yangi Mijoz yaratish' }}</h2>
+              <h2>{{ editId() ? '✏️ Mijozni tahrirlash' : '+ Yangi Mijoz' }}</h2>
               <button class="close-btn" (click)="closeForm()">✕</button>
             </div>
             <div class="modal-body">
@@ -132,18 +132,40 @@ import { ClientStats } from '../../../core/models/user.model';
   `,
   styles: [`
     .clients-admin { max-width: 1100px; margin: 0 auto; }
-    .count-badge { background: rgba(249,115,22,0.1); color: var(--primary); padding: 2px 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; }
+
+    .table-wrap {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .contact-info { display: flex; flex-direction: column; }
+    .phone-text { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+    .action-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .count-badge {
+      background: rgba(249,115,22,0.1);
+      color: var(--primary);
+      padding: 2px 8px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
     .btn-danger-outline { border-color: rgba(239,68,68,0.3) !important; color: #ef4444 !important; }
     .btn-danger-outline:hover { background: rgba(239,68,68,0.1) !important; }
 
     .modal-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.6);
       backdrop-filter: blur(4px); z-index: 300;
-      display: flex; align-items: center; justify-content: center; padding: 20px;
+      display: flex; align-items: flex-start; justify-content: center;
+      padding: 30px 20px; overflow-y: auto;
     }
     .modal-card {
       background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+      border-radius: var(--radius-lg); width: 100%; max-width: 480px;
     }
     .modal-header {
       display: flex; align-items: center; justify-content: space-between;
@@ -162,6 +184,43 @@ import { ClientStats } from '../../../core/models/user.model';
 
     .form-actions { display: flex; gap: 10px; margin-top: 16px; }
     .form-actions .btn { flex: 1; justify-content: center; gap: 8px; }
+
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; align-items: stretch; gap: 12px; }
+      .page-header button { width: 100%; }
+
+      /* Card-style responsive table */
+      .data-table, .data-table thead, .data-table tbody,
+      .data-table th, .data-table td, .data-table tr {
+        display: block;
+      }
+      .data-table thead { display: none; }
+      .data-table tr {
+        border-bottom: 1px solid var(--border);
+        padding: 12px 16px;
+      }
+      .data-table tr:last-child { border-bottom: none; }
+      .data-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+        border-bottom: 1px dashed rgba(255,255,255,0.05);
+        font-size: 0.85rem;
+      }
+      .data-table td:last-child { border-bottom: none; padding-top: 10px; }
+      .data-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        min-width: 100px;
+        flex-shrink: 0;
+      }
+      .action-btns { justify-content: flex-end; }
+      .form-row { grid-template-columns: 1fr; }
+    }
   `]
 })
 export class AdminClientsComponent implements OnInit {

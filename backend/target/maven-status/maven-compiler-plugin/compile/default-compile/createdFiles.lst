@@ -1,8 +1,11 @@
 com\restoran\controller\OrderController.class
+com\restoran\service\TelegramBotService.class
+com\restoran\dto\request\TelegramUser.class
 com\restoran\dto\request\ProfileUpdateRequest.class
 com\restoran\controller\AdminController$CourierStatsResponse.class
 com\restoran\dto\request\RegisterRequest.class
 com\restoran\dto\response\AuthResponse$AuthResponseBuilder.class
+com\restoran\dto\request\TelegramAuthRequest.class
 com\restoran\entity\User.class
 com\restoran\dto\request\ProfileUpdateRequest$ProfileUpdateRequestBuilder.class
 com\restoran\entity\OrderStatus.class
@@ -13,6 +16,7 @@ com\restoran\dto\request\OrderRequest$OrderItemRequest.class
 com\restoran\dto\request\FoodRequest.class
 com\restoran\service\SlotService$SlotRequest.class
 com\restoran\entity\Category.class
+com\restoran\security\TelegramUtils.class
 com\restoran\entity\Food.class
 com\restoran\entity\Restaurant.class
 com\restoran\entity\User$UserBuilder.class
@@ -24,6 +28,7 @@ com\restoran\entity\Restaurant$RestaurantBuilder.class
 com\restoran\controller\AdminController$CourierStatsResponse$CourierStatsResponseBuilder.class
 com\restoran\controller\ManagerController$RestaurantUpdateRequest.class
 com\restoran\dto\response\AuthResponse.class
+com\restoran\config\WebConfig.class
 com\restoran\controller\AdminController$CategoryRequest.class
 com\restoran\repository\SlotRepository.class
 com\restoran\repository\RestaurantRepository.class
@@ -63,5 +68,6 @@ com\restoran\dto\response\MessageResponse$MessageResponseBuilder.class
 com\restoran\controller\AdminController$ManagerStatsResponse$ManagerStatsResponseBuilder.class
 com\restoran\controller\AuthController.class
 com\restoran\dto\request\OrderRequest.class
+com\restoran\controller\UploadController.class
 com\restoran\entity\OrderItem.class
 com\restoran\controller\AdminController$ManagerUpdateRequest.class

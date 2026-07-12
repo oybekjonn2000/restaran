@@ -557,29 +557,29 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
             
             <div class="earnings-list-items">
               @for (item of groupedEarningsReport; track item.id) {
-                <div class="earnings-list-row" 
-                     [style.background]="item.isCancelled ? 'rgba(239,68,68,0.06)' : ''"
-                     [style.border-left]="item.isCancelled ? '3px solid #ef4444' : '3px solid transparent'"
-                     (click)="item.isCancelled ? null : (item.type === 'slot' ? selectedShiftDetailId.set(item.id) : selectDayFromReport(item.date))" 
-                     [style.cursor]="item.isCancelled ? 'default' : 'pointer'">
-                  <div class="earnings-row-left">
-                    <div class="clock-circle-icon" [style.background]="item.isCancelled ? 'rgba(239,68,68,0.12)' : (item.type === 'day' ? '#eef4ff' : '#f5f5f7')">
-                      <span>{{ item.isCancelled ? '🚫' : (item.type === 'day' ? '📅' : '⏰') }}</span>
-                    </div>
-                    <div class="earnings-row-text">
-                      <div class="earnings-row-time" [style.color]="item.isCancelled ? '#ef4444' : ''">{{ item.title }}</div>
-                      <div class="earnings-row-sub">{{ item.subtitle }}</div>
-                    </div>
+              <div class="earnings-list-row" 
+                   [style.background]="item.isCancelledReversed ? 'rgba(16,185,129,0.07)' : (item.isCancelled ? 'rgba(239,68,68,0.06)' : '')"
+                   [style.border-left]="item.isCancelledReversed ? '3px solid #10b981' : (item.isCancelled ? '3px solid #ef4444' : '3px solid transparent')"
+                   (click)="item.isCancelled || item.isCancelledReversed ? null : (item.type === 'slot' ? selectedShiftDetailId.set(item.id) : selectDayFromReport(item.date))" 
+                   [style.cursor]="item.isCancelled || item.isCancelledReversed ? 'default' : 'pointer'">
+                <div class="earnings-row-left">
+                  <div class="clock-circle-icon" [style.background]="item.isCancelledReversed ? 'rgba(16,185,129,0.15)' : (item.isCancelled ? 'rgba(239,68,68,0.12)' : (item.type === 'day' ? '#eef4ff' : '#f5f5f7'))">
+                    <span>{{ item.isCancelledReversed ? '✅' : (item.isCancelled ? '🚫' : (item.type === 'day' ? '📅' : '⏰')) }}</span>
                   </div>
-                  <div class="earnings-row-right">
-                    <span class="earnings-row-amount" [style.color]="item.isCancelled ? '#ef4444' : (item.amount > 0 ? '#10b981' : '#777')">
-                      {{ item.isCancelled ? '' : '' }}{{ item.amount | number:'1.0-0' }} so'm
-                    </span>
-                    @if (!item.isCancelled) {
-                      <span class="chevron-right">➔</span>
-                    }
+                  <div class="earnings-row-text">
+                    <div class="earnings-row-time" [style.color]="item.isCancelledReversed ? '#10b981' : (item.isCancelled ? '#ef4444' : '')">{{ item.title }}</div>
+                    <div class="earnings-row-sub">{{ item.subtitle }}</div>
                   </div>
                 </div>
+                <div class="earnings-row-right">
+                  <span class="earnings-row-amount" [style.color]="item.isCancelledReversed ? '#10b981' : (item.isCancelled ? '#ef4444' : (item.amount > 0 ? '#10b981' : '#777'))">
+                    {{ item.isCancelled || item.isCancelledReversed ? '' : '' }}{{ item.amount | number:'1.0-0' }} so'm
+                  </span>
+                  @if (!item.isCancelled && !item.isCancelledReversed) {
+                    <span class="chevron-right">➔</span>
+                  }
+                </div>
+              </div>
               } @empty {
                 <div class="earnings-empty-row">
                   Ushbu davrda hech qanday ma'lumot topilmadi
@@ -812,26 +812,54 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     @if (showCancelConfirm() && cancelPenaltyInfo()) {
       <div class="confirm-overlay" (click)="closeCancelConfirm()">
         <div class="confirm-card animate-confirm" (click)="$event.stopPropagation()">
-          <div class="confirm-icon-wrap">⚠️</div>
-          <h3 class="confirm-heading">Smenani bekor qilasizmi?</h3>
-          <div class="confirm-body">
-            <p>Ushbu smenani bekor qilish uchun jarima qo'llaniladi:</p>
-            <div class="confirm-stats-box">
-              <div class="confirm-stat-item">
-                <span class="confirm-stat-lbl">Smena muddati</span>
-                <span class="confirm-stat-val">{{ cancelPenaltyInfo()!.hours }} soat</span>
+
+          @if (cancelPenaltyInfo()!.isFreeCancel) {
+            <!-- JARIMASIZ BEKOR QILISH -->
+            <div class="confirm-icon-wrap" style="background: rgba(16,185,129,0.15);">🎉</div>
+            <h3 class="confirm-heading" style="color: #10b981;">Jarimasiz bekor qilish</h3>
+            <div class="confirm-body">
+              <p style="color: #10b981; font-weight: 600;">Smenagacha 12 soatdan ko'p vaqt bor.</p>
+              <div class="confirm-stats-box" style="border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.07);">
+                <div class="confirm-stat-item">
+                  <span class="confirm-stat-lbl">Smena muddati</span>
+                  <span class="confirm-stat-val">{{ cancelPenaltyInfo()!.hours }} soat</span>
+                </div>
+                <div class="confirm-stat-item">
+                  <span class="confirm-stat-lbl">Jarima summasi</span>
+                  <span class="confirm-stat-val" style="color: #10b981; font-weight: 700;">0 so'm (bepul)</span>
+                </div>
               </div>
-              <div class="confirm-stat-item">
-                <span class="confirm-stat-lbl">Jarima summasi</span>
-                <span class="confirm-stat-val penalty-alert">{{ cancelPenaltyInfo()!.amount | number:'1.0-0' }} so'm</span>
-              </div>
+              <p class="confirm-hint" style="color: #10b981;">✅ Heч qanday jarima chegirilmaydi.</p>
             </div>
-            <p class="confirm-hint">Jarima summasi balansingizdan avtomatik ravishda chegirib tashlanadi.</p>
-          </div>
-          <div class="confirm-actions">
-            <button class="confirm-btn-no" (click)="closeCancelConfirm()">Orqaga</button>
-            <button class="confirm-btn-yes" (click)="executeCancelSlot()">Bekor qilish</button>
-          </div>
+            <div class="confirm-actions">
+              <button class="confirm-btn-no" (click)="closeCancelConfirm()">Orqaga</button>
+              <button class="confirm-btn-yes" style="background: linear-gradient(135deg, #10b981, #059669);" (click)="executeCancelSlot()">Bekor qilish</button>
+            </div>
+
+          } @else {
+            <!-- JARIMALI BEKOR QILISH -->
+            <div class="confirm-icon-wrap">⚠️</div>
+            <h3 class="confirm-heading">Smenani bekor qilasizmi?</h3>
+            <div class="confirm-body">
+              <p>Ushbu smenani bekor qilish uchun jarima qo'llaniladi:</p>
+              <div class="confirm-stats-box">
+                <div class="confirm-stat-item">
+                  <span class="confirm-stat-lbl">Smena muddati</span>
+                  <span class="confirm-stat-val">{{ cancelPenaltyInfo()!.hours }} soat</span>
+                </div>
+                <div class="confirm-stat-item">
+                  <span class="confirm-stat-lbl">Jarima summasi</span>
+                  <span class="confirm-stat-val penalty-alert">{{ cancelPenaltyInfo()!.amount | number:'1.0-0' }} so'm</span>
+                </div>
+              </div>
+              <p class="confirm-hint">Jarima summasi balansingizdan avtomatik ravishda chegirib tashlanadi.</p>
+            </div>
+            <div class="confirm-actions">
+              <button class="confirm-btn-no" (click)="closeCancelConfirm()">Orqaga</button>
+              <button class="confirm-btn-yes" (click)="executeCancelSlot()">Bekor qilish</button>
+            </div>
+          }
+
         </div>
       </div>
     }
@@ -886,9 +914,15 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
             </div>
 
             @if (!selectedDetailSlot()!.started) {
-              <div class="slot-cancel-warning-box">
-                ⚠️ DIQQAT: Smenani bekor qilsangiz, soatiga 30,000 so'm jarima hisoblanadi.
-              </div>
+              @if (hoursUntilSlotStart(selectedDetailSlot()!) >= 12) {
+                <div class="slot-cancel-warning-box" style="background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.35); color: #10b981;">
+                  🎉 Smenagacha 12 soatdan ko'p vaqt bor — jarimasiz bekor qilsa bo'ladi!
+                </div>
+              } @else {
+                <div class="slot-cancel-warning-box">
+                  ⚠️ DIQQAT: Smenani bekor qilsangiz, soatiga 30,000 so'm jarima hisoblanadi.
+                </div>
+              }
             }
           </div>
 
@@ -2818,7 +2852,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
   // Jarima confirm oynasi uchun signallar
   showCancelConfirm = signal(false);
   slotToCancel = signal<number | null>(null);
-  cancelPenaltyInfo = signal<{ hours: number; amount: number } | null>(null);
+  cancelPenaltyInfo = signal<{ hours: number; amount: number; isFreeCancel?: boolean } | null>(null);
   selectedDetailSlot = signal<Slot | null>(null);
 
   // Teskari sanoq va bildirishnoma signallari
@@ -2988,11 +3022,14 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     const completedSlots = this.myBookedSlots().filter(s => s.finished || s.started);
     // Bekor qilingan (jarima bilan) smenalar
     const cancelledSlots = this.myBookedSlots().filter(s => s.penaltyApplied && s.penaltyAmount && s.penaltyAmount > 0);
+    // Jarima qaytarilgan smenalar
+    const reversedSlots = this.myBookedSlots().filter(s => s.penaltyReversed === true);
 
     if (tab === 'kun') {
       const targetStr = this.selectedDate();
       const targetSlots = completedSlots.filter(s => s.date === targetStr);
       const targetCancelled = cancelledSlots.filter(s => s.date === targetStr);
+      const targetReversed = reversedSlots.filter(s => s.date === targetStr);
       const result = [
         ...targetSlots.map(s => {
           const dayOrders = orders.filter(o => o.createdAt.startsWith(s.date));
@@ -3001,13 +3038,19 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
             return oTime >= s.startTime.substring(0, 5) && oTime <= s.endTime.substring(0, 5);
           });
           const slotEarnings = slotOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
-          return { type: 'slot', id: s.id, title: s.name, subtitle: `${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)}`, amount: slotEarnings, ordersCount: slotOrders.length, date: s.date, isCancelled: false };
+          return { type: 'slot', id: s.id, title: s.name, subtitle: `${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)}`, amount: slotEarnings, ordersCount: slotOrders.length, date: s.date, isCancelled: false, isCancelledReversed: false };
         }),
         ...targetCancelled.map(s => ({
           type: 'slot-cancelled', id: s.id,
           title: `🚫 ${s.name} (bekor)`,
           subtitle: `${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)} · Jarima`,
-          amount: -(s.penaltyAmount || 0), ordersCount: 0, date: s.date, isCancelled: true
+          amount: -(s.penaltyAmount || 0), ordersCount: 0, date: s.date, isCancelled: true, isCancelledReversed: false
+        })),
+        ...targetReversed.map(s => ({
+          type: 'slot-reversed', id: s.id,
+          title: `✅ ${s.name} (bekor)`,
+          subtitle: `${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)} · Jarima qaytarildi`,
+          amount: -(s.penaltyAmount || 0), ordersCount: 0, date: s.date, isCancelled: false, isCancelledReversed: true
         }))
       ];
       return result;
@@ -3016,6 +3059,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     // Hafta va Oy uchun — yakunlangan + bekor qilingan smenalar ro'yxati
     let filteredSlots: typeof completedSlots = [];
     let filteredCancelled: typeof cancelledSlots = [];
+    let filteredReversed: typeof reversedSlots = [];
     if (tab === 'hafta') {
       const mon = new Date(this.currentWeekMonday());
       const sun = new Date(mon);
@@ -3024,6 +3068,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
       const sunStr = this.toLocalDateStr(sun);
       filteredSlots = completedSlots.filter(s => s.date >= monStr && s.date <= sunStr);
       filteredCancelled = cancelledSlots.filter(s => s.date >= monStr && s.date <= sunStr);
+      filteredReversed = reversedSlots.filter(s => s.date >= monStr && s.date <= sunStr);
     } else { // oy
       const selDate = new Date(this.selectedDate());
       const year = selDate.getFullYear();
@@ -3033,6 +3078,10 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
         return d.getFullYear() === year && d.getMonth() === month;
       });
       filteredCancelled = cancelledSlots.filter(s => {
+        const d = new Date(s.date);
+        return d.getFullYear() === year && d.getMonth() === month;
+      });
+      filteredReversed = reversedSlots.filter(s => {
         const d = new Date(s.date);
         return d.getFullYear() === year && d.getMonth() === month;
       });
@@ -3053,16 +3102,22 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
       const slotEarnings = slotOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
       const d = new Date(s.date);
       const dateLabel = `${weekdayShort[d.getDay()]}, ${d.getDate()}-${monthsShort[d.getMonth()]}`;
-      return { type: 'slot', id: s.id, title: s.name, subtitle: `${dateLabel} · ${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)}`, amount: slotEarnings, ordersCount: slotOrders.length, date: s.date, isCancelled: false };
+      return { type: 'slot', id: s.id, title: s.name, subtitle: `${dateLabel} · ${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)}`, amount: slotEarnings, ordersCount: slotOrders.length, date: s.date, isCancelled: false, isCancelledReversed: false };
     });
 
     const cancelledItems = filteredCancelled.map(s => {
       const d = new Date(s.date);
       const dateLabel = `${weekdayShort[d.getDay()]}, ${d.getDate()}-${monthsShort[d.getMonth()]}`;
-      return { type: 'slot-cancelled', id: s.id, title: `🚫 ${s.name} (bekor)`, subtitle: `${dateLabel} · ${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)} · Jarima`, amount: -(s.penaltyAmount || 0), ordersCount: 0, date: s.date, isCancelled: true };
+      return { type: 'slot-cancelled', id: s.id, title: `🚫 ${s.name} (bekor)`, subtitle: `${dateLabel} · ${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)} · Jarima`, amount: -(s.penaltyAmount || 0), ordersCount: 0, date: s.date, isCancelled: true, isCancelledReversed: false };
     });
 
-    return [...completedItems, ...cancelledItems].sort((a, b) => b.date.localeCompare(a.date));
+    const reversedItems = filteredReversed.map(s => {
+      const d = new Date(s.date);
+      const dateLabel = `${weekdayShort[d.getDay()]}, ${d.getDate()}-${monthsShort[d.getMonth()]}`;
+      return { type: 'slot-reversed', id: s.id, title: `✅ ${s.name} (bekor)`, subtitle: `${dateLabel} · ${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)} · Jarima qaytarildi`, amount: -(s.penaltyAmount || 0), ordersCount: 0, date: s.date, isCancelled: false, isCancelledReversed: true };
+    });
+
+    return [...completedItems, ...cancelledItems, ...reversedItems].sort((a, b) => b.date.localeCompare(a.date));
   }
 
   navigatePeriod(dir: number): void {
@@ -3202,7 +3257,12 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
   }
 
   get myPendingBookedSlots(): Slot[] {
-    return this.myBookedSlots().filter(s => !s.started && !s.cancelled);
+    return this.myBookedSlots().filter(s =>
+      !s.started &&
+      !s.cancelled &&
+      !s.penaltyApplied &&
+      !s.penaltyReversed
+    );
   }
 
   get filteredAvailableSlots(): Slot[] {
@@ -3560,14 +3620,46 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
   }
 
   timeUntilSlot(slot: Slot): string {
+    this.timeTick(); // dynamic reactivity trigger
     const now = new Date();
-    const nowMin = now.getHours() * 60 + now.getMinutes();
     const [sh, sm] = slot.startTime.split(':').map(Number);
-    const diff = sh * 60 + sm - nowMin;
-    if (diff <= 0) return '';
-    if (diff < 60) return `${diff} daqiqadan keyin`;
-    const h = Math.floor(diff / 60), m = diff % 60;
-    return m > 0 ? `${h} soat ${m} daqiqadan keyin` : `${h} soatdan keyin`;
+    const start = new Date(slot.date);
+    start.setHours(sh, sm, 0, 0);
+
+    const diffMs = start.getTime() - now.getTime();
+    if (diffMs <= 0) return '';
+
+    const totalMinutes = Math.floor(diffMs / (1000 * 60));
+    if (totalMinutes < 60) {
+      return `${totalMinutes} daqiqadan keyin`;
+    }
+
+    const totalHours = Math.floor(totalMinutes / 60);
+    const remainingMins = totalMinutes % 60;
+
+    if (totalHours < 24) {
+      return remainingMins > 0 
+        ? `${totalHours} soat ${remainingMins} daqiqadan keyin` 
+        : `${totalHours} soatdan keyin`;
+    }
+
+    const days = Math.floor(totalHours / 24);
+    const remainingHours = totalHours % 24;
+
+    if (remainingHours > 0) {
+      return `${days} kun ${remainingHours} soatdan keyin`;
+    }
+    return `${days} kundan keyin`;
+  }
+
+  /** Smenaning boshlanishiga necha soat qolganini qaytaradi (jarima shartini tekshirish uchun) */
+  hoursUntilSlotStart(slot: Slot): number {
+    const now = new Date();
+    const [sh, sm] = slot.startTime.split(':').map(Number);
+    const start = new Date(slot.date);
+    start.setHours(sh, sm, 0, 0);
+    const diffMs = start.getTime() - now.getTime();
+    return diffMs / (1000 * 60 * 60);
   }
 
   formatSlotDate(date: string): string {
@@ -3661,8 +3753,15 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     const hours = Math.ceil(minutes / 60.0);
     const penaltyAmount = hours * 30000;
 
+    // 12 soatdan ko'p qolganmi? (jarimasiz)
+    const now = new Date();
+    const start = new Date(slot.date);
+    start.setHours(sh, sm, 0, 0);
+    const hoursUntilStart = (start.getTime() - now.getTime()) / (1000 * 60 * 60);
+    const isFreeCancel = hoursUntilStart >= 12;
+
     this.slotToCancel.set(slotId);
-    this.cancelPenaltyInfo.set({ hours, amount: penaltyAmount });
+    this.cancelPenaltyInfo.set({ hours, amount: isFreeCancel ? 0 : penaltyAmount, isFreeCancel });
     this.showCancelConfirm.set(true);
   }
 
@@ -3676,7 +3775,11 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     this.orderService.cancelSlot(slotId).subscribe({
       next: (res) => {
         this.slotLoading.set(false);
-        this.snack.open(`🔴 Smena bekor qilindi. Jarima: ${res.penaltyAmount.toLocaleString()} so'm`, '', { duration: 4500 });
+        if (res.penaltyAmount > 0) {
+          this.snack.open(`🔴 Smena bekor qilindi. Jarima: ${res.penaltyAmount.toLocaleString()} so'm`, '', { duration: 4500 });
+        } else {
+          this.snack.open('✅ Smena jarimasiz bekor qilindi!', '', { duration: 3500 });
+        }
         this.loadSlots();
         this.slotToCancel.set(null);
         this.cancelPenaltyInfo.set(null);

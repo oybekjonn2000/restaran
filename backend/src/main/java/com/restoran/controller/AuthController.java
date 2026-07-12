@@ -2,6 +2,7 @@ package com.restoran.controller;
 
 import com.restoran.dto.request.LoginRequest;
 import com.restoran.dto.request.RegisterRequest;
+import com.restoran.dto.request.TelegramAuthRequest;
 import com.restoran.dto.response.AuthResponse;
 import com.restoran.security.UserDetailsImpl;
 import com.restoran.service.AuthService;
@@ -27,6 +28,11 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.ok(authService.register(request));
+    }
+
+    @PostMapping("/telegram")
+    public ResponseEntity<AuthResponse> loginWithTelegram(@Valid @RequestBody TelegramAuthRequest request) {
+        return ResponseEntity.ok(authService.loginWithTelegram(request.getInitData()));
     }
 
     @GetMapping("/me")

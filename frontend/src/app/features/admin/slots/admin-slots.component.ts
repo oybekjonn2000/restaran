@@ -119,12 +119,23 @@ import { User } from '../../../core/models/user.model';
                         }
                       </td>
                       <td>
-                        <span class="status-badge" [class]="getStatusClass(slot)">
-                          {{ getStatusLabel(slot) }}
-                        </span>
+                        <div style="display:flex; flex-direction:column; gap:4px;">
+                          <span class="status-badge" [class]="getStatusClass(slot)">
+                            {{ getStatusLabel(slot) }}
+                          </span>
+                          @if (slot.penaltyApplied) {
+                            <span class="penalty-badge">⚡ Jarima: {{ slot.penaltyAmount | number:'1.0-0' }} so'm</span>
+                          }
+                        </div>
                       </td>
                       <td class="actions-cell">
                         <button class="icon-btn edit-btn" (click)="openEdit(slot)" [id]="'edit-slot-' + slot.id" title="Tahrirlash">✏️</button>
+                        @if (slot.started && !slot.finished) {
+                          <button class="icon-btn force-end-btn" (click)="confirmForceEnd(slot)" [id]="'force-end-slot-' + slot.id" title="Smenani majburiy tugatish">🛑</button>
+                        }
+                        @if (slot.penaltyApplied) {
+                          <button class="icon-btn reverse-btn" (click)="confirmReverse(slot)" [id]="'reverse-slot-' + slot.id" title="Jarimani bekor qilish">↩️</button>
+                        }
                         @if (!slot.finished && !slot.courier && !slot.bookedBy) {
                           <button class="icon-btn delete-btn" (click)="confirmDelete(slot)" [id]="'delete-slot-' + slot.id" title="O'chirish">🗑️</button>
                         }
@@ -211,6 +222,73 @@ import { User } from '../../../core/models/user.model';
             <button class="btn btn-outline" (click)="showDeleteModal.set(false)">Bekor</button>
             <button class="btn btn-danger" (click)="deleteSlot()" [disabled]="saving()" id="confirm-delete-slot">
               O'chirish
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Reverse Penalty Confirm Modal -->
+    @if (showReverseModal()) {
+      <div class="modal-overlay" (click)="showReverseModal.set(false)">
+        <div class="modal-box small" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2>↩️ Jarimani bekor qilish</h2>
+            <button class="close-btn" (click)="showReverseModal.set(false)">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="reverse-info">
+              <div class="reverse-icon">⚡</div>
+              <div>
+                <p class="confirm-text">
+                  <strong>{{ slotToReverse?.penalizedCourier?.name }}</strong> kuryeriga
+                  <span class="penalty-amount">{{ slotToReverse?.penaltyAmount | number:'1.0-0' }} so'm</span>
+                  jarima qaytariladi.
+                </p>
+                <p style="font-size:0.82rem; color:var(--text-muted); margin-top:8px;">
+                  Smena: {{ slotToReverse?.name }} | {{ slotToReverse?.date }}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-outline" (click)="showReverseModal.set(false)">Bekor</button>
+            <button class="btn btn-reverse" (click)="reversePenalty()" [disabled]="saving()" id="confirm-reverse-penalty">
+              @if (saving()) { <mat-spinner diameter="16" color="accent"></mat-spinner> }
+              ✅ Jarimani qaytarish
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Force End Slot Modal -->
+    @if (showForceEndModal()) {
+      <div class="modal-overlay" (click)="showForceEndModal.set(false)">
+        <div class="modal-box small" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2>🛑 Smenani majburiy tugatish</h2>
+            <button class="close-btn" (click)="showForceEndModal.set(false)">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="force-end-info">
+              <div class="force-end-icon">⚠️</div>
+              <div>
+                <p class="confirm-text">
+                  <strong>{{ slotToForceEnd?.courier?.name || 'Kuryer' }}</strong> kuryerining
+                  <strong>"{{ slotToForceEnd?.name }}"</strong> smenasini hozir tugatmoqchimisiz?
+                </p>
+                <p style="font-size:0.82rem; color:var(--text-muted); margin-top:8px;">
+                  Smena vaqti: {{ slotToForceEnd?.startTime | slice:0:5 }} — {{ slotToForceEnd?.endTime | slice:0:5 }}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-outline" (click)="showForceEndModal.set(false)">Bekor</button>
+            <button class="btn btn-force-end" (click)="forceEndSlot()" [disabled]="saving()" id="confirm-force-end-slot">
+              @if (saving()) { <mat-spinner diameter="16" color="accent"></mat-spinner> }
+              🛑 Ha, tugatish
             </button>
           </div>
         </div>
@@ -320,6 +398,48 @@ import { User } from '../../../core/models/user.model';
     }
     .edit-btn:hover { background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.4); }
     .delete-btn:hover { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.4); }
+    .reverse-btn:hover { background: rgba(249,115,22,0.15); border-color: rgba(249,115,22,0.4); }
+    .force-end-btn:hover { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.5); }
+
+    .penalty-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3);
+      color: #f87171; padding: 2px 8px; border-radius: 12px;
+      font-size: 0.72rem; font-weight: 600;
+    }
+
+    .reverse-info {
+      display: flex; align-items: flex-start; gap: 14px;
+      background: rgba(249,115,22,0.06); border: 1px solid rgba(249,115,22,0.2);
+      border-radius: 12px; padding: 16px;
+    }
+    .reverse-icon { font-size: 2rem; flex-shrink: 0; }
+    .penalty-amount { color: var(--primary); font-weight: 700; font-size: 1.05rem; }
+
+    .btn-reverse {
+      background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4);
+      color: #10b981; padding: 10px 20px; border-radius: var(--radius);
+      cursor: pointer; font-family: 'Poppins', sans-serif; font-weight: 600;
+      transition: var(--transition); display: flex; align-items: center; gap: 8px;
+    }
+    .btn-reverse:hover { background: rgba(16,185,129,0.25); }
+    .btn-reverse:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .force-end-info {
+      display: flex; align-items: flex-start; gap: 14px;
+      background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 12px; padding: 16px;
+    }
+    .force-end-icon { font-size: 2rem; flex-shrink: 0; }
+
+    .btn-force-end {
+      background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4);
+      color: #ef4444; padding: 10px 20px; border-radius: var(--radius);
+      cursor: pointer; font-family: 'Poppins', sans-serif; font-weight: 600;
+      transition: var(--transition); display: flex; align-items: center; gap: 8px;
+    }
+    .btn-force-end:hover { background: rgba(239,68,68,0.25); }
+    .btn-force-end:disabled { opacity: 0.6; cursor: not-allowed; }
 
     .spinner-center { display: flex; justify-content: center; padding: 60px; }
     .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
@@ -398,9 +518,13 @@ export class AdminSlotsComponent implements OnInit {
   filterMode = signal<'today' | 'all'>('today');
   showModal = signal(false);
   showDeleteModal = signal(false);
+  showReverseModal = signal(false);
+  showForceEndModal = signal(false);
 
   editingSlot: Slot | null = null;
   slotToDelete: Slot | null = null;
+  slotToReverse: Slot | null = null;
+  slotToForceEnd: Slot | null = null;
 
   form: SlotRequest & { courierId: number | null } = {
     name: '', date: '', startTime: '', endTime: '', courierId: null
@@ -521,6 +645,62 @@ export class AdminSlotsComponent implements OnInit {
         this.loadData();
       },
       error: () => { this.saving.set(false); }
+    });
+  }
+
+  confirmReverse(slot: Slot): void {
+    this.slotToReverse = slot;
+    this.showReverseModal.set(true);
+  }
+
+  reversePenalty(): void {
+    if (!this.slotToReverse) return;
+    this.saving.set(true);
+    this.orderService.adminReversePenalty(this.slotToReverse.id).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.showReverseModal.set(false);
+        const courierName = this.slotToReverse?.penalizedCourier?.name || 'Kuryer';
+        const amount = this.slotToReverse?.penaltyAmount ?? 0;
+        this.slotToReverse = null;
+        this.snack.open(
+          `✅ Jarima qaytarildi! ${courierName}ga ${amount.toLocaleString()} so'm balansiga qo'shildi.`,
+          '', { duration: 5000 }
+        );
+        this.loadData();
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.snack.open(`❌ Xatolik: ${err.error?.message || 'Jarimani bekor qilib bo\'lmadi'}`, '', { duration: 4000 });
+      }
+    });
+  }
+
+  confirmForceEnd(slot: Slot): void {
+    this.slotToForceEnd = slot;
+    this.showForceEndModal.set(true);
+  }
+
+  forceEndSlot(): void {
+    if (!this.slotToForceEnd) return;
+    this.saving.set(true);
+    this.orderService.adminForceEndSlot(this.slotToForceEnd.id).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.showForceEndModal.set(false);
+        const courierName = this.slotToForceEnd?.courier?.name || 'Kuryer';
+        const slotName = this.slotToForceEnd?.name || 'Smena';
+        this.slotToForceEnd = null;
+        this.snack.open(
+          `🛑 ${courierName}ning "${slotName}" smenasi tugatildi!`,
+          '', { duration: 4000 }
+        );
+        this.loadData();
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.snack.open(`❌ Xatolik: ${err.error?.message || 'Smenani tugatib bo\'lmadi'}`, '', { duration: 4000 });
+      }
     });
   }
 

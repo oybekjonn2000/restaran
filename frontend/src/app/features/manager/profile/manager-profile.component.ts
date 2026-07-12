@@ -5,6 +5,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { OrderService } from '../../../core/services/order.service';
 import { Restaurant } from '../../../core/models/restaurant.model';
+import { API_BASE } from '../../../core/config';
 
 @Component({
   selector: 'app-manager-profile',
@@ -35,10 +36,19 @@ import { Restaurant } from '../../../core/models/restaurant.model';
 
               <div class="form-group">
                 <label class="form-label">Muqova Rasm URL</label>
-                <input formControlName="imageUrl" class="form-control" placeholder="https://..." id="profile-image">
+                <div style="display: flex; gap: 8px;">
+                  <input formControlName="imageUrl" class="form-control" placeholder="https://..." id="profile-image" style="flex: 1;">
+                  <label class="btn btn-outline" style="cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; padding: 0 12px; margin: 0; white-space: nowrap; height: 38px;">
+                    📁 Yuklash
+                    <input type="file" (change)="onFileUpload($event)" accept="image/*" style="display: none;">
+                  </label>
+                </div>
+                @if (uploading()) {
+                  <div style="font-size: 0.75rem; color: var(--primary); margin-top: 4px;">Rasm yuklanmoqda...</div>
+                }
                 @if (profileForm.value.imageUrl) {
                   <div class="image-preview">
-                    <img [src]="profileForm.value.imageUrl" alt="Preview" (error)="onImgError($event)">
+                    <img [src]="getFullUrl(profileForm.value.imageUrl)" alt="Preview" (error)="onImgError($event)">
                   </div>
                 }
               </div>
@@ -127,6 +137,7 @@ export class ManagerProfileComponent implements OnInit {
   restaurant = signal<Restaurant | null>(null);
   loading = signal(true);
   saving = signal(false);
+  uploading = signal(false);
   profileForm!: FormGroup;
 
   private map: any;
@@ -138,6 +149,34 @@ export class ManagerProfileComponent implements OnInit {
     private snack: MatSnackBar,
     private ngZone: NgZone
   ) {}
+
+  getFullUrl(url: string): string {
+    if (!url) return '';
+    if (url.startsWith('/uploads')) {
+      return `${API_BASE}${url}`;
+    }
+    return url;
+  }
+
+  onFileUpload(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    this.uploading.set(true);
+
+    this.orderService.uploadImage(file).subscribe({
+      next: (res) => {
+        this.profileForm.patchValue({ imageUrl: res.url });
+        this.uploading.set(false);
+        this.snack.open('✅ Rasm muvaffaqiyatli yuklandi!', '', { duration: 2500 });
+      },
+      error: (err) => {
+        this.uploading.set(false);
+        this.snack.open(`❌ Yuklashda xatolik: ${err.error?.message || 'Amal bajarilmadi'}`, '', { duration: 3000 });
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.orderService.getManagerRestaurant().subscribe({
