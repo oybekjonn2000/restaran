@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { RouterOutlet, Router } from '@angular/router';
 import { AuthService } from './core/services/auth.service';
+import { redirectByRole } from './core/guards/auth.guard';
 
 @Component({
   selector: 'app-root',
@@ -22,7 +23,7 @@ export class AppComponent implements OnInit {
         this.authService.telegramLogin(initData).subscribe({
           next: (res) => {
             console.log('Telegram login successful:', res);
-            this.router.navigate(['/client/restaurants']);
+            redirectByRole(this.authService, this.router);
           },
           error: (err) => {
             console.error('Telegram login failed:', err);

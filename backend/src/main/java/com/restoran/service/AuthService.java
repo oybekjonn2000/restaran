@@ -41,6 +41,23 @@ public class AuthService {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Foydalanuvchi topilmadi"));
 
+        final Long currentUserId = user.getId();
+        if (request.getInitData() != null && !request.getInitData().isEmpty()) {
+            if (telegramUtils.verifyInitData(request.getInitData())) {
+                TelegramUser tgUser = telegramUtils.parseUser(request.getInitData());
+                if (tgUser != null && tgUser.getId() != null) {
+                    userRepository.findByTelegramId(tgUser.getId()).ifPresent(existing -> {
+                        if (!existing.getId().equals(currentUserId)) {
+                            existing.setTelegramId(null);
+                            userRepository.save(existing);
+                        }
+                    });
+                    user.setTelegramId(tgUser.getId());
+                    user = userRepository.save(user);
+                }
+            }
+        }
+
         return buildAuthResponse(token, user);
     }
 

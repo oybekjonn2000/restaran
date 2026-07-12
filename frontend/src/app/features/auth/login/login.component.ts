@@ -309,7 +309,10 @@ export class LoginComponent {
     this.errorMsg = '';
 
     const { email, password } = this.form.value;
-    this.authService.login({ email: email!, password: password! }).subscribe({
+    const tg = (window as any).Telegram?.WebApp;
+    const initData = tg?.initData || undefined;
+
+    this.authService.login({ email: email!, password: password!, initData }).subscribe({
       next: (res) => {
         this.loading = false;
         redirectByRole(this.authService, this.router);

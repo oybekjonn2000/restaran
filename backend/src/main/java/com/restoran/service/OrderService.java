@@ -23,6 +23,7 @@ public class OrderService {
     private final SlotRepository slotRepository;
     private final FoodRepository foodRepository;
     private final RestaurantRepository restaurantRepository;
+    private final TelegramBotService telegramBotService;
 
     private static final double REST_LAT = 38.866127;
     private static final double REST_LNG = 65.816309;
@@ -296,6 +297,18 @@ public class OrderService {
                     order.setAssignedAt(null);
                     autoAssignCourier(order);
                     orderRepository.save(order);
+                } else {
+                    // Send repeated Telegram notification if courier is configured and not accepted yet
+                    User courier = order.getCourier();
+                    if (courier != null && courier.getTelegramId() != null) {
+                        String msg = "🔔 *YANGI BUYURTMA! (Qabul qilishingiz kutilmoqda)*\n\n" +
+                                     "📦 *Buyurtma:* #" + order.getId() + "\n" +
+                                     "🏪 *Restoran:* " + (order.getRestaurant() != null ? order.getRestaurant().getName() : "Restoran") + "\n" +
+                                     "📍 *Manzil:* " + order.getDeliveryAddress() + "\n" +
+                                     "💰 *Taomlar summasi:* " + String.format("%,.0f", order.getTotalPrice()) + " so'm\n\n" +
+                                     "⚡ *Iltimos, faol smenadagi kuryer sifatida ilovaga kirib buyurtmani qabul qiling!*";
+                        telegramBotService.sendMessage(courier.getTelegramId(), msg);
+                    }
                 }
             }
         }

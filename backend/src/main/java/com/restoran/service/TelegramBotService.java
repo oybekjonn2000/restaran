@@ -106,4 +106,32 @@ public class TelegramBotService {
             System.err.println("Telegram Bot error sending message: " + e.getMessage());
         }
     }
+
+    public void sendMessage(long chatId, String text) {
+        if (botToken == null || botToken.isEmpty() || botToken.contains("YOUR_TELEGRAM_BOT_TOKEN")) {
+            return;
+        }
+        try {
+            String url = "https://api.telegram.org/bot" + botToken + "/sendMessage";
+            Map<String, Object> body = new HashMap<>();
+            body.put("chat_id", chatId);
+            body.put("text", text);
+            body.put("parse_mode", "Markdown");
+
+            if (webAppUrl != null && !webAppUrl.isEmpty() && !webAppUrl.contains("YOUR_")) {
+                Map<String, Object> webApp = new HashMap<>();
+                webApp.put("url", webAppUrl);
+
+                Map<String, Object> button = new HashMap<>();
+                button.put("text", "🏍️ Ilovani ochish");
+                button.put("web_app", webApp);
+
+                body.put("reply_markup", Map.of("inline_keyboard", List.of(List.of(button))));
+            }
+
+            restTemplate.postForObject(url, body, String.class);
+        } catch (Exception e) {
+            System.err.println("Telegram Bot error sending message: " + e.getMessage());
+        }
+    }
 }

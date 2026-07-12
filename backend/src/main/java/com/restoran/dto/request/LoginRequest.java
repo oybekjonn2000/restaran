@@ -16,4 +16,6 @@ public class LoginRequest {
 
     @NotBlank(message = "Parol bo'sh bo'lmasin")
     private String password;
+
+    private String initData;
 }

@@ -23,6 +23,7 @@ export interface AuthResponse {
 export interface LoginRequest {
   email: string;
   password: string;
+  initData?: string;
 }
 
 export interface RegisterRequest {
