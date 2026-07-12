@@ -92,12 +92,12 @@ import { Order, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, OrderStatus } from '..
                 }
 
                 <!-- Yandex yetkazib berish xabari -->
-                @if (order.yandexDelivery && order.status !== 'CANCELED' && order.status !== 'DELIVERED') {
+                @if (!order.courier && order.status !== 'CANCELED' && order.status !== 'DELIVERED') {
                   <div class="yandex-delivery-banner animate-in">
                     <span class="yandex-icon">🚕</span>
                     <div class="yandex-content">
                       <div class="yandex-title">Yandex Yetkazib berish</div>
-                      <div class="yandex-text">Kuryer ishga chiqmadi. Buyurtmangizni Yandex dostavka orqali yetkazib beramiz.</div>
+                      <div class="yandex-text">Yetkazish yandex orqali bajariladi va summasini haydovchi sizga aytadi !</div>
                     </div>
                   </div>
                 }

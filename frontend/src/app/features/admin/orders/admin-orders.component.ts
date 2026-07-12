@@ -152,9 +152,11 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
               <h3>Taomlar:</h3>
               @for (item of selectedOrder()!.items; track item.id) {
                 <div class="modal-item">
-                  <span>{{ item.food?.name }}</span>
-                  <span>x{{ item.quantity }}</span>
-                  <span>{{ (item.price * item.quantity) | number:'1.0-0' }} so'm</span>
+                  <span class="item-name-col">{{ item.food?.name }}</span>
+                  <span class="modal-item-price">
+                    <span class="qty-badge">x{{ item.quantity }}</span>
+                    <span class="price-val">{{ (item.price * item.quantity) | number:'1.0-0' }} so'm</span>
+                  </span>
                 </div>
               }
               <div class="modal-total">
@@ -397,8 +399,36 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
     .modal-item {
       display: flex;
       justify-content: space-between;
-      padding: 6px 0;
+      align-items: center;
+      padding: 8px 0;
       border-bottom: 1px solid rgba(255,255,255,0.04);
+      gap: 12px;
+    }
+    .item-name-col {
+      flex: 1;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .modal-item-price {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .qty-badge {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .price-val {
+      font-weight: 600;
+      color: var(--text);
+      min-width: 85px;
+      text-align: right;
     }
 
     .modal-total {

@@ -125,7 +125,11 @@ public class AdminController {
 
     @GetMapping("/couriers")
     public ResponseEntity<List<User>> getCouriers() {
-        return ResponseEntity.ok(userRepository.findByRole(Role.COURIER));
+        List<User> allCouriers = userRepository.findByRole(Role.COURIER);
+        List<User> activeCouriers = allCouriers.stream()
+                .filter(courier -> slotService.hasActiveSlot(courier.getId()))
+                .toList();
+        return ResponseEntity.ok(activeCouriers);
     }
 
     @GetMapping("/users")
