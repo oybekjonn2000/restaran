@@ -19,6 +19,7 @@ export interface Order {
   note?: string;
   cancelReason?: string;
   yandexDelivery?: boolean;
+  isReady?: boolean;
   courierActiveOnShift?: boolean;
   createdAt: string;
   items: OrderItem[];

@@ -1,6 +1,7 @@
 com\restoran\controller\OrderController.class
 com\restoran\service\TelegramBotService.class
 com\restoran\dto\request\TelegramUser.class
+com\restoran\entity\CartItem.class
 com\restoran\dto\request\ProfileUpdateRequest.class
 com\restoran\controller\AdminController$CourierStatsResponse.class
 com\restoran\dto\request\RegisterRequest.class
@@ -23,6 +24,8 @@ com\restoran\entity\User$UserBuilder.class
 com\restoran\controller\AdminController$ClientUpdateRequest.class
 com\restoran\controller\CourierController.class
 com\restoran\service\SlotService$CancelResult.class
+com\restoran\controller\CartController.class
+com\restoran\entity\CartItem$CartItemBuilder.class
 com\restoran\dto\request\PasswordChangeRequest$PasswordChangeRequestBuilder.class
 com\restoran\entity\Restaurant$RestaurantBuilder.class
 com\restoran\controller\AdminController$CourierStatsResponse$CourierStatsResponseBuilder.class
@@ -52,10 +55,13 @@ com\restoran\entity\Category$CategoryBuilder.class
 com\restoran\service\CategoryService.class
 com\restoran\controller\FoodController.class
 com\restoran\entity\Slot$SlotBuilder.class
+com\restoran\repository\CartItemRepository.class
 com\restoran\entity\Role.class
+com\restoran\service\CartService$CartItemDto.class
 com\restoran\service\FoodService.class
 com\restoran\controller\AdminController$RestaurantAdminRequest.class
 com\restoran\entity\OrderItem$OrderItemBuilder.class
+com\restoran\service\CartService.class
 com\restoran\security\SecurityConfig.class
 com\restoran\entity\Order.class
 com\restoran\repository\CategoryRepository.class

@@ -42,4 +42,25 @@ public class AuthController {
         }
         return ResponseEntity.ok(authService.getMe(userDetails.getId()));
     }
+
+    @PutMapping("/profile")
+    public ResponseEntity<AuthResponse> updateProfile(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @Valid @RequestBody com.restoran.dto.request.ProfileUpdateRequest request) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return ResponseEntity.ok(authService.updateProfile(userDetails.getId(), request));
+    }
+
+    @PutMapping("/password")
+    public ResponseEntity<Void> changePassword(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @Valid @RequestBody com.restoran.dto.request.PasswordChangeRequest request) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
+        authService.changePassword(userDetails.getId(), request);
+        return ResponseEntity.ok().build();
+    }
 }

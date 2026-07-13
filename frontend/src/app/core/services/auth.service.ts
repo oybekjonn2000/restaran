@@ -50,6 +50,22 @@ export class AuthService {
     );
   }
 
+  updateProfile(name: string, phone: string, address: string): Observable<AuthResponse> {
+    return this.http.put<AuthResponse>(`${API}/profile`, { name, phone, address }).pipe(
+      tap(res => {
+        const current = this._user();
+        if (current) {
+          res.token = current.token;
+        }
+        this.saveUser(res);
+      })
+    );
+  }
+
+  changePassword(oldPassword: string, newPassword: string): Observable<void> {
+    return this.http.put<void>(`${API}/password`, { oldPassword, newPassword });
+  }
+
   logout(): void {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);

@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
@@ -32,10 +34,27 @@ public class SlotService {
     // ====== ADMIN AMALLAR ======
 
     public Slot createSlot(SlotRequest request) {
-        LocalDateTime endDateTime = LocalDateTime.of(request.getDate(), request.getEndTime());
-        // Faqat tugash vaqti o'tib ketgan bo'lsa xato — boshlanish vaqti bugun o'tgan bo'lsa ham ruxsat
-        if (endDateTime.isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Smenaning tugash vaqti o'tib ketgan! Kelajakda tugidigon smena yarating.");
+        // Asia/Tashkent vaqt mintaqasida hozirgi vaqt
+        ZoneId zone = ZoneId.of("Asia/Tashkent");
+        LocalDateTime now = ZonedDateTime.now(zone).toLocalDateTime();
+
+        LocalDateTime startDateTime = LocalDateTime.of(request.getDate(), request.getStartTime());
+        LocalDateTime endDateTime;
+        if (request.getEndDate() != null) {
+            endDateTime = LocalDateTime.of(request.getEndDate(), request.getEndTime());
+        } else if (request.getEndTime().isBefore(request.getStartTime()) || request.getEndTime().equals(request.getStartTime())) {
+            endDateTime = LocalDateTime.of(request.getDate().plusDays(1), request.getEndTime());
+        } else {
+            endDateTime = LocalDateTime.of(request.getDate(), request.getEndTime());
+        }
+
+        // Boshlanish vaqti o'tib ketgan bo'lsa xato
+        if (startDateTime.isBefore(now)) {
+            throw new RuntimeException("Boshlanish vaqti o'tib ketgan! (Smena boshlanishi: " + startDateTime + ", Serverdagi Tashkent vaqti: " + now + ")");
+        }
+        // Tugash vaqti boshlanishdan oldin bo'lsa xato
+        if (!endDateTime.isAfter(startDateTime)) {
+            throw new RuntimeException("Tugash vaqti boshlanish vaqtidan keyin bo'lishi kerak! (Smena: " + startDateTime + " - " + endDateTime + ")");
         }
 
         User courier = null;
@@ -47,13 +66,10 @@ public class SlotService {
             }
         }
 
-        // Agar boshlanish vaqti allaqachon o'tgan bo'lsa, smenani avtomatik boshlanmagan deb qilamiz
-        LocalDateTime startDateTime = LocalDateTime.of(request.getDate(), request.getStartTime());
-        boolean alreadyStartable = !startDateTime.isAfter(LocalDateTime.now());
-
         Slot slot = Slot.builder()
             .name(request.getName())
             .date(request.getDate())
+            .endDate(request.getEndDate() != null ? request.getEndDate() : endDateTime.toLocalDate())
             .startTime(request.getStartTime())
             .endTime(request.getEndTime())
             .courier(courier)
@@ -71,9 +87,23 @@ public class SlotService {
         Slot slot = slotRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Smena topilmadi: " + id));
 
-        LocalDateTime endDateTime = LocalDateTime.of(request.getDate(), request.getEndTime());
-        if (endDateTime.isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Smenaning tugash vaqti o'tib ketgan! Kelajakda tugidigon smena kiriting.");
+        ZoneId zone = ZoneId.of("Asia/Tashkent");
+        LocalDateTime now = ZonedDateTime.now(zone).toLocalDateTime();
+        LocalDateTime startDateTime = LocalDateTime.of(request.getDate(), request.getStartTime());
+        LocalDateTime endDateTime;
+        if (request.getEndDate() != null) {
+            endDateTime = LocalDateTime.of(request.getEndDate(), request.getEndTime());
+        } else if (request.getEndTime().isBefore(request.getStartTime()) || request.getEndTime().equals(request.getStartTime())) {
+            endDateTime = LocalDateTime.of(request.getDate().plusDays(1), request.getEndTime());
+        } else {
+            endDateTime = LocalDateTime.of(request.getDate(), request.getEndTime());
+        }
+
+        if (startDateTime.isBefore(now)) {
+            throw new RuntimeException("Boshlanish vaqti o'tib ketgan! (Smena boshlanishi: " + startDateTime + ", Serverdagi Tashkent vaqti: " + now + ")");
+        }
+        if (!endDateTime.isAfter(startDateTime)) {
+            throw new RuntimeException("Tugash vaqti boshlanish vaqtidan keyin bo'lishi kerak! (Smena: " + startDateTime + " - " + endDateTime + ")");
         }
 
         User courier = null;
@@ -87,6 +117,7 @@ public class SlotService {
 
         slot.setName(request.getName());
         slot.setDate(request.getDate());
+        slot.setEndDate(request.getEndDate() != null ? request.getEndDate() : endDateTime.toLocalDate());
         slot.setStartTime(request.getStartTime());
         slot.setEndTime(request.getEndTime());
         slot.setCourier(courier);
@@ -172,12 +203,10 @@ public class SlotService {
 
                 // Agar boshqa ochiq smena bo'lsa, kuryerning o'z smenalari bilan kesishmasligini tekshiramiz
                 for (Slot mySlot : mySlots) {
-                    if (slot.getDate().equals(mySlot.getDate())) {
-                        boolean overlaps = slot.getStartTime().isBefore(mySlot.getEndTime()) &&
-                                           mySlot.getStartTime().isBefore(slot.getEndTime());
-                        if (overlaps) {
-                            return false; // Vaqti kesishsa, ro'yxatda ko'rsatmaymiz
-                        }
+                    boolean overlaps = slot.getStartDateTime().isBefore(mySlot.getEndDateTime()) &&
+                                       mySlot.getStartDateTime().isBefore(slot.getEndDateTime());
+                    if (overlaps) {
+                        return false; // Vaqti kesishsa, ro'yxatda ko'rsatmaymiz
                     }
                 }
                 return true;
@@ -235,7 +264,6 @@ public class SlotService {
 
         // Bir xil vaqtli yoki kesishadigan smenalarni tekshirish (overlap check)
         List<Slot> courierDailySlots = slotRepository.findAll().stream()
-            .filter(s -> s.getDate().equals(slot.getDate()))
             .filter(s -> !s.getId().equals(slot.getId()))
             .filter(s -> !s.isCancelled() && !s.isFinished())
             .filter(s -> (s.getCourier() != null && s.getCourier().getId().equals(courierId)) || 
@@ -243,8 +271,8 @@ public class SlotService {
             .toList();
 
         for (Slot existingSlot : courierDailySlots) {
-            boolean overlaps = slot.getStartTime().isBefore(existingSlot.getEndTime()) &&
-                               existingSlot.getStartTime().isBefore(slot.getEndTime());
+            boolean overlaps = slot.getStartDateTime().isBefore(existingSlot.getEndDateTime()) &&
+                               existingSlot.getStartDateTime().isBefore(slot.getEndDateTime());
             if (overlaps) {
                 throw new RuntimeException("Ushbu vaqt oralig'ida sizda boshqa faol yoki band qilingan smena mavjud (" 
                     + existingSlot.getStartTime().toString().substring(0, 5) + " - " 
@@ -282,7 +310,7 @@ public class SlotService {
             throw new RuntimeException("Boshlangan smenani bekor qilib bo'lmaydi!");
         }
         // Jarima hisoblash: Smenaga chiqishga 12 soatdan kam vaqt qolgan bo'lsagina jarima qo'llaniladi
-        LocalDateTime startDateTime = LocalDateTime.of(slot.getDate(), slot.getStartTime());
+        LocalDateTime startDateTime = slot.getStartDateTime();
         LocalDateTime nowDateTime = LocalDateTime.now();
         long hoursUntilStart = ChronoUnit.HOURS.between(nowDateTime, startDateTime);
 
@@ -338,8 +366,8 @@ public class SlotService {
             throw new RuntimeException("Bu smena bekor qilingan!");
         }
 
-        LocalDateTime startDateTime = LocalDateTime.of(slot.getDate(), slot.getStartTime());
-        LocalDateTime endDateTime = LocalDateTime.of(slot.getDate(), slot.getEndTime());
+        LocalDateTime startDateTime = slot.getStartDateTime();
+        LocalDateTime endDateTime = slot.getEndDateTime();
         LocalDateTime nowDateTime = LocalDateTime.now();
 
         // Smena tugash vaqti o'tib ketgan bo'lsa
@@ -347,8 +375,8 @@ public class SlotService {
             throw new RuntimeException("Smena vaqti allaqachon tugagan!");
         }
 
-        // Hali boshlanish vaqti kelmagan bo'lsa (10 daqiqa oldin ham boshlash mumkin)
-        if (nowDateTime.isBefore(startDateTime.minusMinutes(10))) {
+        // Hali boshlanish vaqti kelmagan bo'lsa (15 daqiqa oldin ham boshlash mumkin)
+        if (nowDateTime.isBefore(startDateTime.minusMinutes(15))) {
             throw new RuntimeException(
                 "Smena hali boshlanmagan! Boshlanish vaqti: " + slot.getStartTime().toString().substring(0, 5)
             );
@@ -447,7 +475,7 @@ public class SlotService {
      * 1 soat = 30 000 so'm (to'liq soat bo'lmasa ham to'liq soat hisoblanadi)
      */
     public long calculatePenalty(Slot slot) {
-        long minutes = ChronoUnit.MINUTES.between(slot.getStartTime(), slot.getEndTime());
+        long minutes = ChronoUnit.MINUTES.between(slot.getStartDateTime(), slot.getEndDateTime());
         long hours = (long) Math.ceil((double) minutes / 60.0);
         return hours * PENALTY_PER_HOUR;
     }
@@ -483,9 +511,7 @@ public class SlotService {
     @Scheduled(fixedDelay = 5000)
     public void autoCloseExpiredSlots() {
         List<Slot> activeSlots = slotRepository.findByStartedTrueAndFinishedFalse();
-        LocalTime nowTime = LocalTime.now();
-        LocalDate nowDate = LocalDate.now();
-
+        LocalDateTime now = LocalDateTime.now();
         List<com.restoran.entity.OrderStatus> activeStatuses = List.of(
             com.restoran.entity.OrderStatus.PREPARING,
             com.restoran.entity.OrderStatus.COURIER_ACCEPTED,
@@ -495,8 +521,7 @@ public class SlotService {
         );
 
         for (Slot slot : activeSlots) {
-            boolean isExpired = nowDate.isAfter(slot.getDate()) || 
-                               (nowDate.equals(slot.getDate()) && nowTime.isAfter(slot.getEndTime()));
+            boolean isExpired = now.isAfter(slot.getEndDateTime());
             if (isExpired) {
                 boolean hasActiveOrders = false;
                 if (slot.getCourier() != null) {
@@ -524,7 +549,7 @@ public class SlotService {
             // Faqat kuryer band qilgan yoki biriktirilgan smenalarni tekshiramiz
             if (slot.getBookedBy() == null && slot.getCourier() == null) continue;
 
-            LocalDateTime startDateTime = LocalDateTime.of(slot.getDate(), slot.getStartTime());
+            LocalDateTime startDateTime = slot.getStartDateTime();
             if (now.isAfter(startDateTime.plusHours(2))) {
                 System.out.println(">>> Auto no-show: #" + slot.getId() + " smenaga 2 soat davomida chiqilmadi. Jarima qo'llanilmoqda, smena qayta ochilmoqda...");
                 long penalty = calculatePenalty(slot);
@@ -563,8 +588,8 @@ public class SlotService {
         List<Slot> allSlots = slotRepository.findAll();
         LocalDateTime now = LocalDateTime.now();
         for (Slot slot : allSlots) {
-            LocalDateTime startDateTime = LocalDateTime.of(slot.getDate(), slot.getStartTime());
-            LocalDateTime endDateTime = LocalDateTime.of(slot.getDate(), slot.getEndTime());
+            LocalDateTime startDateTime = slot.getStartDateTime();
+            LocalDateTime endDateTime = slot.getEndDateTime();
 
             // 1-holat: Smenaning tugash vaqti o'tib ketgan bo'lsa
             if (now.isAfter(endDateTime)) {
@@ -603,6 +628,7 @@ public class SlotService {
     public static class SlotRequest {
         private String name;
         private LocalDate date;
+        private LocalDate endDate;
         private java.time.LocalTime startTime;
         private java.time.LocalTime endTime;
         private Long courierId; // null = ochiq smena

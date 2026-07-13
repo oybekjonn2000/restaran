@@ -21,14 +21,15 @@ export interface AuthResponse {
 }
 
 export interface LoginRequest {
-  email: string;
+  phone?: string;
+  email?: string;
   password: string;
   initData?: string;
 }
 
 export interface RegisterRequest {
   name: string;
-  email: string;
+  email?: string;
   password: string;
   phone?: string;
   address?: string;

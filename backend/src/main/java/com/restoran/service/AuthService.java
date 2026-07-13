@@ -30,15 +30,22 @@ public class AuthService {
     private final TelegramUtils telegramUtils;
 
     public AuthResponse login(LoginRequest request) {
+        // Phone raqami bilan kirish (email fallback saqlanadi)
+        String identifier = (request.getPhone() != null && !request.getPhone().isBlank())
+            ? request.getPhone().trim()
+            : request.getEmail();
+
         Authentication auth = authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            new UsernamePasswordAuthenticationToken(identifier, request.getPassword())
         );
         SecurityContextHolder.getContext().setAuthentication(auth);
 
         UserDetailsImpl userDetails = (UserDetailsImpl) auth.getPrincipal();
         String token = jwtUtils.generateToken(userDetails.getUsername());
 
-        User user = userRepository.findByEmail(userDetails.getUsername())
+        // Phone yoki email bo'yicha foydalanuvchini topamiz
+        User user = userRepository.findByPhone(identifier)
+                .or(() -> userRepository.findByEmail(identifier))
                 .orElseThrow(() -> new RuntimeException("Foydalanuvchi topilmadi"));
 
         final Long currentUserId = user.getId();
@@ -62,15 +69,23 @@ public class AuthService {
     }
 
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+        // Email ixtiyoriy: kiritilgan bo'lsa tekshiramiz, yo'q bo'lsa placeholder yaratamiz
+        String email = (request.getEmail() != null && !request.getEmail().isBlank())
+            ? request.getEmail().trim()
+            : null;
+
+        if (email != null && userRepository.existsByEmail(email)) {
             throw new RuntimeException("Bu email allaqachon ro'yxatdan o'tgan!");
         }
+
+        // JWT uchun unikal identifier: email bo'lsa email, bo'lmasa UUID
+        String jwtSubject = (email != null) ? email : ("user_" + java.util.UUID.randomUUID() + "@noemail.local");
 
         Role role = Role.CLIENT;
 
         User user = User.builder()
             .name(request.getName())
-            .email(request.getEmail())
+            .email(jwtSubject)  // email yo'q bo'lsa ham placeholder saqlaymiz (login uchun kerak)
             .password(passwordEncoder.encode(request.getPassword()))
             .phone(request.getPhone())
             .address(request.getAddress())
@@ -84,12 +99,16 @@ public class AuthService {
     }
 
     private AuthResponse buildAuthResponse(String token, User user) {
+        // Placeholder email (@noemail.local) frontendga yuborilmasin
+        String displayEmail = (user.getEmail() != null && user.getEmail().endsWith("@noemail.local"))
+            ? null
+            : user.getEmail();
         return AuthResponse.builder()
             .token(token)
             .type("Bearer")
             .id(user.getId())
             .name(user.getName())
-            .email(user.getEmail())
+            .email(displayEmail)
             .role(user.getRole().name())
             .phone(user.getPhone())
             .address(user.getAddress())
@@ -130,5 +149,33 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Foydalanuvchi topilmadi"));
         return buildAuthResponse(null, user);
+    }
+
+    public AuthResponse updateProfile(Long userId, com.restoran.dto.request.ProfileUpdateRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Foydalanuvchi topilmadi"));
+        
+        user.setName(request.getName());
+        if (request.getPhone() != null) {
+            user.setPhone(request.getPhone());
+        }
+        if (request.getAddress() != null) {
+            user.setAddress(request.getAddress());
+        }
+        
+        user = userRepository.save(user);
+        return buildAuthResponse(null, user);
+    }
+
+    public void changePassword(Long userId, com.restoran.dto.request.PasswordChangeRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Foydalanuvchi topilmadi"));
+        
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new RuntimeException("Eski parol noto'g'ri!");
+        }
+        
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 }

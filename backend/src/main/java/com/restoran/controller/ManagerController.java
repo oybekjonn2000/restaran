@@ -159,6 +159,25 @@ public class ManagerController {
         return ResponseEntity.ok(updated);
     }
 
+    @PutMapping("/orders/{id}/ready")
+    public ResponseEntity<Order> markMyOrderAsReady(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @PathVariable Long id) {
+        Restaurant restaurant = restaurantRepository.findByOwnerId(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("Sizga tegishli restoran topilmadi!"));
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Buyurtma topilmadi"));
+        if (!order.getRestaurant().getId().equals(restaurant.getId())) {
+            throw new RuntimeException("Ruxsat berilmagan!");
+        }
+
+        Order updated = orderService.markOrderAsReady(id);
+        if (updated.getCourier() != null) {
+            updated.setCourierActiveOnShift(slotRepository.findActiveSlotForCourier(updated.getCourier().getId()).isPresent());
+        }
+        return ResponseEntity.ok(updated);
+    }
+
     @PutMapping("/orders/{id}/cancel")
     public ResponseEntity<Order> cancelMyOrder(
             @AuthenticationPrincipal UserDetailsImpl userDetails,

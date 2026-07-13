@@ -25,6 +25,9 @@ public class Slot {
     @Column(nullable = false)
     private LocalDate date;
 
+    @Column(name = "end_date")
+    private LocalDate endDate;
+
     @Column(name = "start_time", nullable = false)
     private LocalTime startTime;
 
@@ -109,5 +112,19 @@ public class Slot {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }
+    }
+
+    public LocalDateTime getStartDateTime() {
+        return LocalDateTime.of(this.date, this.startTime);
+    }
+
+    public LocalDateTime getEndDateTime() {
+        if (this.endDate != null) {
+            return LocalDateTime.of(this.endDate, this.endTime);
+        }
+        if (this.endTime.isBefore(this.startTime) || this.endTime.equals(this.startTime)) {
+            return LocalDateTime.of(this.date.plusDays(1), this.endTime);
+        }
+        return LocalDateTime.of(this.date, this.endTime);
     }
 }

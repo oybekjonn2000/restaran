@@ -101,7 +101,12 @@ import { User } from '../../../core/models/user.model';
                         <span class="slot-name">{{ slot.name }}</span>
                       </td>
                       <td>
-                        <span class="date-badge">{{ formatDate(slot.date) }}</span>
+                        <span class="date-badge">
+                          📅 {{ formatDate(slot.date) }}
+                          @if (slot.endDate && slot.endDate !== slot.date) {
+                            ➔ {{ formatDate(slot.endDate) }}
+                          }
+                        </span>
                       </td>
                       <td>
                         <span class="time-range">
@@ -166,9 +171,15 @@ import { User } from '../../../core/models/user.model';
                 class="form-input" id="slot-name-input" />
             </div>
 
-            <div class="form-group">
-              <label>Sana *</label>
-              <input type="date" [(ngModel)]="form.date" class="form-input" id="slot-date-input" />
+            <div class="form-row">
+              <div class="form-group">
+                <label>Boshlanish sanasi *</label>
+                <input type="date" [(ngModel)]="form.date" class="form-input" id="slot-date-input" />
+              </div>
+              <div class="form-group">
+                <label>Tugash sanasi *</label>
+                <input type="date" [(ngModel)]="form.endDate" class="form-input" id="slot-end-date-input" />
+              </div>
             </div>
 
             <div class="form-row">
@@ -367,6 +378,17 @@ import { User } from '../../../core/models/user.model';
       background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25);
       color: #818cf8; padding: 3px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;
     }
+    .date-badge-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: flex-start;
+    }
+    .date-badge-end {
+      background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25);
+      color: #10b981; padding: 2px 8px; border-radius: 20px; font-size: 0.72rem; font-weight: 600;
+      white-space: nowrap;
+    }
     .time-range { font-size: 0.85rem; color: var(--text-muted); }
 
     .courier-info { display: flex; align-items: center; gap: 8px; }
@@ -527,7 +549,7 @@ export class AdminSlotsComponent implements OnInit {
   slotToForceEnd: Slot | null = null;
 
   form: SlotRequest & { courierId: number | null } = {
-    name: '', date: '', startTime: '', endTime: '', courierId: null
+    name: '', date: '', endDate: '', startTime: '', endTime: '', courierId: null
   };
 
   get displayedSlots(): Slot[] {
@@ -572,7 +594,7 @@ export class AdminSlotsComponent implements OnInit {
     const startM = String(nextHour.getMinutes()).padStart(2, '0');
     const endHour = new Date(now.getTime() + 9 * 60 * 60 * 1000);
     const endH = String(Math.min(endHour.getHours(), 23)).padStart(2, '0');
-    this.form = { name: '', date: today, startTime: `${startH}:${startM}`, endTime: `${endH}:00`, courierId: null };
+    this.form = { name: '', date: today, endDate: today, startTime: `${startH}:${startM}`, endTime: `${endH}:00`, courierId: null };
     this.showModal.set(true);
   }
 
@@ -581,6 +603,7 @@ export class AdminSlotsComponent implements OnInit {
     this.form = {
       name: slot.name,
       date: slot.date,
+      endDate: slot.endDate || slot.date,
       startTime: slot.startTime.slice(0, 5),
       endTime: slot.endTime.slice(0, 5),
       courierId: slot.courier?.id ?? null
@@ -594,22 +617,32 @@ export class AdminSlotsComponent implements OnInit {
   }
 
   saveSlot(): void {
-    if (!this.form.name || !this.form.date || !this.form.startTime || !this.form.endTime) {
+    if (!this.form.name || !this.form.date || !this.form.endDate || !this.form.startTime || !this.form.endTime) {
       this.snack.open('❌ Barcha majburiy maydonlarni to\'ldiring!', '', { duration: 3000 });
       return;
     }
 
-    // Tugash vaqti o'tib ketganligini tekshirish (boshlanish vaqti o'tgan bo'lsa ham ruxsat)
+    // Boshlanish vaqti o'tib ketganligini tekshirish
     const now = new Date();
-    const inputEndDateTime = new Date(`${this.form.date}T${this.form.endTime}:00`);
-    if (inputEndDateTime.getTime() < now.getTime()) {
-      this.snack.open("❌ Smenaning tugash vaqti o'tib ketgan! Kelajakda tugidigon smena kiriting.", '', { duration: 4000 });
+    const inputStartDateTime = new Date(`${this.form.date}T${this.form.startTime}:00`);
+    if (inputStartDateTime.getTime() < now.getTime()) {
+      const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const slotStr = `${this.form.date} ${this.form.startTime}`;
+      this.snack.open(`❌ Boshlanish vaqti o'tib ketgan! (Smena: ${slotStr}, Hozirgi: ${nowStr})`, '', { duration: 6000 });
+      return;
+    }
+
+    // Tugash vaqti boshlanishdan keyin bo'lishi kerak
+    const inputEndDateTime = new Date(`${this.form.endDate}T${this.form.endTime}:00`);
+    if (inputEndDateTime.getTime() <= inputStartDateTime.getTime()) {
+      this.snack.open("❌ Tugash vaqt-sanasi boshlanishidan keyin bo'lishi kerak!", '', { duration: 3500 });
       return;
     }
 
     const req: SlotRequest = {
       name: this.form.name,
       date: this.form.date,
+      endDate: this.form.endDate,
       startTime: this.form.startTime,
       endTime: this.form.endTime,
       courierId: this.form.courierId
@@ -712,8 +745,12 @@ export class AdminSlotsComponent implements OnInit {
 
   formatDate(date: string): string {
     if (!date) return '';
-    const d = new Date(date);
-    return d.toLocaleDateString('uz-UZ', { day: '2-digit', month: 'short', year: 'numeric' });
+    const parts = date.split('-');
+    if (parts.length === 3) {
+      // "2026-07-13" -> "13.07.2026"
+      return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    }
+    return date;
   }
 
   getStatusClass(slot: Slot): string {

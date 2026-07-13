@@ -39,8 +39,11 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
           </div>
 
           <div class="form-group">
-            <label class="form-label">📧 Email</label>
+            <label class="form-label">📧 Email <span class="optional-badge">(ixtiyoriy)</span></label>
             <input formControlName="email" type="email" class="form-control" placeholder="email@manzil.uz" id="reg-email">
+            @if (form.get('email')?.touched && form.get('email')?.errors?.['email']) {
+              <span class="error">To'g'ri email kiriting</span>
+            }
           </div>
 
           <div class="form-group">
@@ -139,6 +142,7 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
     }
 
     .error { font-size: 0.78rem; color: var(--danger); margin-top: 2px; }
+    .optional-badge { font-size: 0.72rem; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
     .alert-error {
       background: rgba(239,68,68,0.1);
       border: 1px solid rgba(239,68,68,0.3);
@@ -168,7 +172,7 @@ export class RegisterComponent {
   ) {
     this.form = this.fb.group({
       name:     ['', Validators.required],
-      email:    ['', [Validators.required, Validators.email]],
+      email:    ['', Validators.email],
       phone:    [''],
       address:  [''],
       password: ['', [Validators.required, Validators.minLength(6)]]
@@ -184,7 +188,7 @@ export class RegisterComponent {
     const v = this.form.value;
     this.authService.register({
       name:     v.name!,
-      email:    v.email!,
+      email:    v.email?.trim() || undefined,
       password: v.password!,
       phone:    v.phone || undefined,
       address:  v.address || undefined,

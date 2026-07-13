@@ -1,14 +1,13 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
 import { CartService } from '../../../core/services/cart.service';
-import { CartSidebarComponent } from '../cart/cart-sidebar.component';
 
 @Component({
   selector: 'app-client-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, CartSidebarComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule],
   template: `
     <div class="client-layout">
       <!-- Navbar -->
@@ -28,20 +27,21 @@ import { CartSidebarComponent } from '../cart/cart-sidebar.component';
         </div>
 
         <div class="nav-actions">
-          <!-- Cart button -->
-          <button class="cart-btn" (click)="cartOpen.set(true)" id="cart-toggle-btn">
+          <a routerLink="/client/cart" class="cart-btn" id="cart-toggle-btn" style="text-decoration: none;">
             🛒
             @if (cart.totalItems() > 0) {
               <span class="cart-badge">{{ cart.totalItems() }}</span>
             }
-          </button>
+          </a>
 
           <!-- User info -->
           @if (auth.isLoggedIn()) {
-            <div class="user-chip">
-              <span class="user-avatar">{{ userInitial }}</span>
-              <span class="user-name">{{ (auth.user()?.name ?? '') | slice:0:10 }}</span>
-            </div>
+            <a routerLink="/client/profile" class="user-chip-link" style="text-decoration: none;">
+              <div class="user-chip" style="cursor: pointer;">
+                <span class="user-avatar">{{ userInitial }}</span>
+                <span class="user-name">{{ (auth.user()?.name ?? '') | slice:0:10 }}</span>
+              </div>
+            </a>
             <button class="logout-btn" (click)="auth.logout()" title="Chiqish" id="logout-btn">
               🚪
             </button>
@@ -75,7 +75,7 @@ import { CartSidebarComponent } from '../cart/cart-sidebar.component';
             <span class="bottom-nav-text">Kirish</span>
           </a>
         }
-        <button class="bottom-nav-link" (click)="cartOpen.set(true)" id="mob-nav-cart">
+        <a routerLink="/client/cart" routerLinkActive="active" class="bottom-nav-link" id="mob-nav-cart">
           <span class="bottom-nav-icon">
             🛒
             @if (cart.totalItems() > 0) {
@@ -83,19 +83,14 @@ import { CartSidebarComponent } from '../cart/cart-sidebar.component';
             }
           </span>
           <span class="bottom-nav-text">Savat</span>
-        </button>
+        </a>
+        @if (auth.isLoggedIn()) {
+          <a routerLink="/client/profile" routerLinkActive="active" class="bottom-nav-link" id="mob-nav-profile">
+            <span class="bottom-nav-icon">👤</span>
+            <span class="bottom-nav-text">Profil</span>
+          </a>
+        }
       </div>
-
-      <!-- Cart sidebar -->
-      <app-cart-sidebar
-        [isOpen]="cartOpen()"
-        (closed)="cartOpen.set(false)">
-      </app-cart-sidebar>
-
-      <!-- Overlay -->
-      @if (cartOpen()) {
-        <div class="overlay" (click)="cartOpen.set(false)"></div>
-      }
     </div>
   `,
   styles: [`
@@ -311,7 +306,6 @@ import { CartSidebarComponent } from '../cart/cart-sidebar.component';
   `]
 })
 export class ClientLayoutComponent {
-  cartOpen = signal(false);
 
   get userInitial(): string {
     return (this.auth.user()?.name?.[0] ?? 'U').toUpperCase();

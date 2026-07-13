@@ -78,6 +78,7 @@ public class OrderService {
             deliveryFee = Math.round(deliveryFee / 100.0) * 100.0; // Round to nearest 100 so'm
         }
 
+        boolean anyCourierOnShift = isAnyCourierOnShift();
         Order order = Order.builder()
             .user(user)
             .restaurant(restaurant)
@@ -86,7 +87,8 @@ public class OrderService {
             .latitude(request.getLatitude())
             .longitude(request.getLongitude())
             .distance(distance)
-            .deliveryFee(0.0)
+            .deliveryFee(anyCourierOnShift ? deliveryFee : 0.0)
+            .yandexDelivery(!anyCourierOnShift)
             .note(request.getNote())
             .build();
 
@@ -113,6 +115,13 @@ public class OrderService {
     public Order updateStatus(Long orderId, OrderStatus status) {
         Order order = orderRepository.findById(orderId)
             .orElseThrow(() -> new RuntimeException("Buyurtma topilmadi: " + orderId));
+
+        if (status == OrderStatus.DELIVERING) {
+            if (order.getCourier() != null && (order.getIsReady() == null || !order.getIsReady())) {
+                throw new RuntimeException("Buyurtma hali tayyor emas! Restoran xodimi tayyor deb tasdiqlashini kuting.");
+            }
+        }
+
         order.setStatus(status);
 
         if (status == OrderStatus.PREPARING) {
@@ -380,5 +389,27 @@ public class OrderService {
         } else {
             order.setDeliveryFee(0.0);
         }
+    }
+
+    public Order markOrderAsReady(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Buyurtma topilmadi: " + orderId));
+        order.setIsReady(true);
+
+        boolean hasActiveCourier = false;
+        if (order.getCourier() != null) {
+            hasActiveCourier = slotRepository.findActiveSlotForCourier(order.getCourier().getId()).isPresent();
+        }
+
+        if (!hasActiveCourier) {
+            order.setYandexDelivery(true);
+            order.setStatus(OrderStatus.DELIVERING);
+            if (order.getCourier() != null) {
+                backfillCourier(order.getCourier());
+                order.setCourier(null);
+            }
+        }
+
+        return orderRepository.save(order);
     }
 }

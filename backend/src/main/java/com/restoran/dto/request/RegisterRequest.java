@@ -14,7 +14,7 @@ public class RegisterRequest {
     @NotBlank(message = "Ism bo'sh bo'lmasin")
     private String name;
 
-    @NotBlank(message = "Email bo'sh bo'lmasin")
+    // Email ixtiyoriy — kiritilmasligi mumkin
     @Email(message = "To'g'ri email kiriting")
     private String email;
 

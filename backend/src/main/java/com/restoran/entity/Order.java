@@ -67,6 +67,10 @@ public class Order {
     @Builder.Default
     private Boolean yandexDelivery = false;
 
+    @Column(name = "is_ready")
+    @Builder.Default
+    private Boolean isReady = false;
+
     @Transient
     private boolean courierActiveOnShift;
 

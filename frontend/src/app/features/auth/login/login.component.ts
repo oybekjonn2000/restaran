@@ -25,11 +25,10 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
           <h1 class="logo-text">Food<span>Delivery</span></h1>
         </div>
 
-        <div style="margin-bottom: 16px; display: flex; justify-content: flex-start;">
-          <a routerLink="/client/restaurants" class="link" style="text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 4px;">
-            ⬅️ Asosiy menyuga qaytish
-          </a>
-        </div>
+        <a routerLink="/client/restaurants" class="back-btn">
+          <span class="back-arrow">←</span>
+          Asosiy menyuga qaytish
+        </a>
 
         <h2 class="auth-title">Xush kelibsiz!</h2>
         <p class="auth-subtitle">Hisobingizga kiring</p>
@@ -41,20 +40,21 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
             <button (click)="fillDemo('client')" class="demo-btn client">🛒 Mijoz</button>
             <button (click)="fillDemo('courier')" class="demo-btn courier">🏍️ Kuryer</button>
             <button (click)="fillDemo('admin')" class="demo-btn admin">👨‍🍳 Admin</button>
+            <button (click)="fillDemo('manager10')" class="demo-btn manager">🏪 Manager10</button>
           </div>
         </div>
 
         <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form">
           <div class="form-group">
-            <label class="form-label">📧 Email</label>
+            <label class="form-label">📱 Telefon raqam</label>
             <input
-              formControlName="email"
-              type="email"
+              formControlName="phone"
+              type="tel"
               class="form-control"
-              placeholder="email@manzil.uz"
-              id="login-email">
-            @if (form.get('email')?.touched && form.get('email')?.invalid) {
-              <span class="error">To'g'ri email kiriting</span>
+              placeholder="+998 90 123 45 67"
+              id="login-phone">
+            @if (form.get('phone')?.touched && form.get('phone')?.invalid) {
+              <span class="error">Telefon raqamni kiriting</span>
             }
           </div>
 
@@ -207,6 +207,7 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
     .demo-btn.client   { background: rgba(249,115,22,0.15); color: #f97316; border: 1px solid rgba(249,115,22,0.3); }
     .demo-btn.courier  { background: rgba(139,92,246,0.15); color: #8b5cf6; border: 1px solid rgba(139,92,246,0.3); }
     .demo-btn.admin    { background: rgba(59,130,246,0.15); color: #3b82f6; border: 1px solid rgba(59,130,246,0.3); }
+    .demo-btn.manager  { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
     .demo-btn:hover    { transform: scale(1.05); }
 
     .auth-form { display: flex; flex-direction: column; gap: 4px; }
@@ -264,6 +265,37 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
       color: var(--text-muted);
     }
 
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 18px;
+      padding: 8px 18px;
+      border-radius: 50px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--primary);
+      background: rgba(249, 115, 22, 0.08);
+      border: 1.5px solid rgba(249, 115, 22, 0.35);
+      text-decoration: none;
+      transition: all 0.25s ease;
+      letter-spacing: 0.02em;
+    }
+    .back-btn:hover {
+      background: rgba(249, 115, 22, 0.18);
+      border-color: var(--primary);
+      transform: translateX(-3px);
+      box-shadow: 0 0 14px rgba(249, 115, 22, 0.25);
+    }
+    .back-arrow {
+      display: inline-block;
+      font-size: 1rem;
+      transition: transform 0.25s ease;
+    }
+    .back-btn:hover .back-arrow {
+      transform: translateX(-4px);
+    }
+
     .link {
       color: var(--primary);
       font-weight: 600;
@@ -285,16 +317,17 @@ export class LoginComponent {
     private router: Router
   ) {
     this.form = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
+      phone: ['', Validators.required],
       password: ['', Validators.required]
     });
   }
 
-  fillDemo(role: 'client' | 'courier' | 'admin'): void {
+  fillDemo(role: 'client' | 'courier' | 'admin' | 'manager10'): void {
     const map = {
-      client:  { email: 'client@food.uz',  password: 'client123' },
-      courier: { email: 'courier@food.uz', password: 'courier123' },
-      admin:   { email: 'admin@food.uz',   password: 'admin123' },
+      client:    { phone: '+998901234567', password: 'client123' },
+      courier:   { phone: '+998901234568', password: 'courier123' },
+      admin:     { phone: '+998901234500', password: 'admin123' },
+      manager10: { phone: '+998901230010', password: 'manager123' },
     };
     this.form.patchValue(map[role]);
   }
@@ -308,18 +341,18 @@ export class LoginComponent {
     this.loading = true;
     this.errorMsg = '';
 
-    const { email, password } = this.form.value;
+    const { phone, password } = this.form.value;
     const tg = (window as any).Telegram?.WebApp;
     const initData = tg?.initData || undefined;
 
-    this.authService.login({ email: email!, password: password!, initData }).subscribe({
+    this.authService.login({ phone: phone!, password: password!, initData }).subscribe({
       next: (res) => {
         this.loading = false;
         redirectByRole(this.authService, this.router);
       },
       error: (err) => {
         this.loading = false;
-        this.errorMsg = err.error?.message || 'Email yoki parol noto\'g\'ri!';
+        this.errorMsg = err.error?.message || 'Telefon yoki parol noto\'g\'ri!';
       }
     });
   }

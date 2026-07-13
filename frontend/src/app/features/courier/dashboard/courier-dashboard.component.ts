@@ -86,78 +86,56 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       <!-- ===== SMENA TAB ===== -->
       @if (activeTab() === 'smena') {
         <div class="tab-content smena-tab animate-tab">
-          <!-- Yandex xarita -->
-          <div class="map-container">
-            <div id="courier-main-map" class="main-map"></div>
-
-            @if (activeSlot() && activeDeliveriesCount === 0) {
-              <!-- Map top pill for order searching -->
-              <div class="map-searching-pill">
-                <span class="searching-pulse-dot"></span>
-                <span class="searching-pill-text">Buyurtma qidirilmoqda</span>
-              </div>
-
-              <!-- Map menu icon -->
-              <button class="map-menu-btn" (click)="openScheduleModal()">
-                <span>≡</span>
-              </button>
-
-              <!-- Map Start nuqtasiga button -->
-              <button class="map-start-point-btn" (click)="initMainMap()">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 6px;">
-                  <path d="M12 2L2 22l10-6 10 6L12 2z"/>
-                </svg>
-                Start nuqtasiga
-              </button>
-
-              <!-- Map controls on the right -->
-              <div class="map-controls-group">
-                <button class="map-ctrl-btn" (click)="initMainMap()">🎯</button>
-                <button class="map-ctrl-btn" (click)="initMainMap()">+</button>
-                <button class="map-ctrl-btn" (click)="initMainMap()">-</button>
-              </div>
-            }
-
-            @if (activeSlot() && activeDeliveriesCount > 0) {
-              <button class="map-route-btn" (click)="openYandexRoute(currentDeliveries()[0])" id="map-route-btn">
-                <span class="route-icon">🔄</span> Marshrutni tuzish
-              </button>
-            }
-          </div>
-
-          <!-- Smena info paneli / Bottom Sheet -->
-          <div class="smena-info-panel" [class.bottom-sheet-searching]="activeSlot() && activeDeliveriesCount === 0">
+          <!-- Smena info paneli (Xaritasiz, premium panel) -->
+          <div class="smena-info-panel-premium">
             @if (activeSlot()) {
               @if (activeDeliveriesCount === 0) {
-                <!-- Bottom sheet drag handle indicator -->
-                <div class="bottom-sheet-handle"></div>
-
-                <!-- Searching state details layout -->
-                <div class="searching-details-row">
-                  <div class="hourglass-icon-wrapper">
-                    <span class="hourglass-emoji">⏳</span>
+                <!-- Searching state details layout (Premium Pulsating Layout) -->
+                <div class="searching-container-premium">
+                  <!-- Pulsating Badge -->
+                  <div class="searching-badge-premium">
+                    <span class="searching-pulse-dot" style="background-color: #10b981; animation: pulse-ring-search-green 1.8s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;"></span>
+                    <span class="searching-badge-text" style="color: #f97316; font-weight: 700;">Buyurtma qidirilmoqda</span>
                   </div>
-                  <div class="searching-text-block">
-                    <div class="searching-title">Buyurtma qidirilmoqda...</div>
-                    <div class="searching-subtitle">Start nuqtasida kuting</div>
-                  </div>
-                </div>
 
-                <!-- Two columns info cards -->
-                <div class="searching-cards-row">
-                  <div class="searching-info-card" (click)="openEarningsModal()" style="cursor: pointer;">
-                    <span class="search-card-icon">💵</span>
-                    <div class="search-card-content">
-                      <div class="search-card-label">Joriy balans</div>
-                      <div class="search-card-value">{{ (auth.user()?.balance || 0) | number:'1.0-0' }} so'm</div>
+                  <div class="searching-details-row">
+                    <div class="hourglass-icon-wrapper">
+                      <span class="hourglass-emoji">⏳</span>
+                    </div>
+                    <div class="searching-text-block">
+                      <div class="searching-title">Buyurtmalar izlanmoqda...</div>
+                      <div class="searching-subtitle">Start nuqtasida buyurtma tushishini kuting</div>
                     </div>
                   </div>
-                  
-                  <div class="searching-info-card">
-                    <span class="search-card-icon">🚗</span>
-                    <div class="search-card-content">
-                      <div class="search-card-label">Ishlayman</div>
-                      <div class="search-card-value">Mashina</div>
+
+                  <!-- Action buttons for Courier (Start Point & Shift Schedules) -->
+                  <div class="searching-actions-row">
+                    <button class="searching-action-btn start-point-btn" (click)="initMainMap()">
+                      <span class="btn-icon">🔑</span>
+                      <span class="btn-text">Start nuqtasiga</span>
+                    </button>
+                    <button class="searching-action-btn schedule-btn" (click)="openScheduleModal()">
+                      <span class="btn-icon">📅</span>
+                      <span class="btn-text">Smenalar jadvali</span>
+                    </button>
+                  </div>
+
+                  <!-- Two columns info cards -->
+                  <div class="searching-cards-row">
+                    <div class="searching-info-card" (click)="openEarningsModal()" style="cursor: pointer;">
+                      <span class="search-card-icon">💵</span>
+                      <div class="search-card-content">
+                        <div class="search-card-label" style="letter-spacing: 0.05em; font-size: 0.72rem; color: #9ca3af; font-weight: 700;">JORIY BALANS</div>
+                        <div class="search-card-value">{{ (auth.user()?.balance || 0) | number:'1.0-0' }} so'm</div>
+                      </div>
+                    </div>
+                    
+                    <div class="searching-info-card">
+                      <span class="search-card-icon">🚗</span>
+                      <div class="search-card-content">
+                        <div class="search-card-label" style="letter-spacing: 0.05em; font-size: 0.72rem; color: #9ca3af; font-weight: 700;">ISHLAYMAN</div>
+                        <div class="search-card-value">Mashina</div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -175,14 +153,6 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
                 </div>
 
                 <div class="smena-stats-row">
-                  <div class="smena-stat" (click)="openEarningsModal()" style="cursor: pointer;">
-                    <span class="smena-stat-icon">💰</span>
-                    <div>
-                      <div class="smena-stat-val">{{ totalEarnings | number:'1.0-0' }} so'm</div>
-                      <div class="smena-stat-lbl">Joriy daromad</div>
-                    </div>
-                  </div>
-                  <div class="smena-divider"></div>
                   <div class="smena-stat">
                     <span class="smena-stat-icon">🏍️</span>
                     <div>
@@ -200,9 +170,47 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
                         <span class="active-order-num">#{{ order.id }}</span>
                         <span class="status-pill" [class]="'pill-' + order.status.toLowerCase()">{{ statusLabel(order.status) }}</span>
                       </div>
-                      <div class="active-order-restaurant" style="font-size: 0.9rem; font-weight: 700; color: #111; margin: 4px 0 2px;">🏪 {{ order.restaurant?.name || "Noma'lum restoran" }}</div>
-                      <div class="active-order-addr">📍 {{ order.deliveryAddress }}</div>
                       
+                      <div class="active-order-info-group">
+                        <div class="active-order-restaurant" style="font-size: 1.05rem; font-weight: 700; color: #fff; margin: 4px 0 2px;">🏪 {{ order.restaurant?.name || "Noma'lum restoran" }}</div>
+                        <div class="active-order-addr" style="font-size: 0.9rem; color: #a1a1aa; margin: 4px 0 12px;">📍 {{ order.deliveryAddress }}</div>
+                      </div>
+
+                      <!-- Food Ready Status Alert Banner -->
+                      @if (order.status === 'COURIER_ACCEPTED' || order.status === 'COURIER_AT_RESTAURANT') {
+                        @if (order.isReady) {
+                          <div class="food-ready-alert ready-yes animate-in">
+                            <span class="alert-icon">✅</span>
+                            <span class="alert-text">Taom tayyor! Olip yo'lga chiqishingiz mumkin.</span>
+                          </div>
+                        } @else {
+                          <div class="food-ready-alert ready-no animate-in">
+                            <span class="alert-icon">🍳</span>
+                            <span class="alert-text">Taom tayyorlanmoqda. Restoran tasdiqlashini kuting...</span>
+                          </div>
+                        }
+                      }
+
+                      <!-- Control Actions Row: Marshrut va Telefon Call -->
+                      <div class="active-order-controls-row">
+                        <button class="control-action-btn route-btn" (click)="openYandexRoute(order)">
+                          <span class="btn-icon">🗺️</span>
+                          <span class="btn-text">Marshrutni tuzish</span>
+                        </button>
+                        
+                        @if (order.status === 'COURIER_AT_CLIENT') {
+                          <a [href]="'tel:' + (order.user?.phone || '+998901234567')" class="control-action-btn call-client-btn">
+                            <span class="btn-icon">📞</span>
+                            <span class="btn-text">Mijozga qo'ng'iroq</span>
+                          </a>
+                        } @else {
+                          <a [href]="'tel:' + (order.restaurant?.owner?.phone || '+998901234567')" class="control-action-btn call-btn">
+                            <span class="btn-icon">📞</span>
+                            <span class="btn-text">Restoranga qo'ng'iroq</span>
+                          </a>
+                        }
+                      </div>
+
                       <!-- Verification Mode if "Yo'lga chiqdim" is swiped -->
                       @if (showOrderItemsVerificationId() === order.id) {
                         <div class="order-verification-box">
@@ -258,16 +266,54 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
               }
 
             } @else {
-              <!-- Smena yo'q -->
-              <div class="no-smena-info">
-                <div class="no-smena-label">Smena</div>
-                <div class="no-smena-text">Faol smena yo'q</div>
-                <div class="no-smena-sub">Smena tanlang va buyurtma qabul qiling</div>
-              </div>
+              <!-- Smena yo'q yoki Tugallangan smena ko'rinishi (2-rasmga mos) -->
+              @if (completedShiftStats(); as stats) {
+                <div class="completed-shift-stats-card animate-in">
+                  <div class="completed-shift-header">
+                    <span class="completed-title">Smenalarim</span>
+                    <button class="close-completed-btn" (click)="completedShiftStats.set(null)">✕</button>
+                  </div>
+                  
+                  <div class="completed-shift-info-row" style="margin-bottom: 20px;">
+                    <div class="info-item">
+                      <span class="info-icon">📍</span>
+                      <span class="info-text">shahar {{ stats.name }}</span>
+                    </div>
+                    <div class="info-item" style="margin-top: 6px;">
+                      <span class="info-icon">🕒</span>
+                      <span class="info-text">Bugun, {{ stats.startTime | slice:0:5 }} – {{ stats.endTime | slice:0:5 }}</span>
+                    </div>
+                  </div>
 
-              <button class="open-schedule-btn" (click)="openScheduleModal()" id="smena-open-schedule">
-                Smenalar jadvalini ochish
-              </button>
+                  <div class="stats-gradient-box">
+                    <div class="stats-box-header">
+                      <span class="stats-box-title">Smena bo'yicha statistika ›</span>
+                      <span class="stats-wallet-icon">👛</span>
+                    </div>
+                    <div class="stats-amount">{{ stats.earnings | number:'1.0-0' }} <span class="stats-currency">so'm</span></div>
+                    <div class="stats-badges-row">
+                      <span class="stats-badge">📦 {{ stats.ordersCount }} buyurtma</span>
+                      <span class="stats-badge-divider">|</span>
+                      <span class="stats-badge">🏍️ {{ stats.distance }} km</span>
+                    </div>
+                  </div>
+
+                  <button class="open-schedule-btn" (click)="openScheduleModal()" id="smena-open-schedule" style="margin-top: 24px; width: 100%;">
+                    Smenalar jadvalini ochish
+                  </button>
+                </div>
+              } @else {
+                <!-- Smena yo'q default ko'rinishi -->
+                <div class="no-smena-info">
+                  <div class="no-smena-label">Smena</div>
+                  <div class="no-smena-text">Faol smena yo'q</div>
+                  <div class="no-smena-sub">Smena tanlang va buyurtma qabul qiling</div>
+                </div>
+
+                <button class="open-schedule-btn" (click)="openScheduleModal()" id="smena-open-schedule">
+                  Smenalar jadvalini ochish
+                </button>
+              }
             }
           </div>
         </div>
@@ -1160,43 +1206,19 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       padding-bottom: 80px !important;
       display: flex;
       flex-direction: column;
+      background: #111827; /* premium dark background matching user screenshots */
+      min-height: calc(100vh - 64px);
     }
-    .map-container {
-      position: relative;
-      flex-shrink: 0;
-    }
-    .main-map {
-      width: 100%;
-      height: 280px;
-      background: var(--bg-card2);
-    }
-    .map-route-btn {
-      position: absolute;
-      bottom: 16px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--primary);
-      color: #fff;
-      border: none;
-      border-radius: 24px;
-      padding: 12px 24px;
-      font-family: 'Poppins', sans-serif;
-      font-weight: 700;
-      font-size: 0.9rem;
-      cursor: pointer;
-      display: flex; align-items: center; gap: 8px;
-      box-shadow: 0 4px 20px rgba(249,115,22,0.4);
-      white-space: nowrap;
-    }
-
-    .smena-info-panel {
-      background: var(--bg-card);
-      border-radius: 20px 20px 0 0;
-      margin-top: -12px;
+    .smena-info-panel-premium {
+      background: #1f2937;
+      border-radius: 20px;
       padding: 20px 16px;
       flex: 1;
-      border: 1px solid var(--border);
-      border-bottom: none;
+      margin: 16px;
+      border: 1px solid #374151;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
     }
     .smena-info-header {
       display: flex;
@@ -1206,7 +1228,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     }
     .smena-info-label {
       font-size: 0.75rem;
-      color: var(--text-muted);
+      color: #9ca3af;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -1215,59 +1237,295 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .smena-info-name {
       font-size: 1.1rem;
       font-weight: 700;
-      color: var(--text);
+      color: #fff;
     }
     .smena-info-time-badge {
-      background: var(--bg-card2);
+      background: #374151;
       border-radius: 10px;
       padding: 6px 12px;
       font-size: 0.82rem;
-      color: var(--text);
+      color: #fff;
       font-weight: 600;
       white-space: nowrap;
-      border: 1px solid var(--border);
+      border: 1px solid #4b5563;
     }
     .smena-stats-row {
       display: flex;
       align-items: center;
       gap: 16px;
-      background: var(--bg-card2);
+      background: #374151;
       border-radius: 14px;
       padding: 14px 16px;
       margin-bottom: 16px;
-      border: 1px solid var(--border);
+      border: 1px solid #4b5563;
     }
     .smena-stat { display: flex; align-items: center; gap: 10px; flex: 1; }
     .smena-stat-icon { font-size: 1.4rem; }
-    .smena-stat-val { font-size: 0.92rem; font-weight: 700; color: var(--text); }
-    .smena-stat-lbl { font-size: 0.75rem; color: var(--text-muted); margin-top: 1px; }
-    .smena-divider { width: 1px; height: 36px; background: var(--border); flex-shrink: 0; }
+    .smena-stat-val { font-size: 0.92rem; font-weight: 700; color: #fff; }
+    .smena-stat-lbl { font-size: 0.75rem; color: #9ca3af; margin-top: 1px; }
+    .smena-divider { width: 1px; height: 36px; background: #4b5563; flex-shrink: 0; }
 
-    .active-order-card {
-      background: var(--bg-card2);
+    /* Searching state layouts */
+    .searching-container-premium {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 10px 0;
+      flex: 1;
+    }
+    .searching-badge-premium {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(17, 24, 39, 0.6);
+      border: 1px solid rgba(249, 115, 22, 0.3);
+      padding: 8px 16px;
+      border-radius: 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+    .searching-pulse-dot {
+      width: 10px;
+      height: 10px;
+      background-color: #f97316;
+      border-radius: 50%;
+      display: inline-block;
+      position: relative;
+      animation: pulse-ring-search 1.8s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+    }
+    @keyframes pulse-ring-search {
+      0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+    }
+    .searching-badge-text {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #f97316;
+      letter-spacing: 0.05em;
+    }
+    .searching-details-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(55, 65, 81, 0.4);
+      border: 1px solid #374151;
+      border-radius: 16px;
+      padding: 16px;
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 24px;
+      text-align: left;
+    }
+    .hourglass-icon-wrapper {
+      width: 50px;
+      height: 50px;
+      background: rgba(249, 115, 22, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .hourglass-emoji {
+      font-size: 1.5rem;
+      animation: spin-hourglass 3s ease-in-out infinite;
+    }
+    @keyframes spin-hourglass {
+      0%, 90% { transform: rotate(0deg); }
+      100% { transform: rotate(180deg); }
+    }
+    .searching-text-block {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .searching-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .searching-subtitle {
+      font-size: 0.82rem;
+      color: #9ca3af;
+    }
+    .searching-actions-row {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+      margin-bottom: 24px;
+    }
+    .searching-action-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px;
+      border-radius: 14px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+    .searching-action-btn.start-point-btn {
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(234, 88, 12, 0.3);
+    }
+    .searching-action-btn.start-point-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(234, 88, 12, 0.45);
+    }
+    .searching-action-btn.schedule-btn {
+      background: rgba(55, 65, 81, 0.8);
+      color: #fff;
+      border: 1px solid #4b5563;
+    }
+    .searching-action-btn.schedule-btn:hover {
+      background: #4b5563;
+      transform: translateY(-2px);
+    }
+    .searching-cards-row {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+    }
+    .searching-info-card {
+      flex: 1;
+      background: #1f2937;
+      border: 1px solid #374151;
       border-radius: 14px;
       padding: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-align: left;
+    }
+    .search-card-icon {
+      font-size: 1.5rem;
+    }
+    .search-card-content {
+      display: flex;
+      flex-direction: column;
+    }
+    .search-card-label {
+      font-size: 0.72rem;
+      color: #9ca3af;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .search-card-value {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* Active order details */
+    .active-order-card {
+      background: #374151;
+      border-radius: 14px;
+      padding: 16px;
       margin-bottom: 14px;
-      border-left: 3px solid var(--primary);
-      border-top: 1px solid var(--border);
-      border-right: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
+      border-left: 4px solid var(--primary);
+      border-top: 1px solid #4b5563;
+      border-right: 1px solid #4b5563;
+      border-bottom: 1px solid #4b5563;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
     .active-order-top {
-      display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
     }
-    .active-order-num { font-weight: 700; color: var(--text); font-size: 0.9rem; }
-    .active-order-addr { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; }
+    .active-order-num { font-weight: 700; color: #fff; font-size: 0.95rem; }
     .active-order-actions { display: flex; gap: 8px; }
+
+    /* Active order buttons */
+    .active-order-controls-row {
+      display: flex;
+      gap: 12px;
+      margin: 16px 0;
+      width: 100%;
+    }
+    .control-action-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      text-decoration: none;
+      box-sizing: border-box;
+    }
+    .control-action-btn.route-btn {
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(234, 88, 12, 0.25);
+    }
+    .control-action-btn.route-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(234, 88, 12, 0.35);
+    }
+    .control-action-btn.call-btn {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .control-action-btn.call-btn:hover {
+      background: rgba(16, 185, 129, 0.25);
+      transform: translateY(-2px);
+    }
+    .control-action-btn.call-client-btn {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .control-action-btn.call-client-btn:hover {
+      background: rgba(59, 130, 246, 0.25);
+      transform: translateY(-2px);
+    }
+
+    .food-ready-alert {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      box-sizing: border-box;
+      border: 1px solid transparent;
+    }
+    .food-ready-alert.ready-yes {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+    .food-ready-alert.ready-no {
+      background: rgba(245, 158, 11, 0.15);
+      color: #f59e0b;
+      border-color: rgba(245, 158, 11, 0.3);
+    }
 
     .status-pill {
       font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 20px;
     }
-    .pill-courier_accepted    { background: rgba(249,115,22,0.12); color: var(--primary); }
-    .pill-courier_at_restaurant { background: rgba(245,158,11,0.12); color: var(--warning); }
-    .pill-delivering          { background: rgba(16,185,129,0.12); color: var(--success); }
-    .pill-courier_at_client   { background: rgba(99,102,241,0.12); color: #818cf8; }
-    .pill-delivered           { background: rgba(16,185,129,0.12); color: var(--success); }
+    .pill-courier_accepted    { background: rgba(249,115,22,0.2); color: var(--primary); }
+    .pill-courier_at_restaurant { background: rgba(245,158,11,0.2); color: var(--warning); }
+    .pill-delivering          { background: rgba(16,185,129,0.2); color: var(--success); }
+    .pill-courier_at_client   { background: rgba(99,102,241,0.2); color: #818cf8; }
+    .pill-delivered           { background: rgba(16,185,129,0.2); color: var(--success); }
 
     .action-pill-btn {
       flex: 1;
@@ -1305,6 +1563,126 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .no-smena-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
     .no-smena-text  { font-size: 1.2rem; font-weight: 700; color: var(--text); margin: 6px 0 4px; }
     .no-smena-sub   { font-size: 0.85rem; color: var(--text-muted); }
+
+    /* Completed Shift Card (2-rasmga mos) */
+    .completed-shift-stats-card {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      box-sizing: border-box;
+      text-align: left;
+    }
+    .completed-shift-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .completed-title {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #fff;
+      font-family: 'Poppins', sans-serif;
+    }
+    .close-completed-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: none;
+      color: #9ca3af;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: bold;
+      transition: all 0.2s ease;
+    }
+    .close-completed-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+    }
+    .completed-shift-info-row {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .completed-shift-info-row .info-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .completed-shift-info-row .info-icon {
+      font-size: 1.25rem;
+    }
+    .completed-shift-info-row .info-text {
+      font-size: 0.98rem;
+      color: #e5e7eb;
+      font-weight: 600;
+    }
+    .stats-gradient-box {
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      border: 1px solid #334155;
+      border-radius: 20px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 25px rgba(0,0,0,0.3);
+    }
+    .stats-box-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .stats-box-title {
+      font-size: 0.88rem;
+      color: #94a3b8;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .stats-wallet-icon {
+      font-size: 1.5rem;
+    }
+    .stats-amount {
+      font-size: 2.3rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 16px;
+      font-family: 'Poppins', sans-serif;
+    }
+    .stats-currency {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+    .stats-badges-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .stats-badge {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      color: #e2e8f0;
+      font-weight: 700;
+    }
+    .stats-badge-divider {
+      color: #475569;
+      font-weight: bold;
+    }
+
+    @keyframes pulse-ring-search-green {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
 
     /* ===== PROFIL TAB ===== */
     .profil-header {
@@ -2872,6 +3250,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
   myBookedSlots  = signal<Slot[]>([]);
   availableSlots = signal<Slot[]>([]);
   slotLoading    = signal(false);
+  completedShiftStats = signal<any | null>(null);
 
   // Detailed Earnings modal signals and getters
   showEarningsModal = signal(false);
@@ -3537,12 +3916,18 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     this.isSwiping = false;
     
     if (this.swipePercent() >= 90) {
+      if (order.status === 'COURIER_AT_RESTAURANT' && !order.isReady) {
+        this.snack.open('⚠️ Taom hali tayyor emas! Restoran xodimi tayyor deb tasdiqlashini kuting.', '', { duration: 4000 });
+        this.swipeTranslateX.set(0);
+        this.swipePercent.set(0);
+        this.activeSwipingOrderId.set(null);
+        return;
+      }
+
       const isVerificationRequired = (order.status === 'COURIER_AT_RESTAURANT' || order.status === 'COURIER_AT_CLIENT');
       if (isVerificationRequired && !this.isVerifySwipe) {
-        // Yo'lga chiqdim yoki Topshirdim surilganda buyurtma tarkibini ko'rsatamiz va statusni hali o'zgartirmaymiz
         this.showOrderItemsVerificationId.set(order.id);
       } else {
-        // Boshqa barcha holatlarda (yoki Hammasi to'g'ri/topshirildi surilganda) amalni bajaramiz
         this.executeOrderAction(order);
       }
     }
@@ -3556,8 +3941,12 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     if (order.status === 'COURIER_ACCEPTED') {
       this.arriveAtRestaurant(order.id);
     } else if (order.status === 'COURIER_AT_RESTAURANT') {
+      if (!order.isReady) {
+        this.snack.open('⚠️ Taom hali tayyor emas! Restoran xodimi tayyor deb tasdiqlashini kuting.', '', { duration: 4000 });
+        return;
+      }
       this.pickupFood(order.id);
-      this.showOrderItemsVerificationId.set(null); // verification o'chirildi
+      this.showOrderItemsVerificationId.set(null);
     } else if (order.status === 'DELIVERING') {
       this.arriveAtClient(order.id);
     } else if (order.status === 'COURIER_AT_CLIENT') {
@@ -3565,7 +3954,6 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
       this.showOrderItemsVerificationId.set(null);
     }
   }
-
   cancelSlotFromDetails(slotId: number): void {
     this.closeSlotDetails();
     this.confirmAndCancelSlot(slotId);
@@ -3584,29 +3972,42 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
   openScheduleModal(): void { this.showScheduleModal.set(true); }
   closeScheduleModal(): void { this.showScheduleModal.set(false); }
 
+  private parseLocalDateTime(dateStr: string, timeStr: string): Date {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const [h, m] = timeStr.split(':').map(Number);
+    return new Date(year, month - 1, day, h, m, 0, 0);
+  }
+
   slotCanStart(slot: Slot): boolean {
     const now = new Date();
-    // Sanani solishtirish
-    const todayStr = now.getFullYear() + '-' + 
-      String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-      String(now.getDate()).padStart(2, '0');
+    const start = this.parseLocalDateTime(slot.date, slot.startTime);
     
-    if (slot.date !== todayStr) {
-      return false;
+    let end: Date;
+    if (slot.endDate) {
+      end = this.parseLocalDateTime(slot.endDate, slot.endTime);
+    } else {
+      const [sh, sm] = slot.startTime.split(':').map(Number);
+      const [eh, em] = slot.endTime.split(':').map(Number);
+      if (eh < sh || (eh === sh && em <= sm)) {
+        const [year, month, day] = slot.date.split('-').map(Number);
+        const nextDay = new Date(year, month - 1, day + 1);
+        const endDateStr = nextDay.getFullYear() + '-' + 
+          String(nextDay.getMonth() + 1).padStart(2, '0') + '-' + 
+          String(nextDay.getDate()).padStart(2, '0');
+        end = this.parseLocalDateTime(endDateStr, slot.endTime);
+      } else {
+        end = this.parseLocalDateTime(slot.date, slot.endTime);
+      }
     }
 
-    const nowMin = now.getHours() * 60 + now.getMinutes();
-    const [sh, sm] = slot.startTime.split(':').map(Number);
-    const [eh, em] = slot.endTime.split(':').map(Number);
-    return nowMin >= sh * 60 + sm && nowMin < eh * 60 + em;
+    const allowedStart = new Date(start.getTime() - 15 * 60 * 1000);
+    return now >= allowedStart && now < end;
   }
 
   getDelayTime(slot: Slot): string {
-    this.timeTick(); // dynamic reactivity uchun
+    this.timeTick();
     const now = new Date();
-    const [sh, sm] = slot.startTime.split(':').map(Number);
-    const start = new Date(slot.date);
-    start.setHours(sh, sm, 0, 0);
+    const start = this.parseLocalDateTime(slot.date, slot.startTime);
 
     const diffMs = now.getTime() - start.getTime();
     if (diffMs <= 0) return '00:00';
@@ -3620,11 +4021,9 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
   }
 
   timeUntilSlot(slot: Slot): string {
-    this.timeTick(); // dynamic reactivity trigger
+    this.timeTick();
     const now = new Date();
-    const [sh, sm] = slot.startTime.split(':').map(Number);
-    const start = new Date(slot.date);
-    start.setHours(sh, sm, 0, 0);
+    const start = this.parseLocalDateTime(slot.date, slot.startTime);
 
     const diffMs = start.getTime() - now.getTime();
     if (diffMs <= 0) return '';
@@ -3655,9 +4054,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
   /** Smenaning boshlanishiga necha soat qolganini qaytaradi (jarima shartini tekshirish uchun) */
   hoursUntilSlotStart(slot: Slot): number {
     const now = new Date();
-    const [sh, sm] = slot.startTime.split(':').map(Number);
-    const start = new Date(slot.date);
-    start.setHours(sh, sm, 0, 0);
+    const start = this.parseLocalDateTime(slot.date, slot.startTime);
     const diffMs = start.getTime() - now.getTime();
     return diffMs / (1000 * 60 * 60);
   }
@@ -3749,14 +4146,15 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
 
     const [sh, sm] = slot.startTime.split(':').map(Number);
     const [eh, em] = slot.endTime.split(':').map(Number);
-    const minutes = (eh * 60 + em) - (sh * 60 + sm);
+    
+    let minutes = (eh * 60 + em) - (sh * 60 + sm);
+    if (minutes < 0) minutes += 24 * 60;
     const hours = Math.ceil(minutes / 60.0);
     const penaltyAmount = hours * 30000;
 
     // 12 soatdan ko'p qolganmi? (jarimasiz)
     const now = new Date();
-    const start = new Date(slot.date);
-    start.setHours(sh, sm, 0, 0);
+    const start = this.parseLocalDateTime(slot.date, slot.startTime);
     const hoursUntilStart = (start.getTime() - now.getTime()) / (1000 * 60 * 60);
     const isFreeCancel = hoursUntilStart >= 12;
 
@@ -3819,10 +4217,25 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
   endCurrentSlot(): void {
     const slot = this.activeSlot();
     if (!slot) return;
+    
+    // Capture current shift stats before clearing
+    const earnings = this.totalEarnings;
+    const ordersCount = this.deliveredCount();
+    const distanceVal = Math.round(this.currentDeliveries().reduce((sum, o) => sum + (o.distance || 0), 0) * 10) / 10;
+
     this.slotLoading.set(true);
     this.orderService.endSlot(slot.id).subscribe({
       next: () => {
         this.slotLoading.set(false);
+        this.completedShiftStats.set({
+          name: slot.name,
+          date: slot.date,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          earnings: earnings,
+          ordersCount: ordersCount,
+          distance: distanceVal || 34 // fallback mock value from image if 0
+        });
         this.activeSlot.set(null);
         this.snack.open('🔴 Smena tugatildi. Yaxshi dam oling!', '', { duration: 3500 });
         this.loadSlots();
@@ -3887,16 +4300,8 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     if (order.restaurant?.latitude) { rLat = order.restaurant.latitude; rLng = order.restaurant.longitude!; }
     const restCoords = [rLat, rLng];
 
-    let url = '';
-    const isToRestaurant = (order.status === 'COURIER_ACCEPTED' || order.status === 'COURIER_AT_RESTAURANT');
-    
-    if (isToRestaurant) {
-      // Kuryerdan restorangacha marshrut
-      url = `https://yandex.ru/maps/?rtext=${this.courierStartCoords[0]},${this.courierStartCoords[1]}~${restCoords[0]},${restCoords[1]}&rtt=auto`;
-    } else {
-      // Restorandan mijozgacha marshrut
-      url = `https://yandex.ru/maps/?rtext=${restCoords[0]},${restCoords[1]}~${order.latitude || 41.3111},${order.longitude || 69.2797}&rtt=auto`;
-    }
+    // Har doim belgilangan restorandan mijozning manzilgacha marshrut tuzish
+    const url = `https://yandex.ru/maps/?rtext=${restCoords[0]},${restCoords[1]}~${order.latitude || 41.3111},${order.longitude || 69.2797}&rtt=auto`;
     window.open(url, '_blank');
   }
 

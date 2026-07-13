@@ -1,7 +1,8 @@
 export interface Slot {
   id: number;
   name: string;
-  date: string;         // "2026-07-10" formatida
+  date: string;         // "2026-07-10" formatida (Boshlanish sanasi)
+  endDate?: string;     // Tugash sanasi
   startTime: string;    // "09:00:00" formatida
   endTime: string;      // "18:00:00" formatida
   courier?: {
@@ -40,6 +41,7 @@ export interface Slot {
 export interface SlotRequest {
   name: string;
   date: string;
+  endDate?: string;
   startTime: string;
   endTime: string;
   courierId?: number | null;

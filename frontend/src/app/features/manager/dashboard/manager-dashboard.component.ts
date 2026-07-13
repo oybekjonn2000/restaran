@@ -141,15 +141,19 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
                           </button>
                         }
 
-                        <!-- PREPARING → COURIER_ACCEPTED ("Tayyor" tugmasi) -->
+                        <!-- PREPARING -->
                         @else if (order.status === 'PREPARING') {
-                          <button
-                            class="act-btn act-ready"
-                            (click)="changeStatus(order.id, 'COURIER_ACCEPTED')"
-                            [disabled]="updatingId() === order.id"
-                            [id]="'ready-btn-' + order.id">
-                            ✅ Tayyor
-                          </button>
+                          @if (!order.isReady) {
+                            <button
+                              class="act-btn act-ready"
+                              (click)="markReady(order.id)"
+                              [disabled]="updatingId() === order.id"
+                              [id]="'ready-btn-' + order.id">
+                              ✅ Tayyor
+                            </button>
+                          } @else {
+                            <span class="status-info" style="color: #10b981; font-weight: 600;">🍳 Taom tayyor (Kuryer kutilmoqda)</span>
+                          }
                           <button
                             class="act-btn act-cancel"
                             (click)="confirmCancel(order)"
@@ -158,20 +162,30 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
                           </button>
                         }
 
-                        <!-- COURIER_ACCEPTED / COURIER_AT_RESTAURANT → DELIVERING -->
+                        <!-- COURIER_ACCEPTED / COURIER_AT_RESTAURANT -->
                         @else if (order.status === 'COURIER_ACCEPTED' || order.status === 'COURIER_AT_RESTAURANT') {
-                          @if (order.courier && order.courierActiveOnShift) {
-                            <!-- Faol kuryer bor: u o'zi boshqaradi -->
-                            <span class="status-info">Kuryer yo'lda…</span>
-                          } @else {
-                            <!-- Kuryer chiqmagan yoki nofaol: manager "Kuryer yo'lda" tugmasini bosadi -->
+                          @if (!order.isReady) {
                             <button
-                              class="act-btn act-courier"
-                              (click)="changeStatus(order.id, 'DELIVERING')"
+                              class="act-btn act-ready"
+                              (click)="markReady(order.id)"
                               [disabled]="updatingId() === order.id"
-                              [id]="'courier-way-btn-' + order.id">
-                              🏍️ Kuryer yo'lda
+                              [id]="'ready-btn-' + order.id">
+                              ✅ Tayyor
                             </button>
+                          } @else {
+                            @if (order.courier && order.courierActiveOnShift) {
+                              <!-- Faol kuryer bor: u o'zi boshqaradi -->
+                              <span class="status-info" style="color: #10b981; font-weight: 600;">✅ Taom tayyor (Kuryerda)</span>
+                            } @else {
+                              <!-- Kuryer chiqmagan yoki nofaol: manager "Kuryer yo'lda" tugmasini bosadi -->
+                              <button
+                                class="act-btn act-courier"
+                                (click)="changeStatus(order.id, 'DELIVERING')"
+                                [disabled]="updatingId() === order.id"
+                                [id]="'courier-way-btn-' + order.id">
+                                🏍️ Kuryer yo'lda
+                              </button>
+                            }
                           }
                           <button
                             class="act-btn act-cancel"
@@ -187,6 +201,9 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
                             <!-- Faol kuryer bor: u o'zi boshqaradi -->
                             <span class="status-info">Yetkazilmoqda…</span>
                           } @else {
+                            @if (order.yandexDelivery) {
+                              <span class="status-info" style="color: #ea580c; font-weight: 600; display: block; margin-bottom: 6px;">🚕 Yandex orqali yuborildi</span>
+                            }
                             <!-- Kuryer chiqmagan yoki nofaol: manager "Yetkazildi" tugmasini bosadi -->
                             <button
                               class="act-btn act-ready"
@@ -506,6 +523,21 @@ export class ManagerDashboardComponent implements OnInit, OnDestroy {
       error: (err: any) => {
         this.updatingId.set(null);
         this.showToast(err.error?.message || '❌ Holatni yangilab bo\'lmadi', 'error');
+      }
+    });
+  }
+
+  markReady(orderId: number): void {
+    this.updatingId.set(orderId);
+    this.orderService.markManagerOrderReady(orderId).subscribe({
+      next: () => {
+        this.updatingId.set(null);
+        this.showToast(`✅ Buyurtma #${orderId} tayyor deb e'lon qilindi`, 'success');
+        this.load(false);
+      },
+      error: (err: any) => {
+        this.updatingId.set(null);
+        this.showToast(err.error?.message || '❌ Buyurtmani tayyor deb belgilab bo\'lmadi', 'error');
       }
     });
   }

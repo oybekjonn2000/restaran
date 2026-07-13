@@ -20,6 +20,12 @@ public class RestaurantApplication {
         SpringApplication.run(RestaurantApplication.class, args);
     }
 
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Tashkent"));
+        System.out.println(">>> Global timezone set to Asia/Tashkent. Current time: " + java.time.LocalDateTime.now());
+    }
+
     @Bean
     public CommandLineRunner seedData(
             UserRepository userRepository,
@@ -33,6 +39,7 @@ public class RestaurantApplication {
             if (userRepository.count() == 0) {
                 userRepository.save(User.builder()
                     .name("Admin Firdavs").email("admin@food.uz")
+                    .phone("+998901234500")
                     .password(encoder.encode("admin123")).role(Role.ADMIN).build());
 
                 userRepository.save(User.builder()
@@ -97,10 +104,12 @@ public class RestaurantApplication {
 
                 for (int i = 0; i < 10; i++) {
                     int index = i + 1;
-                    // Create manager
+                    // Create manager (with phone for demo login)
+                    String managerPhone = "+99890123" + String.format("%04d", index);
                     User manager = userRepository.save(User.builder()
                         .name("Menejer " + names[i])
                         .email("manager" + index + "@food.uz")
+                        .phone(managerPhone)
                         .password(encoder.encode("manager123"))
                         .role(Role.MANAGER)
                         .build());
