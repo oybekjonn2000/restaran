@@ -75,5 +75,6 @@ com\restoran\controller\AdminController$ManagerStatsResponse$ManagerStatsRespons
 com\restoran\controller\AuthController.class
 com\restoran\dto\request\OrderRequest.class
 com\restoran\controller\UploadController.class
+com\restoran\controller\ManagerController$CategoryRequest.class
 com\restoran\entity\OrderItem.class
 com\restoran\controller\AdminController$ManagerUpdateRequest.class

@@ -8,6 +8,7 @@ export interface Restaurant {
   latitude?: number;
   longitude?: number;
   owner?: User;
+  isActive?: boolean;
 }
 
 export interface RestaurantAdminRequest {

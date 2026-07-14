@@ -28,7 +28,7 @@ import { API_BASE } from '../../../core/config';
       <!-- Search -->
       <div class="search-box" style="margin-bottom: 20px;">
         <span>🔍</span>
-        <input [(ngModel)]="searchQ" type="text" placeholder="Taom qidiring..." class="search-input" id="admin-food-search">
+        <input [(ngModel)]="searchQ" (input)="onSearch()" type="text" placeholder="Taom qidiring..." class="search-input" id="admin-food-search">
       </div>
 
       @if (loading()) {
@@ -38,7 +38,7 @@ import { API_BASE } from '../../../core/config';
       <!-- Foods Grid -->
       @if (!loading()) {
         <div class="foods-grid">
-          @for (food of filteredFoods; track food.id) {
+          @for (food of foods(); track food.id) {
             <div class="food-card-admin" [id]="'admin-food-' + food.id">
               <img [src]="getFullUrl(food.imageUrl) || fallbackImg" [alt]="food.name"
                    class="food-img" (error)="onImgError($event)">
@@ -71,10 +71,47 @@ import { API_BASE } from '../../../core/config';
           }
         </div>
 
-        @if (filteredFoods.length === 0) {
+        @if (foods().length === 0) {
           <div class="empty-state">
             <div class="icon">🍽️</div>
             <h3>Taomlar topilmadi</h3>
+          </div>
+        }
+
+        <!-- Pagination -->
+        @if (totalElements() > 0) {
+          <div class="mat-paginator">
+            <div class="mat-paginator-container">
+              <div class="mat-paginator-range-label">
+                {{ currentPage() * pageSize + 1 }} – {{ Math.min((currentPage() + 1) * pageSize, totalElements()) }} / {{ totalElements() }}
+              </div>
+              <div class="mat-paginator-navigation">
+                <button type="button" class="mat-icon-btn" (click)="goToPage(0)" [disabled]="currentPage() === 0" title="Birinchi sahifa">
+                  &#171;
+                </button>
+                <button type="button" class="mat-icon-btn" (click)="goToPage(currentPage() - 1)" [disabled]="currentPage() === 0" title="Oldingi">
+                  &#8249;
+                </button>
+                @for (p of pageNumbers(); track p) {
+                  <button type="button" class="mat-page-btn" [class.active]="p === currentPage() + 1" (click)="goToPage(p - 1)">{{ p }}</button>
+                }
+                <button type="button" class="mat-icon-btn" (click)="goToPage(currentPage() + 1)" [disabled]="currentPage() >= totalPages() - 1" title="Keyingi">
+                  &#8250;
+                </button>
+                <button type="button" class="mat-icon-btn" (click)="goToPage(totalPages() - 1)" [disabled]="currentPage() >= totalPages() - 1" title="Oxirgi sahifa">
+                  &#187;
+                </button>
+              </div>
+              <div class="mat-paginator-page-size">
+                <span>Sahifada:</span>
+                <select [(ngModel)]="pageSize" (change)="onPageSizeChange()" class="mat-page-select">
+                  <option [value]="10">10</option>
+                  <option [value]="25">25</option>
+                  <option [value]="50">50</option>
+                  <option [value]="100">100</option>
+                </select>
+              </div>
+            </div>
           </div>
         }
       }
@@ -312,12 +349,11 @@ export class AdminMenuComponent implements OnInit {
 
   foodForm;
 
-  get filteredFoods(): Food[] {
-    const q = this.searchQ.toLowerCase();
-    return this.foods().filter(f =>
-      !q || f.name.toLowerCase().includes(q) || f.description?.toLowerCase().includes(q)
-    );
-  }
+  currentPage = signal(0);
+  pageSize = 10;
+  totalElements = signal(0);
+  totalPages = signal(0);
+  Math = Math;
 
   constructor(
     private fb: FormBuilder,
@@ -326,12 +362,12 @@ export class AdminMenuComponent implements OnInit {
     private snack: MatSnackBar
   ) {
     this.foodForm = this.fb.group({
-      name:        ['', Validators.required],
+      name: ['', Validators.required],
       description: [''],
-      price:       [0, [Validators.required, Validators.min(1)]],
-      imageUrl:    [''],
-      available:   [true],
-      categoryId:  ['', Validators.required]
+      price: [0, [Validators.required, Validators.min(1)]],
+      imageUrl: [''],
+      available: [true],
+      categoryId: ['', Validators.required]
     });
   }
 
@@ -370,10 +406,52 @@ export class AdminMenuComponent implements OnInit {
 
   load(): void {
     this.loading.set(true);
-    this.foodService.getAllFoodsAdmin().subscribe({
-      next: (foods) => { this.foods.set(foods); this.loading.set(false); },
+    this.foodService.getFoodsAdminPaginated({
+      search: this.searchQ || undefined,
+      page: this.currentPage(),
+      size: this.pageSize
+    }).subscribe({
+      next: (res) => {
+        this.foods.set(res.content);
+        this.totalElements.set(res.totalElements);
+        this.totalPages.set(res.totalPages);
+        this.loading.set(false);
+      },
       error: () => this.loading.set(false)
     });
+  }
+
+  onSearch(): void {
+    this.currentPage.set(0);
+    this.load();
+  }
+
+  pageNumbers(): number[] {
+    const pages: number[] = [];
+    const total = this.totalPages();
+    const cur = this.currentPage() + 1;
+    let start = Math.max(1, cur - 2);
+    let end = Math.min(total, cur + 2);
+    if (end - start < 4) {
+      if (end === total) {
+        start = Math.max(1, end - 4);
+      } else {
+        end = Math.min(total, start + 4);
+      }
+    }
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  }
+
+  goToPage(page: number): void {
+    if (page < 0 || page >= this.totalPages()) return;
+    this.currentPage.set(page);
+    this.load();
+  }
+
+  onPageSizeChange(): void {
+    this.currentPage.set(0);
+    this.load();
   }
 
   openAddForm(): void {

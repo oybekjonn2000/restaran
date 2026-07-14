@@ -1,6 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { OrderService } from '../../../core/services/order.service';
@@ -59,7 +59,12 @@ import { API_BASE } from '../../../core/config';
           }
         </div>
 
-        @if (filteredRestaurants().length === 0) {
+        @if (restaurants().length === 0) {
+          <div class="empty-state">
+            <div class="icon">🏪</div>
+            <h3>Hozircha faol restoran mavjud emas.</h3>
+          </div>
+        } @else if (filteredRestaurants().length === 0) {
           <div class="empty-state">
             <div class="icon">🏪</div>
             <h3>Qidiruv bo'yicha restoran topilmadi</h3>
@@ -179,7 +184,10 @@ export class RestaurantsComponent implements OnInit {
   loading = signal(true);
   searchQuery = '';
 
-  constructor(private orderService: OrderService) {}
+  constructor(
+    private orderService: OrderService,
+    private router: Router
+  ) {}
 
   getFullUrl(url: string | null | undefined): string {
     if (!url) return '';
@@ -192,6 +200,10 @@ export class RestaurantsComponent implements OnInit {
   ngOnInit(): void {
     this.orderService.getRestaurants().subscribe({
       next: (data) => {
+        if (data.length === 1) {
+          this.router.navigate(['/client/menu', data[0].id]);
+          return;
+        }
         this.restaurants.set(data);
         this.loading.set(false);
       },

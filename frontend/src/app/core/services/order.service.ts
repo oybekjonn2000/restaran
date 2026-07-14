@@ -165,6 +165,10 @@ export class OrderService {
     return this.http.delete<any>(`${BASE}/admin/restaurants/${id}`);
   }
 
+  adminToggleRestaurantStatus(id: number): Observable<Restaurant> {
+    return this.http.put<Restaurant>(`${BASE}/admin/restaurants/${id}/toggle-status`, {});
+  }
+
   adminGetManagers(): Observable<ManagerStats[]> {
     return this.http.get<ManagerStats[]>(`${BASE}/admin/managers`);
   }

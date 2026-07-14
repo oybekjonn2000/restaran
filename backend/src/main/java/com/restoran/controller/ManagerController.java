@@ -3,7 +3,6 @@ package com.restoran.controller;
 import com.restoran.dto.request.FoodRequest;
 import com.restoran.dto.response.MessageResponse;
 import com.restoran.entity.*;
-import com.restoran.repository.FoodRepository;
 import com.restoran.repository.RestaurantRepository;
 import com.restoran.repository.UserRepository;
 import com.restoran.repository.OrderRepository;
@@ -18,6 +17,11 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import com.restoran.service.CategoryService;
 
 @RestController
 @RequestMapping("/api/manager")
@@ -27,8 +31,8 @@ import java.util.List;
 public class ManagerController {
 
     private final RestaurantRepository restaurantRepository;
-    private final FoodRepository foodRepository;
     private final FoodService foodService;
+    private final CategoryService categoryService;
     private final OrderRepository orderRepository;
     private final OrderService orderService;
     private final UserRepository userRepository;
@@ -58,22 +62,30 @@ public class ManagerController {
     }
 
     @GetMapping("/foods")
-    public ResponseEntity<List<Food>> getMyFoods(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+    public ResponseEntity<Page<Food>> getMyFoods(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir) {
         Restaurant restaurant = restaurantRepository.findByOwnerId(userDetails.getId())
                 .orElseThrow(() -> new RuntimeException("Sizga tegishli restoran topilmadi!"));
-        return ResponseEntity.ok(foodRepository.findByRestaurantId(restaurant.getId()));
+        
+        Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        return ResponseEntity.ok(foodService.getPaginated(restaurant.getId(), categoryId, search, pageable));
     }
 
     @PostMapping("/foods")
     public ResponseEntity<Food> createMyFood(
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestBody FoodRequest request) {
-        Restaurant restaurant = restaurantRepository.findByOwnerId(userDetails.getId())
-                .orElseThrow(() -> new RuntimeException("Sizga tegishli restoran topilmadi!"));
-        
-        Food food = foodService.create(request);
-        food.setRestaurant(restaurant);
-        return ResponseEntity.ok(foodRepository.save(food));
+        // Restaurant managerId orqali avtomatik aniqlanadi
+        // Frontend restaurantId yubormasin
+        Food food = foodService.createForManager(request, userDetails.getId());
+        return ResponseEntity.ok(food);
     }
 
     @PutMapping("/foods/{id}")
@@ -81,31 +93,15 @@ public class ManagerController {
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @PathVariable Long id,
             @RequestBody FoodRequest request) {
-        // Security check: Verify the food belongs to the manager's restaurant
-        Restaurant restaurant = restaurantRepository.findByOwnerId(userDetails.getId())
-                .orElseThrow(() -> new RuntimeException("Sizga tegishli restoran topilmadi!"));
-        Food food = foodRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Taom topilmadi"));
-        if (!food.getRestaurant().getId().equals(restaurant.getId())) {
-            throw new RuntimeException("Siz faqat o'z restoraningiz taomlarini tahrirlashingiz mumkin!");
-        }
-
-        return ResponseEntity.ok(foodService.update(id, request));
+        // Ownership tekshiruvi va yangilash service ichida bajariladi
+        return ResponseEntity.ok(foodService.updateForManager(id, request, userDetails.getId()));
     }
 
     @DeleteMapping("/foods/{id}")
     public ResponseEntity<MessageResponse> deleteMyFood(
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @PathVariable Long id) {
-        Restaurant restaurant = restaurantRepository.findByOwnerId(userDetails.getId())
-                .orElseThrow(() -> new RuntimeException("Sizga tegishli restoran topilmadi!"));
-        Food food = foodRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Taom topilmadi"));
-        if (!food.getRestaurant().getId().equals(restaurant.getId())) {
-            throw new RuntimeException("Siz faqat o'z restoraningiz taomlarini o'chirishingiz mumkin!");
-        }
-
-        foodService.delete(id);
+        foodService.deleteForManager(id, userDetails.getId());
         return ResponseEntity.ok(MessageResponse.ok("Taom o'chirildi"));
     }
 
@@ -113,15 +109,7 @@ public class ManagerController {
     public ResponseEntity<Food> toggleMyFood(
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @PathVariable Long id) {
-        Restaurant restaurant = restaurantRepository.findByOwnerId(userDetails.getId())
-                .orElseThrow(() -> new RuntimeException("Sizga tegishli restoran topilmadi!"));
-        Food food = foodRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Taom topilmadi"));
-        if (!food.getRestaurant().getId().equals(restaurant.getId())) {
-            throw new RuntimeException("Ruxsat berilmagan!");
-        }
-
-        return ResponseEntity.ok(foodService.toggleAvailability(id));
+        return ResponseEntity.ok(foodService.toggleAvailabilityForManager(id, userDetails.getId()));
     }
 
     @GetMapping("/orders")
@@ -201,5 +189,71 @@ public class ManagerController {
         private String address;
         private Double latitude;
         private Double longitude;
+    }
+
+    // =================== KATEGORIYALAR (MANAGER) ===================
+
+    @GetMapping("/categories")
+    public ResponseEntity<Page<Category>> getMyCategories(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir) {
+        Restaurant restaurant = restaurantRepository.findByOwnerId(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("Sizga tegishli restoran topilmadi!"));
+
+        Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        return ResponseEntity.ok(categoryService.getPaginated(restaurant.getId(), search, pageable));
+    }
+
+    @PostMapping("/categories")
+    public ResponseEntity<Category> createMyCategory(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestBody CategoryRequest request) {
+        Restaurant restaurant = restaurantRepository.findByOwnerId(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("Sizga tegishli restoran topilmadi!"));
+        
+        return ResponseEntity.ok(categoryService.create(request.getName(), request.getImageUrl(), restaurant.getId()));
+    }
+
+    @PutMapping("/categories/{id}")
+    public ResponseEntity<Category> updateMyCategory(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @PathVariable Long id,
+            @RequestBody CategoryRequest request) {
+        Restaurant restaurant = restaurantRepository.findByOwnerId(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("Sizga tegishli restoran topilmadi!"));
+        
+        Category category = categoryService.getById(id);
+        if (category.getRestaurant() == null || !category.getRestaurant().getId().equals(restaurant.getId())) {
+            throw new RuntimeException("Siz faqat o'z restoraningiz kategoriyalarini tahrirlashingiz mumkin!");
+        }
+
+        return ResponseEntity.ok(categoryService.update(id, request.getName(), request.getImageUrl(), restaurant.getId()));
+    }
+
+    @DeleteMapping("/categories/{id}")
+    public ResponseEntity<MessageResponse> deleteMyCategory(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @PathVariable Long id) {
+        Restaurant restaurant = restaurantRepository.findByOwnerId(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("Sizga tegishli restoran topilmadi!"));
+        
+        Category category = categoryService.getById(id);
+        if (category.getRestaurant() == null || !category.getRestaurant().getId().equals(restaurant.getId())) {
+            throw new RuntimeException("Siz faqat o'z restoraningiz kategoriyalarini o'chirishingiz mumkin!");
+        }
+
+        categoryService.delete(id);
+        return ResponseEntity.ok(MessageResponse.ok("Kategoriya o'chirildi"));
+    }
+
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor
+    public static class CategoryRequest {
+        private String name;
+        private String imageUrl;
     }
 }

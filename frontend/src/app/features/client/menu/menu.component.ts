@@ -18,9 +18,11 @@ import { API_BASE } from '../../../core/config';
   imports: [CommonModule, FormsModule, RouterLink, MatProgressSpinnerModule, MatSnackBarModule],
   template: `
     <div class="menu-page animate-in">
-      <div style="margin-bottom: 12px;">
-        <a routerLink="/client/restaurants" class="back-link">⬅️ Restoranlarga qaytish</a>
-      </div>
+      @if (!hideBackButton()) {
+        <div style="margin-bottom: 12px;">
+          <a routerLink="/client/restaurants" class="back-link">⬅️ Restoranlarga qaytish</a>
+        </div>
+      }
 
       <!-- Header -->
       <div class="menu-header">
@@ -365,6 +367,7 @@ export class MenuComponent implements OnInit {
   pendingFood: Food | null = null;
 
   restaurantId!: number;
+  hideBackButton = signal(false);
 
   constructor(
     private foodService: FoodService,
@@ -385,13 +388,22 @@ export class MenuComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Check if we have only 1 active restaurant to hide back button
+    this.orderService.getRestaurants().subscribe({
+      next: (rests) => {
+        if (rests.length === 1) {
+          this.hideBackButton.set(true);
+        }
+      }
+    });
+
     // Load restaurant details
     this.orderService.getRestaurantById(this.restaurantId).subscribe({
       next: (data) => this.restaurant.set(data),
       error: (err) => console.error('Error loading restaurant profile:', err)
     });
 
-    this.foodService.getCategories().subscribe(cats => this.categories.set(cats));
+    this.foodService.getCategories(this.restaurantId).subscribe(cats => this.categories.set(cats));
     this.loadFoods();
   }
 

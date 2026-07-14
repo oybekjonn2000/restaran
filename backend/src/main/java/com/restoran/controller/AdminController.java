@@ -4,6 +4,7 @@ import com.restoran.dto.request.FoodRequest;
 import com.restoran.dto.request.RegisterRequest;
 import com.restoran.dto.response.MessageResponse;
 import com.restoran.entity.*;
+import jakarta.validation.Valid;
 import com.restoran.repository.UserRepository;
 import com.restoran.repository.RestaurantRepository;
 import com.restoran.repository.OrderRepository;
@@ -18,6 +19,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -71,18 +76,31 @@ public class AdminController {
     // =================== TAOMLAR ===================
 
     @GetMapping("/foods")
-    public ResponseEntity<List<Food>> getAllFoods() {
-        return ResponseEntity.ok(foodService.getAll());
+    public ResponseEntity<Page<Food>> getAllFoods(
+            @RequestParam(required = false) Long restaurantId,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir) {
+        
+        Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        return ResponseEntity.ok(foodService.getPaginated(restaurantId, categoryId, search, pageable));
     }
 
     @PostMapping("/foods")
-    public ResponseEntity<Food> createFood(@RequestBody FoodRequest request) {
-        return ResponseEntity.ok(foodService.create(request));
+    public ResponseEntity<Food> createFood(@Valid @RequestBody FoodRequest request) {
+        if (request.getRestaurantId() == null) {
+            throw new RuntimeException("Admin uchun restaurantId majburiy!");
+        }
+        return ResponseEntity.ok(foodService.createForAdmin(request));
     }
 
     @PutMapping("/foods/{id}")
-    public ResponseEntity<Food> updateFood(@PathVariable Long id, @RequestBody FoodRequest request) {
-        return ResponseEntity.ok(foodService.update(id, request));
+    public ResponseEntity<Food> updateFood(@PathVariable Long id, @Valid @RequestBody FoodRequest request) {
+        return ResponseEntity.ok(foodService.updateForAdmin(id, request));
     }
 
     @DeleteMapping("/foods/{id}")
@@ -99,20 +117,29 @@ public class AdminController {
     // =================== KATEGORIYALAR ===================
 
     @GetMapping("/categories")
-    public ResponseEntity<List<Category>> getAllCategories() {
-        return ResponseEntity.ok(categoryService.getAll());
+    public ResponseEntity<Page<Category>> getAllCategories(
+            @RequestParam(required = false) Long restaurantId,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir) {
+        
+        Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        return ResponseEntity.ok(categoryService.getPaginated(restaurantId, search, pageable));
     }
 
     @PostMapping("/categories")
     public ResponseEntity<Category> createCategory(@RequestBody CategoryRequest request) {
-        return ResponseEntity.ok(categoryService.create(request.getName(), request.getImageUrl()));
+        return ResponseEntity.ok(categoryService.create(request.getName(), request.getImageUrl(), request.getRestaurantId()));
     }
 
     @PutMapping("/categories/{id}")
     public ResponseEntity<Category> updateCategory(
             @PathVariable Long id,
             @RequestBody CategoryRequest request) {
-        return ResponseEntity.ok(categoryService.update(id, request.getName(), request.getImageUrl()));
+        return ResponseEntity.ok(categoryService.update(id, request.getName(), request.getImageUrl(), request.getRestaurantId()));
     }
 
     @DeleteMapping("/categories/{id}")
@@ -254,6 +281,14 @@ public class AdminController {
     public ResponseEntity<MessageResponse> deleteRestaurant(@PathVariable Long id) {
         restaurantRepository.deleteById(id);
         return ResponseEntity.ok(MessageResponse.ok("Restoran muvaffaqiyatli o'chirildi"));
+    }
+
+    @PutMapping("/restaurants/{id}/toggle-status")
+    public ResponseEntity<Restaurant> toggleRestaurantStatus(@PathVariable Long id) {
+        Restaurant restaurant = restaurantRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Restoran topilmadi: " + id));
+        restaurant.setActive(!restaurant.isActive());
+        return ResponseEntity.ok(restaurantRepository.save(restaurant));
     }
 
     @GetMapping("/managers")
@@ -445,6 +480,7 @@ public class AdminController {
     static class CategoryRequest {
         private String name;
         private String imageUrl;
+        private Long restaurantId;
     }
 
     // =================== SMENALAR (SLOTS) ===================

@@ -3,11 +3,12 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
 import { CartService } from '../../../core/services/cart.service';
+import { FooterComponent } from './footer.component';
 
 @Component({
   selector: 'app-client-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, FooterComponent],
   template: `
     <div class="client-layout">
       <!-- Navbar -->
@@ -57,6 +58,9 @@ import { CartService } from '../../../core/services/cart.service';
       <main class="main-content">
         <router-outlet />
       </main>
+
+      <!-- Reusable Footer Component -->
+      <app-footer />
 
       <!-- Bottom Nav for Mobile -->
       <div class="bottom-nav">

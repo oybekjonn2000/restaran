@@ -60,13 +60,6 @@ public class RestaurantApplication {
                 System.out.println(">>> Foydalanuvchilar (Admin, Mijoz, Kuryerlar) yaratildi!");
             }
 
-            // ===================== GLOBAL CATEGORIES =====================
-            Category burgers = getOrCreateCategory(categoryRepository, "Burgerlar", "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&q=80");
-            Category pizza = getOrCreateCategory(categoryRepository, "Pizza", "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500&q=80");
-            Category sushi = getOrCreateCategory(categoryRepository, "Sushi", "https://images.unsplash.com/photo-1617196034183-421b4040ed20?w=500&q=80");
-            Category drinks = getOrCreateCategory(categoryRepository, "Ichimliklar", "https://images.unsplash.com/photo-1544145945-f90425340c7e?w=500&q=80");
-            Category desserts = getOrCreateCategory(categoryRepository, "Desertlar", "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=500&q=80");
-
             // ===================== RESTAURANTS SEEDING (10 RESTAURANTS) =====================
             if (restaurantRepository.count() == 0) {
                 String[] names = {
@@ -126,6 +119,13 @@ public class RestaurantApplication {
 
                     System.out.println(">>> Restoran va Manager yaratildi: " + rest.getName() + " -> manager" + index + "@food.uz");
 
+                    // Create restaurant-specific categories
+                    Category burgers = getOrCreateCategory(categoryRepository, rest, "Burgerlar", "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&q=80");
+                    Category pizza = getOrCreateCategory(categoryRepository, rest, "Pizza", "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500&q=80");
+                    Category sushi = getOrCreateCategory(categoryRepository, rest, "Sushi", "https://images.unsplash.com/photo-1617196034183-421b4040ed20?w=500&q=80");
+                    Category drinks = getOrCreateCategory(categoryRepository, rest, "Ichimliklar", "https://images.unsplash.com/photo-1544145945-f90425340c7e?w=500&q=80");
+                    Category desserts = getOrCreateCategory(categoryRepository, rest, "Desertlar", "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=500&q=80");
+
                     // Seed 15 unique foods for this restaurant (3 per category)
                     // Category 1: Burgerlar
                     seedFood(foodRepository, rest, burgers, rest.getName() + " Classic Burger", "Maxsus sous, shirali kotlet va ko'katlar bilan", 32000.0 + (i * 1000), "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&q=80");
@@ -157,10 +157,11 @@ public class RestaurantApplication {
         };
     }
 
-    private Category getOrCreateCategory(CategoryRepository repo, String name, String imageUrl) {
-        return repo.findByName(name).orElseGet(() -> repo.save(Category.builder()
+    private Category getOrCreateCategory(CategoryRepository repo, Restaurant rest, String name, String imageUrl) {
+        return repo.findByRestaurantIdAndName(rest.getId(), name).orElseGet(() -> repo.save(Category.builder()
             .name(name)
             .imageUrl(imageUrl)
+            .restaurant(rest)
             .build()));
     }
 

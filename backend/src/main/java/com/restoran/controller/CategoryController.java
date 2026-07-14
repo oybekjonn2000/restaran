@@ -16,7 +16,10 @@ public class CategoryController {
     private final CategoryService categoryService;
 
     @GetMapping
-    public ResponseEntity<List<Category>> getAll() {
+    public ResponseEntity<List<Category>> getAll(@RequestParam(required = false) Long restaurantId) {
+        if (restaurantId != null) {
+            return ResponseEntity.ok(categoryService.getByRestaurantId(restaurantId));
+        }
         return ResponseEntity.ok(categoryService.getAll());
     }
 

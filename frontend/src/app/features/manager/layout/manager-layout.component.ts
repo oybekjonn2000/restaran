@@ -41,6 +41,11 @@ import { Restaurant } from '../../../core/models/restaurant.model';
             <span class="nav-icon">🍕</span>
             <span>Taomlar Menyu</span>
           </a>
+          <a routerLink="/manager/categories" routerLinkActive="active" (click)="menuOpen.set(false)"
+             class="nav-item" id="manager-nav-categories">
+            <span class="nav-icon">📁</span>
+            <span>Toifalar (Kategoriyalar)</span>
+          </a>
           <a routerLink="/manager/profile" routerLinkActive="active" (click)="menuOpen.set(false)"
              class="nav-item" id="manager-nav-profile">
             <span class="nav-icon">⚙️</span>

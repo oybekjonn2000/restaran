@@ -26,4 +26,7 @@ public class FoodRequest {
 
     @NotNull(message = "Kategoriya tanlanishi shart")
     private Long categoryId;
+
+    // Admin uchun majburiy, Manager uchun null (backend o'zi topadi)
+    private Long restaurantId;
 }

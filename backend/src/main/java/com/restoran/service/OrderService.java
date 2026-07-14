@@ -62,6 +62,9 @@ public class OrderService {
         if (finalRestId != null) {
             restaurant = restaurantRepository.findById(finalRestId)
                 .orElseThrow(() -> new RuntimeException("Restoran topilmadi: " + finalRestId));
+            if (!restaurant.isActive()) {
+                throw new RuntimeException("Restoran faol emas. Buyurtma berib bo'lmaydi!");
+            }
             if (restaurant.getLatitude() != null && restaurant.getLongitude() != null) {
                 restLat = restaurant.getLatitude();
                 restLng = restaurant.getLongitude();

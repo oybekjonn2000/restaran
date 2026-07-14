@@ -38,6 +38,10 @@ export const ADMIN_ROUTES: Routes = [
       {
         path: 'slots',
         loadComponent: () => import('./slots/admin-slots.component').then(m => m.AdminSlotsComponent)
+      },
+      {
+        path: 'categories',
+        loadComponent: () => import('./categories/admin-categories.component').then(m => m.AdminCategoriesComponent)
       }
     ]
   }

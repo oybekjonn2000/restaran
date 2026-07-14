@@ -34,11 +34,25 @@ import { API_BASE } from '../../../core/config';
             <div class="restaurant-admin-card" [id]="'rest-card-' + r.id">
               <img [src]="getFullUrl(r.imageUrl) || fallbackImg" [alt]="r.name" class="rest-cover" (error)="onImgError($event)">
               <div class="rest-details">
-                <h3 class="rest-name">{{ r.name }}</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                  <h3 class="rest-name" style="margin: 0;">{{ r.name }}</h3>
+                  <span class="badge" [class.badge-delivered]="r.isActive" [class.badge-canceled]="!r.isActive" style="padding: 2px 8px; font-size: 0.72rem; border-radius: 6px;">
+                    {{ r.isActive ? '🟢 Active' : '🔴 Inactive' }}
+                  </span>
+                </div>
                 <p class="rest-meta">📍 {{ r.address || 'Manzil kiritilmagan' }}</p>
                 <p class="rest-meta">👤 Menejer: <strong>{{ r.owner?.name || 'Biriktirilmagan' }}</strong> ({{ r.owner?.email || '' }})</p>
                 <p class="rest-meta">🌐 Coords: {{ r.latitude || 38.866 }}, {{ r.longitude || 65.816 }}</p>
                 
+                <!-- Status Toggle Switch -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; margin-bottom: 12px; padding-top: 8px; border-top: 1px dashed var(--border);">
+                  <span style="font-size: 0.825rem; color: var(--text-muted);">Faol holat:</span>
+                  <label class="switch">
+                    <input type="checkbox" [checked]="r.isActive" (change)="toggleStatus(r)">
+                    <span class="slider round"></span>
+                  </label>
+                </div>
+
                 <div class="card-actions">
                   <button class="btn btn-outline btn-sm" (click)="openEditForm(r)">✏️ Tahrirlash</button>
                   <button class="btn btn-outline btn-sm btn-danger-outline" (click)="deleteRestaurant(r.id)">🗑️ O'chirish</button>
@@ -193,6 +207,54 @@ import { API_BASE } from '../../../core/config';
 
     .form-actions { display: flex; gap: 10px; margin-top: 16px; }
     .form-actions .btn { flex: 1; justify-content: center; gap: 8px; }
+
+    /* ===== Switch Style ===== */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 22px;
+    }
+    .switch input { 
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      transition: .3s;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: var(--text-muted);
+      transition: .3s;
+    }
+    input:checked + .slider {
+      background-color: rgba(16,185,129,0.2);
+      border-color: #10b981;
+    }
+    input:checked + .slider:before {
+      transform: translateX(22px);
+      background-color: #10b981;
+    }
+    .slider.round {
+      border-radius: 22px;
+    }
+    .slider.round:before {
+      border-radius: 50%;
+    }
   `]
 })
 export class AdminRestaurantsComponent implements OnInit {
@@ -254,6 +316,31 @@ export class AdminRestaurantsComponent implements OnInit {
     this.orderService.adminGetRestaurants().subscribe({
       next: (data) => { this.restaurants.set(data); this.loading.set(false); },
       error: () => this.loading.set(false)
+    });
+  }
+
+  toggleStatus(rest: Restaurant): void {
+    const previousState = rest.isActive;
+    rest.isActive = !previousState;
+    this.restaurants.set([...this.restaurants()]);
+
+    this.orderService.adminToggleRestaurantStatus(rest.id).subscribe({
+      next: (updatedRest) => {
+        rest.isActive = updatedRest.isActive;
+        this.restaurants.set([...this.restaurants()]);
+        this.snack.open(
+          updatedRest.isActive 
+            ? "✅ Restaurant muvaffaqiyatli faollashtirildi." 
+            : "✅ Restaurant muvaffaqiyatli nofaol qilindi.", 
+          '', 
+          { duration: 2500 }
+        );
+      },
+      error: (err) => {
+        rest.isActive = previousState;
+        this.restaurants.set([...this.restaurants()]);
+        this.snack.open(`❌ Xatolik yuz berdi: ${err.error?.message || 'Bajarilmadi'}`, '', { duration: 3000 });
+      }
     });
   }
 

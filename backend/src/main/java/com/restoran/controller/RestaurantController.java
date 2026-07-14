@@ -5,8 +5,10 @@ import com.restoran.entity.Restaurant;
 import com.restoran.repository.FoodRepository;
 import com.restoran.repository.RestaurantRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -21,13 +23,16 @@ public class RestaurantController {
 
     @GetMapping
     public ResponseEntity<List<Restaurant>> getAllRestaurants() {
-        return ResponseEntity.ok(restaurantRepository.findAll());
+        return ResponseEntity.ok(restaurantRepository.findByIsActiveTrue());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Restaurant> getRestaurantById(@PathVariable Long id) {
         Restaurant restaurant = restaurantRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Restoran topilmadi: " + id));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restoran topilmadi: " + id));
+        if (!restaurant.isActive()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Restoran faol emas!");
+        }
         return ResponseEntity.ok(restaurant);
     }
 
@@ -35,6 +40,11 @@ public class RestaurantController {
     public ResponseEntity<List<Food>> getRestaurantFoods(
             @PathVariable Long id,
             @RequestParam(required = false) Long categoryId) {
+        Restaurant restaurant = restaurantRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restoran topilmadi: " + id));
+        if (!restaurant.isActive()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Restoran faol emas!");
+        }
         if (categoryId != null) {
             return ResponseEntity.ok(foodRepository.findByRestaurantIdAndAvailableTrueAndCategoryId(id, categoryId));
         }

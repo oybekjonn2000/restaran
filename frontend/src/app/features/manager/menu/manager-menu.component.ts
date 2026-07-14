@@ -1,6 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { FoodService } from '../../../core/services/food.service';
@@ -25,10 +25,22 @@ import { API_BASE } from '../../../core/config';
         </button>
       </div>
 
-      <!-- Search -->
-      <div class="search-box" style="margin-bottom: 20px;">
-        <span>🔍</span>
-        <input [(ngModel)]="searchQ" type="text" placeholder="Taom qidiring..." class="search-input" id="admin-food-search">
+      <!-- Filters & Actions -->
+      <div class="filters-bar">
+        <div class="search-box">
+          <span>🔍</span>
+          <input [(ngModel)]="searchQ" (input)="onSearch()" type="text" placeholder="Taom qidiring..." class="search-input" id="manager-food-search">
+        </div>
+
+        <div class="filter-group">
+          <label style="font-size: 0.85rem; color: var(--text-muted);">📁 Kategoriya:</label>
+          <select [(ngModel)]="selectedCategoryId" (change)="onFilterChange()" class="form-control filter-select">
+            <option [value]="null">Barchasi</option>
+            @for (c of categories(); track c.id) {
+              <option [value]="c.id">{{ c.name }}</option>
+            }
+          </select>
+        </div>
       </div>
 
       @if (loading()) {
@@ -38,7 +50,7 @@ import { API_BASE } from '../../../core/config';
       <!-- Foods Grid -->
       @if (!loading()) {
         <div class="foods-grid">
-          @for (food of filteredFoods; track food.id) {
+          @for (food of foods(); track food.id) {
             <div class="food-card-admin" [id]="'admin-food-' + food.id">
               <img [src]="getFullUrl(food.imageUrl) || fallbackImg" [alt]="food.name"
                    class="food-img" (error)="onImgError($event)">
@@ -71,10 +83,47 @@ import { API_BASE } from '../../../core/config';
           }
         </div>
 
-        @if (filteredFoods.length === 0) {
+        @if (foods().length === 0) {
           <div class="empty-state">
             <div class="icon">🍽️</div>
             <h3>Taomlar topilmadi</h3>
+          </div>
+        }
+
+        <!-- Pagination -->
+        @if (totalElements() > 0) {
+          <div class="mat-paginator">
+            <div class="mat-paginator-container">
+              <div class="mat-paginator-range-label">
+                {{ currentPage() * pageSize + 1 }} – {{ Math.min((currentPage() + 1) * pageSize, totalElements()) }} / {{ totalElements() }}
+              </div>
+              <div class="mat-paginator-navigation">
+                <button type="button" class="mat-icon-btn" (click)="goToPage(0)" [disabled]="currentPage() === 0" title="Birinchi sahifa">
+                  &#171;
+                </button>
+                <button type="button" class="mat-icon-btn" (click)="goToPage(currentPage() - 1)" [disabled]="currentPage() === 0" title="Oldingi">
+                  &#8249;
+                </button>
+                @for (p of pageNumbers(); track p) {
+                  <button type="button" class="mat-page-btn" [class.active]="p === currentPage() + 1" (click)="goToPage(p - 1)">{{ p }}</button>
+                }
+                <button type="button" class="mat-icon-btn" (click)="goToPage(currentPage() + 1)" [disabled]="currentPage() >= totalPages() - 1" title="Keyingi">
+                  &#8250;
+                </button>
+                <button type="button" class="mat-icon-btn" (click)="goToPage(totalPages() - 1)" [disabled]="currentPage() >= totalPages() - 1" title="Oxirgi sahifa">
+                  &#187;
+                </button>
+              </div>
+              <div class="mat-paginator-page-size">
+                <span>Sahifada:</span>
+                <select [(ngModel)]="pageSize" (change)="onPageSizeChange()" class="mat-page-select">
+                  <option [value]="10">10</option>
+                  <option [value]="25">25</option>
+                  <option [value]="50">50</option>
+                  <option [value]="100">100</option>
+                </select>
+              </div>
+            </div>
           </div>
         }
       }
@@ -114,6 +163,7 @@ import { API_BASE } from '../../../core/config';
                     </select>
                   </div>
                 </div>
+
                 <div class="form-group">
                   <label class="form-label">Rasm URL</label>
                   <div style="display: flex; gap: 8px;">
@@ -137,7 +187,7 @@ import { API_BASE } from '../../../core/config';
                   <button type="button" class="btn btn-outline" (click)="closeForm()">Bekor qilish</button>
                   <button type="submit" class="btn btn-primary" [disabled]="saving() || foodForm.invalid">
                     @if (saving()) { <mat-spinner diameter="16" color="accent"></mat-spinner> }
-                    {{ editId() ? 'Saqlash' : 'Qoshish' }}
+                    {{ editId() ? 'Saqlash' : 'Qo\'shish' }}
                   </button>
                 </div>
               </form>
@@ -148,29 +198,55 @@ import { API_BASE } from '../../../core/config';
     </div>
   `,
   styles: [`
-    .menu-admin { max-width: 1100px; margin: 0 auto; }
-
+    .menu-admin { max-width: 1100px; }
+    .filters-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 24px;
+      align-items: center;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
     .search-box {
       display: flex;
       align-items: center;
       gap: 8px;
-      background: var(--bg-card);
+      background: var(--bg-card2);
       border: 1px solid var(--border);
       border-radius: 30px;
-      padding: 10px 20px;
-      max-width: 350px;
+      padding: 6px 16px;
+      min-width: 250px;
+      flex: 2;
     }
     .search-input {
       background: none; border: none; outline: none;
       color: var(--text); font-family: 'Poppins', sans-serif; font-size: 0.9rem; width: 100%;
     }
-
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 180px;
+    }
+    .filter-select {
+      width: 100%;
+      height: 38px;
+      padding: 4px 12px;
+    }
+    .limit-select {
+      width: 90px;
+      height: 38px;
+      padding: 4px 8px;
+    }
     .foods-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
       gap: 16px;
     }
-
     .food-card-admin {
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -181,15 +257,12 @@ import { API_BASE } from '../../../core/config';
       flex-direction: column;
     }
     .food-card-admin:hover { border-color: rgba(249,115,22,0.3); }
-
     .food-img {
       width: 100%;
       height: 140px;
       object-fit: cover;
     }
-
     .food-body { padding: 14px; flex: 1; display: flex; flex-direction: column; }
-
     .food-top {
       display: flex;
       justify-content: space-between;
@@ -197,7 +270,6 @@ import { API_BASE } from '../../../core/config';
       flex: 1;
       margin-bottom: 12px;
     }
-
     .cat-tag {
       display: inline-block;
       font-size: 0.7rem;
@@ -206,7 +278,7 @@ import { API_BASE } from '../../../core/config';
       background: rgba(249,115,22,0.1);
       border-radius: 8px;
       padding: 2px 8px;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
     .food-name { font-size: 0.9rem; font-weight: 700; margin-bottom: 4px; }
     .food-desc {
@@ -217,7 +289,6 @@ import { API_BASE } from '../../../core/config';
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
-
     .food-status {
       font-size: 0.72rem;
       font-weight: 600;
@@ -228,16 +299,13 @@ import { API_BASE } from '../../../core/config';
     }
     .food-status.available { background: rgba(16,185,129,0.1); color: #10b981; }
     .food-status.unavailable { background: rgba(239,68,68,0.1); color: #ef4444; }
-
     .food-footer {
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
     .food-price { font-size: 1rem; font-weight: 700; color: var(--primary); }
-
     .food-actions { display: flex; gap: 6px; }
-
     .icon-btn {
       background: var(--bg-card2);
       border: 1px solid var(--border);
@@ -250,6 +318,19 @@ import { API_BASE } from '../../../core/config';
     .icon-btn:hover { transform: scale(1.1); }
     .edit-btn:hover { background: rgba(59,130,246,0.1); border-color: #3b82f6; }
     .del-btn:hover { background: rgba(239,68,68,0.1); border-color: #ef4444; }
+
+    .pagination-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-top: 24px;
+    }
+    .pagination-info { font-size: 0.85rem; color: var(--text-muted); }
+    .pagination-buttons { display: flex; gap: 8px; }
 
     .modal-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.6);
@@ -271,15 +352,9 @@ import { API_BASE } from '../../../core/config';
       border-radius: 8px; padding: 6px 10px; cursor: pointer; transition: var(--transition);
     }
     .close-btn:hover { background: var(--danger); color: white; }
-
     .modal-body { padding: 24px; }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field-error { font-size: 0.75rem; color: #ef4444; margin-top: 4px; display: block; }
     .form-check {
       display: flex;
       align-items: center;
@@ -290,12 +365,7 @@ import { API_BASE } from '../../../core/config';
       cursor: pointer;
     }
     .form-check input { accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer; }
-
-    .form-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 16px;
-    }
+    .form-actions { display: flex; gap: 10px; margin-top: 16px; }
     .form-actions .btn { flex: 1; justify-content: center; gap: 8px; }
   `]
 })
@@ -307,17 +377,20 @@ export class ManagerMenuComponent implements OnInit {
   editId = signal<number | null>(null);
   saving = signal(false);
   uploading = signal(false);
-  searchQ = '';
   fallbackImg = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400';
 
-  foodForm;
+  // Server-side pagination parameters
+  currentPage = signal(0);
+  pageSize = 10;
+  totalElements = signal(0);
+  totalPages = signal(0);
+  Math = Math;
 
-  get filteredFoods(): Food[] {
-    const q = this.searchQ.toLowerCase();
-    return this.foods().filter(f =>
-      !q || f.name.toLowerCase().includes(q) || f.description?.toLowerCase().includes(q)
-    );
-  }
+  // Filters
+  searchQ = '';
+  selectedCategoryId: number | null = null;
+
+  foodForm!: FormGroup;
 
   constructor(
     private fb: FormBuilder,
@@ -325,6 +398,10 @@ export class ManagerMenuComponent implements OnInit {
     private orderService: OrderService,
     private snack: MatSnackBar
   ) {
+    this.initForm();
+  }
+
+  initForm(): void {
     this.foodForm = this.fb.group({
       name:        ['', Validators.required],
       description: [''],
@@ -335,50 +412,87 @@ export class ManagerMenuComponent implements OnInit {
     });
   }
 
-  getFullUrl(url: string | null | undefined): string {
-    if (!url) return '';
-    if (url.startsWith('/uploads')) {
-      return `${API_BASE}${url}`;
-    }
-    return url;
-  }
-
-  onFileUpload(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (!input.files || input.files.length === 0) return;
-
-    const file = input.files[0];
-    this.uploading.set(true);
-
-    this.orderService.uploadImage(file).subscribe({
-      next: (res) => {
-        this.foodForm.patchValue({ imageUrl: res.url });
-        this.uploading.set(false);
-        this.snack.open('✅ Rasm muvaffaqiyatli yuklandi!', '', { duration: 2500 });
-      },
-      error: (err) => {
-        this.uploading.set(false);
-        this.snack.open(`❌ Yuklashda xatolik: ${err.error?.message || 'Amal bajarilmadi'}`, '', { duration: 3000 });
-      }
-    });
-  }
-
   ngOnInit(): void {
+    this.loadRestaurantAndCategories();
     this.load();
-    this.foodService.getCategories().subscribe(cats => this.categories.set(cats));
+  }
+
+  loadRestaurantAndCategories(): void {
+    this.orderService.getManagerRestaurant().subscribe({
+      next: (rest) => {
+        // Load restaurant-specific categories
+        this.foodService.getCategories(rest.id).subscribe({
+          next: (cats) => this.categories.set(cats)
+        });
+      },
+      error: () => this.showToast('❌ Restoran ma\'lumotlarini yuklab bo\'lmadi', true)
+    });
   }
 
   load(): void {
     this.loading.set(true);
-    this.orderService.getManagerFoods().subscribe({
-      next: (foods) => { this.foods.set(foods); this.loading.set(false); },
-      error: () => this.loading.set(false)
+    this.foodService.getFoodsManagerPaginated({
+      categoryId: this.selectedCategoryId || undefined,
+      search: this.searchQ || undefined,
+      page: this.currentPage(),
+      size: this.pageSize
+    }).subscribe({
+      next: (res) => {
+        this.foods.set(res.content);
+        this.totalElements.set(res.totalElements);
+        this.totalPages.set(res.totalPages);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.showToast('❌ Taomlarni yuklab bo\'lmadi', true);
+      }
     });
   }
 
+  onFilterChange(): void {
+    this.currentPage.set(0);
+    this.load();
+  }
+
+  onSearch(): void {
+    this.currentPage.set(0);
+    this.load();
+  }
+
+  pageNumbers(): number[] {
+    const pages: number[] = [];
+    const total = this.totalPages();
+    const cur = this.currentPage() + 1;
+    let start = Math.max(1, cur - 2);
+    let end = Math.min(total, cur + 2);
+    if (end - start < 4) {
+      if (end === total) {
+        start = Math.max(1, end - 4);
+      } else {
+        end = Math.min(total, start + 4);
+      }
+    }
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  }
+
+  goToPage(page: number): void {
+    if (page < 0 || page >= this.totalPages()) return;
+    this.currentPage.set(page);
+    this.load();
+  }
+
+  onPageSizeChange(): void {
+    this.currentPage.set(0);
+    this.load();
+  }
+
+
+
   openAddForm(): void {
     this.editId.set(null);
-    this.foodForm.reset({ available: true });
+    this.foodForm.reset({ available: true, price: 0 });
     this.showForm.set(true);
   }
 
@@ -397,11 +511,33 @@ export class ManagerMenuComponent implements OnInit {
 
   closeForm(): void { this.showForm.set(false); }
 
+  onFileUpload(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    this.uploading.set(true);
+
+    this.orderService.uploadImage(file).subscribe({
+      next: (res) => {
+        this.foodForm.patchValue({ imageUrl: res.url });
+        this.uploading.set(false);
+        this.showToast('✅ Rasm muvaffaqiyatli yuklandi!');
+      },
+      error: (err) => {
+        this.uploading.set(false);
+        this.showToast(`❌ Yuklashda xatolik: ${err.error?.message || 'Amal bajarilmadi'}`, true);
+      }
+    });
+  }
+
   saveFood(): void {
     if (this.foodForm.invalid) { this.foodForm.markAllAsTouched(); return; }
     this.saving.set(true);
 
-    const data = { ...this.foodForm.value, categoryId: +this.foodForm.value.categoryId! };
+    // restaurantId is not sent - backend resolves it automatically
+    const { restaurantId: _ignored, ...formValue } = this.foodForm.value as any;
+    const data = { ...formValue, categoryId: +this.foodForm.value.categoryId! };
     const req$ = this.editId()
       ? this.orderService.updateManagerFood(this.editId()!, data)
       : this.orderService.createManagerFood(data);
@@ -411,14 +547,11 @@ export class ManagerMenuComponent implements OnInit {
         this.saving.set(false);
         this.closeForm();
         this.load();
-        this.snack.open(
-          this.editId() ? '✅ Taom yangilandi!' : '✅ Taom qo\'shildi!',
-          '', { duration: 2500 }
-        );
+        this.showToast(this.editId() ? '✨ Taom muvaffaqiyatli yangilandi.' : '✅ Taom menyuga muvaffaqiyatli qo\'shildi.');
       },
       error: (err) => {
         this.saving.set(false);
-        this.snack.open(`❌ ${err.error?.message || 'Xatolik'}`, '', { duration: 3000 });
+        this.showToast(`❌ ${err.error?.message || 'Amal bajarilmadi'}`, true);
       }
     });
   }
@@ -427,23 +560,36 @@ export class ManagerMenuComponent implements OnInit {
     if (!confirm('Haqiqatan ham o\'chirmoqchimisiz?')) return;
     this.orderService.deleteManagerFood(id).subscribe({
       next: () => {
-        this.foods.update(list => list.filter(f => f.id !== id));
-        this.snack.open('🗑️ Taom o\'chirildi', '', { duration: 2000 });
+        this.load();
+        this.showToast('🗑️ Taom o\'chirildi');
       },
-      error: () => this.snack.open('❌ O\'chirib bo\'lmadi', '', { duration: 2500 })
+      error: () => this.showToast('❌ O\'chirib bo\'lmadi', true)
     });
   }
 
   toggleAvail(food: Food): void {
     this.orderService.toggleManagerFood(food.id).subscribe({
-      next: (updated) => {
-        this.foods.update(list => list.map(f => f.id === food.id ? updated : f));
-        this.snack.open(
-          updated.available ? '✅ Taom ochildi' : '🔒 Taom yopildi',
-          '', { duration: 2000 }
-        );
-      }
+      next: () => {
+        this.load();
+        this.showToast('🔄 Taom holati yangilandi.');
+      },
+      error: () => this.showToast('❌ Holatni o\'zgartirib bo\'lmadi', true)
     });
+  }
+
+  showToast(message: string, isError = false): void {
+    this.snack.open(message, 'Yopish', {
+      duration: isError ? 4000 : 3500,
+      panelClass: isError ? ['custom-error-toast'] : ['custom-success-toast']
+    });
+  }
+
+  getFullUrl(url: string | null | undefined): string {
+    if (!url) return '';
+    if (url.startsWith('/uploads')) {
+      return `${API_BASE}${url}`;
+    }
+    return url;
   }
 
   onImgError(e: Event): void {

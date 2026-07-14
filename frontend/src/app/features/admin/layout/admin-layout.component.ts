@@ -49,6 +49,11 @@ import { AuthService } from '../../../core/services/auth.service';
             <span class="nav-icon">🍕</span>
             <span>Menyu</span>
           </a>
+          <a routerLink="/admin/categories" routerLinkActive="active" (click)="menuOpen.set(false)"
+             class="nav-item" id="admin-nav-categories">
+            <span class="nav-icon">📁</span>
+            <span>Kategoriyalar</span>
+          </a>
           <a routerLink="/admin/couriers" routerLinkActive="active" (click)="menuOpen.set(false)"
              class="nav-item" id="admin-nav-couriers">
             <span class="nav-icon">🏍️</span>

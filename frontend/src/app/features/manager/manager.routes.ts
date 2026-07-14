@@ -18,6 +18,10 @@ export const MANAGER_ROUTES: Routes = [
       {
         path: 'profile',
         loadComponent: () => import('./profile/manager-profile.component').then(m => m.ManagerProfileComponent)
+      },
+      {
+        path: 'categories',
+        loadComponent: () => import('./categories/manager-categories.component').then(m => m.ManagerCategoriesComponent)
       }
     ]
   }
