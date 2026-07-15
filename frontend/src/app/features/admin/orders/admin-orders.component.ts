@@ -6,13 +6,14 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { OrderService } from '../../../core/services/order.service';
 import { Order, ORDER_STATUS_LABELS, OrderStatus } from '../../../core/models/order.model';
 import { User } from '../../../core/models/user.model';
+import { BodyPortalDirective } from '../../../core/directives/body-portal.directive';
 
 const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','COURIER_AT_RESTAURANT','DELIVERING','COURIER_AT_CLIENT','DELIVERED','CANCELED'];
 
 @Component({
   selector: 'app-admin-orders',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatProgressSpinnerModule, MatSnackBarModule],
+  imports: [CommonModule, FormsModule, MatProgressSpinnerModule, MatSnackBarModule, BodyPortalDirective],
   template: `
     <div class="orders-page animate-in">
       <div class="page-header">
@@ -131,7 +132,7 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
 
       <!-- Order detail modal -->
       @if (selectedOrder()) {
-        <div class="modal-overlay" (click)="selectedOrder.set(null)">
+        <div class="modal-overlay" appBodyPortal (click)="selectedOrder.set(null)">
           <div class="modal-card animate-in" (click)="$event.stopPropagation()">
             <div class="modal-header">
               <h2>Buyurtma #{{ selectedOrder()!.id }}</h2>
@@ -169,7 +170,7 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
 
       <!-- Cancel with reason modal -->
       @if (cancelModalOrder()) {
-        <div class="modal-overlay" (click)="closeCancelModal()">
+        <div class="modal-overlay" appBodyPortal (click)="closeCancelModal()">
           <div class="modal-card cancel-modal animate-in" (click)="$event.stopPropagation()">
             <div class="modal-header">
               <h2>🚫 Buyurtma #{{ cancelModalOrder()!.id }} ni bekor qilish</h2>
@@ -352,7 +353,7 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
       inset: 0;
       background: rgba(0,0,0,0.6);
       backdrop-filter: blur(4px);
-      z-index: 300;
+      z-index: 9999;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -365,8 +366,10 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
       border-radius: var(--radius-lg);
       width: 100%;
       max-width: 500px;
-      max-height: 80vh;
-      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+      overflow: hidden;
     }
 
     .cancel-modal { max-width: 520px; }
@@ -393,6 +396,8 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
       gap: 8px;
       font-size: 0.9rem;
       color: var(--text-muted);
+      overflow-y: auto;
+      flex: 1;
     }
     .modal-body strong { color: var(--text); }
 

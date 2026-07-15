@@ -75,7 +75,7 @@ public class TelegramBotService {
     private void sendStartMessage(long chatId) {
         try {
             String text = "👋 *Assalomu alaykum!*\n\n" +
-                          "🍔 *Food Delivery* restoran buyurtma tizimi botiga xush kelibsiz!\n\n" +
+                          "🍔 *Mango Food* restoran buyurtma tizimi botiga xush kelibsiz!\n\n" +
                           "Taomlarni tanlash va buyurtma berish uchun quyidagi tugmani yoki pastdagi *🍽️ Menu* tugmasini bosing.";
 
             String url = "https://api.telegram.org/bot" + botToken + "/sendMessage";

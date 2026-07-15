@@ -18,7 +18,7 @@ import { AuthService } from '../../../core/services/auth.service';
           <span>🍽️</span>
           <span style="font-weight: 800; color: var(--text)">Admin<span style="color: var(--primary)">Panel</span></span>
         </div>
-        <button class="logout-btn-mob" (click)="auth.logout()">🚪</button>
+        <button class="logout-btn-mob" (click)="auth.logout()" style="display: flex; align-items: center; justify-content: center;"><span class="material-icons" style="font-size: 20px; color: #ef4444;">logout</span></button>
       </header>
 
       <!-- Sidebar (Drawer on mobile, stationary on desktop) -->
@@ -84,8 +84,8 @@ import { AuthService } from '../../../core/services/auth.service';
               <p class="user-role">{{ auth.user()?.role }}</p>
             </div>
           </div>
-          <button class="logout-btn" (click)="auth.logout()" id="admin-logout">
-            🚪
+          <button class="logout-btn" (click)="auth.logout()" id="admin-logout" style="display: flex; align-items: center; justify-content: center; padding: 8px;">
+            <span class="material-icons" style="font-size: 20px; color: #ef4444;">logout</span>
           </button>
         </div>
       </aside>

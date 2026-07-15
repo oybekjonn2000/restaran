@@ -131,17 +131,31 @@ public class FoodService {
 
     // =================== MANAGER: CREATE ===================
 
+    private Restaurant findActiveRestaurantFromList(List<Restaurant> restaurants, Long restaurantId) {
+        if (restaurants.isEmpty()) {
+            throw new RuntimeException("Sizga tegishli restoran topilmadi!");
+        }
+        if (restaurantId != null) {
+            for (Restaurant r : restaurants) {
+                if (r.getId().equals(restaurantId)) {
+                    return r;
+                }
+            }
+            throw new RuntimeException("Ruxsat etilmagan restoran!");
+        }
+        return restaurants.get(0);
+    }
+
     /**
      * Manager yangi taom qo'shadi.
-     * Restaurant managerId orqali avtomatik aniqlanadi.
-     * Frontend restaurantId yubormasin — backend o'zi qo'yadi.
+     * Restaurant managerId va restaurantId orqali aniqlanadi.
      */
-    public Food createForManager(FoodRequest request, Long managerId) {
+    public Food createForManager(FoodRequest request, Long managerId, Long restaurantId) {
         Category category = findCategory(request.getCategoryId());
-        Restaurant restaurant = restaurantRepository.findByOwnerId(managerId)
-            .orElseThrow(() -> new RuntimeException("Sizga tegishli restoran topilmadi!"));
+        List<Restaurant> restaurants = restaurantRepository.findByOwnerId(managerId);
+        Restaurant restaurant = findActiveRestaurantFromList(restaurants, restaurantId);
 
-        // Validate Category matches Restaurant (Manager cannot post category of another restaurant)
+        // Validate Category matches Restaurant
         if (category.getRestaurant() == null || !category.getRestaurant().getId().equals(restaurant.getId())) {
             throw new RuntimeException("Tanlangan kategoriya sizning restoraningizga tegishli emas!");
         }
@@ -163,11 +177,10 @@ public class FoodService {
 
     /**
      * Manager o'z restoraniga tegishli taomni yangilaydi.
-     * Ownership tekshiriladi — boshqa restoran taomini o'zgartira olmaydi.
      */
-    public Food updateForManager(Long id, FoodRequest request, Long managerId) {
-        Restaurant restaurant = restaurantRepository.findByOwnerId(managerId)
-            .orElseThrow(() -> new RuntimeException("Sizga tegishli restoran topilmadi!"));
+    public Food updateForManager(Long id, FoodRequest request, Long managerId, Long restaurantId) {
+        List<Restaurant> restaurants = restaurantRepository.findByOwnerId(managerId);
+        Restaurant restaurant = findActiveRestaurantFromList(restaurants, restaurantId);
 
         Food food = getById(id);
 
@@ -189,7 +202,6 @@ public class FoodService {
         food.setImageUrl(request.getImageUrl());
         food.setAvailable(request.getAvailable() != null ? request.getAvailable() : food.getAvailable());
         food.setCategory(category);
-        // Restaurant remains unchanged
 
         return foodRepository.save(food);
     }
@@ -200,9 +212,9 @@ public class FoodService {
         foodRepository.deleteById(id);
     }
 
-    public void deleteForManager(Long id, Long managerId) {
-        Restaurant restaurant = restaurantRepository.findByOwnerId(managerId)
-            .orElseThrow(() -> new RuntimeException("Sizga tegishli restoran topilmadi!"));
+    public void deleteForManager(Long id, Long managerId, Long restaurantId) {
+        List<Restaurant> restaurants = restaurantRepository.findByOwnerId(managerId);
+        Restaurant restaurant = findActiveRestaurantFromList(restaurants, restaurantId);
         Food food = getById(id);
         if (food.getRestaurant() == null || !food.getRestaurant().getId().equals(restaurant.getId())) {
             throw new RuntimeException("Siz faqat o'z restoraningiz taomlarini o'chirishingiz mumkin!");
@@ -216,9 +228,9 @@ public class FoodService {
         return foodRepository.save(food);
     }
 
-    public Food toggleAvailabilityForManager(Long id, Long managerId) {
-        Restaurant restaurant = restaurantRepository.findByOwnerId(managerId)
-            .orElseThrow(() -> new RuntimeException("Sizga tegishli restoran topilmadi!"));
+    public Food toggleAvailabilityForManager(Long id, Long managerId, Long restaurantId) {
+        List<Restaurant> restaurants = restaurantRepository.findByOwnerId(managerId);
+        Restaurant restaurant = findActiveRestaurantFromList(restaurants, restaurantId);
         Food food = getById(id);
         if (food.getRestaurant() == null || !food.getRestaurant().getId().equals(restaurant.getId())) {
             throw new RuntimeException("Siz faqat o'z restoraningiz taomlarini tahrirlashingiz mumkin!");

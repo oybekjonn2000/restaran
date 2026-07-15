@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
 import { CartService } from '../../../core/services/cart.service';
@@ -15,7 +15,7 @@ import { FooterComponent } from './footer.component';
       <nav class="navbar">
         <div class="nav-brand">
           <span class="logo">🍽️</span>
-          <span class="brand-name">Food<span class="accent">Delivery</span></span>
+          <span class="brand-name">Mango<span class="accent">Food</span></span>
         </div>
 
         <div class="nav-links">
@@ -43,8 +43,8 @@ import { FooterComponent } from './footer.component';
                 <span class="user-name">{{ (auth.user()?.name ?? '') | slice:0:10 }}</span>
               </div>
             </a>
-            <button class="logout-btn" (click)="auth.logout()" title="Chiqish" id="logout-btn">
-              🚪
+            <button class="logout-btn" (click)="auth.logout()" title="Chiqish" id="logout-btn" style="display: flex; align-items: center; justify-content: center; padding: 8px;">
+              <span class="material-icons" style="font-size: 20px; color: #ef4444;">logout</span>
             </button>
           } @else {
             <a routerLink="/auth/login" class="nav-link active" style="padding: 8px 16px; border-radius: 20px; text-decoration: none;" id="nav-login-btn">
@@ -60,7 +60,9 @@ import { FooterComponent } from './footer.component';
       </main>
 
       <!-- Reusable Footer Component -->
-      <app-footer />
+      @if (!isFooterHidden) {
+        <app-footer />
+      }
 
       <!-- Bottom Nav for Mobile -->
       <div class="bottom-nav">
@@ -315,5 +317,10 @@ export class ClientLayoutComponent {
     return (this.auth.user()?.name?.[0] ?? 'U').toUpperCase();
   }
 
-  constructor(public auth: AuthService, public cart: CartService) {}
+  get isFooterHidden(): boolean {
+    const url = this.router.url;
+    return url.startsWith('/client/cart') || url.startsWith('/client/orders') || url.startsWith('/client/profile');
+  }
+
+  constructor(public auth: AuthService, public cart: CartService, private router: Router) {}
 }

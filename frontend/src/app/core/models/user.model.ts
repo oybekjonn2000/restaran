@@ -34,6 +34,7 @@ export interface RegisterRequest {
   phone?: string;
   address?: string;
   role?: string;
+  restaurantIds?: number[];
 }
 
 export interface CourierStats {
@@ -63,5 +64,6 @@ export interface ManagerStats {
   phone?: string;
   restaurantName: string;
   restaurantId?: number;
+  restaurantIds?: number[];
   restaurantOrdersCount: number;
 }

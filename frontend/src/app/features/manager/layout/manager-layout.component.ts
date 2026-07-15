@@ -1,6 +1,7 @@
 import { Component, signal, OnInit } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/services/auth.service';
 import { OrderService } from '../../../core/services/order.service';
 import { Restaurant } from '../../../core/models/restaurant.model';
@@ -8,7 +9,7 @@ import { Restaurant } from '../../../core/models/restaurant.model';
 @Component({
   selector: 'app-manager-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, FormsModule],
   template: `
     <div class="manager-layout">
       <!-- Mobile header -->
@@ -17,18 +18,37 @@ import { Restaurant } from '../../../core/models/restaurant.model';
           {{ menuOpen() ? '✕' : '☰' }}
         </button>
         <div class="mobile-logo">
-          <span>🏪</span>
-          <span style="font-weight: 800; color: var(--text)">{{ restaurant()?.name || 'Menejer' }}</span>
+          @if (myRestaurants().length > 1) {
+            <select [ngModel]="selectedRestaurantId()" (ngModelChange)="onRestaurantChange($event)" class="restaurant-select-mob">
+              @for (r of myRestaurants(); track r.id) {
+                <option [value]="r.id">{{ r.name }}</option>
+              }
+            </select>
+          } @else {
+            <span>🏪</span>
+            <span style="font-weight: 800; color: var(--text)">{{ restaurant()?.name || 'Menejer' }}</span>
+          }
         </div>
-        <button class="logout-btn-mob" (click)="auth.logout()">🚪</button>
+        <button class="logout-btn-mob" (click)="auth.logout()" style="display: flex; align-items: center; justify-content: center;"><span class="material-icons" style="font-size: 20px; color: #ef4444;">logout</span></button>
       </header>
 
       <!-- Sidebar (Drawer on mobile, stationary on desktop) -->
       <aside class="sidebar" [class.open]="menuOpen()">
         <div class="sidebar-logo">
           <span>🏪</span>
-          <span class="logo-text">{{ restaurant()?.name || 'Restoran' }}</span>
+          <span class="logo-text">Menejerlik</span>
         </div>
+
+        @if (myRestaurants().length > 1) {
+          <div class="restaurant-selector-container">
+            <label class="selector-lbl">Faol Restoran:</label>
+            <select [ngModel]="selectedRestaurantId()" (ngModelChange)="onRestaurantChange($event)" class="restaurant-select">
+              @for (r of myRestaurants(); track r.id) {
+                <option [value]="r.id">{{ r.name }}</option>
+              }
+            </select>
+          </div>
+        }
 
         <nav class="sidebar-nav">
           <a routerLink="/manager/dashboard" routerLinkActive="active" (click)="menuOpen.set(false)"
@@ -61,8 +81,8 @@ import { Restaurant } from '../../../core/models/restaurant.model';
               <p class="user-role">Menejer</p>
             </div>
           </div>
-          <button class="logout-btn" (click)="auth.logout()" id="manager-logout">
-            🚪
+          <button class="logout-btn" (click)="auth.logout()" id="manager-logout" style="display: flex; align-items: center; justify-content: center; padding: 8px;">
+            <span class="material-icons" style="font-size: 20px; color: #ef4444;">logout</span>
           </button>
         </div>
       </aside>
@@ -142,6 +162,51 @@ import { Restaurant } from '../../../core/models/restaurant.model';
       margin-bottom: 16px;
     }
     .logo-text { font-size: 1rem; font-weight: 800; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+
+    .restaurant-selector-container {
+      padding: 0 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .selector-lbl {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .restaurant-select {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 10px;
+      outline: none;
+      font-family: inherit;
+      font-size: 0.85rem;
+      cursor: pointer;
+      width: 100%;
+      transition: var(--transition);
+    }
+    .restaurant-select:focus {
+      border-color: var(--primary);
+    }
+
+    .restaurant-select-mob {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 8px;
+      outline: none;
+      font-family: inherit;
+      font-size: 0.85rem;
+      cursor: pointer;
+      max-width: 180px;
+    }
 
     .sidebar-nav {
       display: flex;
@@ -259,13 +324,45 @@ import { Restaurant } from '../../../core/models/restaurant.model';
 export class ManagerLayoutComponent implements OnInit {
   menuOpen = signal(false);
   restaurant = signal<Restaurant | null>(null);
+  myRestaurants = signal<Restaurant[]>([]);
+  selectedRestaurantId = signal<number | null>(null);
 
   constructor(public auth: AuthService, private orderService: OrderService) {}
 
   ngOnInit(): void {
-    this.orderService.getManagerRestaurant().subscribe({
-      next: (data) => this.restaurant.set(data),
-      error: () => console.warn('Could not fetch restaurant profile for manager layout')
+    this.loadRestaurants();
+  }
+
+  loadRestaurants(): void {
+    this.orderService.getManagerRestaurants().subscribe({
+      next: (data) => {
+        this.myRestaurants.set(data);
+        if (data.length > 0) {
+          const storedId = localStorage.getItem('manager_active_restaurant_id');
+          const found = data.find(r => r.id.toString() === storedId);
+          if (found) {
+            this.selectedRestaurantId.set(found.id);
+            this.restaurant.set(found);
+          } else {
+            this.selectedRestaurantId.set(data[0].id);
+            this.restaurant.set(data[0]);
+            localStorage.setItem('manager_active_restaurant_id', data[0].id.toString());
+          }
+        }
+      },
+      error: () => console.warn('Could not fetch restaurants list for manager')
     });
+  }
+
+  onRestaurantChange(id: any): void {
+    const numId = Number(id);
+    localStorage.setItem('manager_active_restaurant_id', numId.toString());
+    this.selectedRestaurantId.set(numId);
+    const found = this.myRestaurants().find(r => r.id === numId);
+    if (found) {
+      this.restaurant.set(found);
+    }
+    // Reload page to refresh all active subcomponents' data
+    window.location.reload();
   }
 }

@@ -98,6 +98,33 @@ export class AuthService {
 
   private loadUser(): AuthResponse | null {
     const data = localStorage.getItem(USER_KEY);
-    return data ? JSON.parse(data) : null;
+    if (!data) return null;
+
+    const user: AuthResponse = JSON.parse(data);
+
+    // Token'ning amal muddatini tekshirish
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      localStorage.removeItem(USER_KEY);
+      return null;
+    }
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const exp = payload.exp * 1000; // milliseconds
+      if (Date.now() >= exp) {
+        // Token muddati tugagan — session tozalash
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+        return null;
+      }
+    } catch (e) {
+      // Token formati noto'g'ri — session tozalash
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
+      return null;
+    }
+
+    return user;
   }
 }

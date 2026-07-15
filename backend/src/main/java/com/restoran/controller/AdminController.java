@@ -186,7 +186,18 @@ public class AdminController {
             .role(role)
             .build();
 
-        return ResponseEntity.ok(userRepository.save(user));
+        User savedUser = userRepository.save(user);
+
+        if (role == Role.MANAGER && request.getRestaurantIds() != null) {
+            for (Long restId : request.getRestaurantIds()) {
+                Restaurant rest = restaurantRepository.findById(restId)
+                    .orElseThrow(() -> new RuntimeException("Restoran topilmadi: " + restId));
+                rest.setOwner(savedUser);
+                restaurantRepository.save(rest);
+            }
+        }
+
+        return ResponseEntity.ok(savedUser);
     }
 
     @GetMapping("/couriers/stats")
@@ -295,10 +306,17 @@ public class AdminController {
     public ResponseEntity<List<ManagerStatsResponse>> getManagers() {
         List<User> managers = userRepository.findByRole(Role.MANAGER);
         List<ManagerStatsResponse> response = managers.stream().map(m -> {
-            Restaurant rest = restaurantRepository.findByOwnerId(m.getId()).orElse(null);
-            String restName = rest != null ? rest.getName() : "Biriktirilmagan";
-            Long restId = rest != null ? rest.getId() : null;
-            long ordersCount = rest != null ? orderRepository.findByRestaurantIdOrderByCreatedAtDesc(rest.getId()).size() : 0;
+            List<Restaurant> rests = restaurantRepository.findByOwnerId(m.getId());
+            String restName = rests.stream()
+                .map(Restaurant::getName)
+                .collect(java.util.stream.Collectors.joining(", "));
+            if (restName.isEmpty()) restName = "Biriktirilmagan";
+            List<Long> restIds = rests.stream().map(Restaurant::getId).toList();
+            
+            long ordersCount = 0;
+            for (Restaurant r : rests) {
+                ordersCount += orderRepository.findByRestaurantIdOrderByCreatedAtDesc(r.getId()).size();
+            }
 
             return ManagerStatsResponse.builder()
                 .id(m.getId())
@@ -306,7 +324,7 @@ public class AdminController {
                 .email(m.getEmail())
                 .phone(m.getPhone())
                 .restaurantName(restName)
-                .restaurantId(restId)
+                .restaurantIds(restIds)
                 .restaurantOrdersCount(ordersCount)
                 .build();
         }).toList();
@@ -332,7 +350,26 @@ public class AdminController {
             manager.setEmail(request.getEmail());
         }
 
-        return ResponseEntity.ok(userRepository.save(manager));
+        User saved = userRepository.save(manager);
+
+        // Clear old restaurant assignments for this manager
+        List<Restaurant> oldRests = restaurantRepository.findByOwnerId(id);
+        for (Restaurant r : oldRests) {
+            r.setOwner(null);
+            restaurantRepository.save(r);
+        }
+
+        // Assign new restaurants
+        if (request.getRestaurantIds() != null) {
+            for (Long restId : request.getRestaurantIds()) {
+                Restaurant r = restaurantRepository.findById(restId)
+                    .orElseThrow(() -> new RuntimeException("Restoran topilmadi: " + restId));
+                r.setOwner(saved);
+                restaurantRepository.save(r);
+            }
+        }
+
+        return ResponseEntity.ok(saved);
     }
 
     @DeleteMapping("/managers/{id}")
@@ -343,8 +380,8 @@ public class AdminController {
             throw new RuntimeException("Foydalanuvchi menejer emas!");
         }
 
-        Restaurant rest = restaurantRepository.findByOwner(manager).orElse(null);
-        if (rest != null) {
+        List<Restaurant> rests = restaurantRepository.findByOwnerId(id);
+        for (Restaurant rest : rests) {
             rest.setOwner(null);
             restaurantRepository.save(rest);
         }
@@ -463,6 +500,7 @@ public class AdminController {
         private String name;
         private String email;
         private String phone;
+        private List<Long> restaurantIds;
     }
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -472,7 +510,7 @@ public class AdminController {
         private String email;
         private String phone;
         private String restaurantName;
-        private Long restaurantId;
+        private List<Long> restaurantIds;
         private long restaurantOrdersCount;
     }
 

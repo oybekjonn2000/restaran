@@ -235,6 +235,13 @@ public class SlotService {
         User courier = userRepository.findById(courierId)
             .orElseThrow(() -> new RuntimeException("Kuryer topilmadi: " + courierId));
 
+        // Smenani o'tmishda emasligini tekshirish
+        ZoneId zone = ZoneId.of("Asia/Tashkent");
+        LocalDateTime now = ZonedDateTime.now(zone).toLocalDateTime();
+        if (slot.getStartDateTime().isBefore(now)) {
+            throw new RuntimeException("O'tib ketgan smenani band qilib bo'lmaydi!");
+        }
+
         // Allaqachon bekor qilinganmi?
         if (slot.isCancelled()) {
             throw new RuntimeException("Bu smena bekor qilingan!");

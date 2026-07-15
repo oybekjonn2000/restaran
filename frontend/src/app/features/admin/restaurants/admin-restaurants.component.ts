@@ -7,11 +7,12 @@ import { OrderService } from '../../../core/services/order.service';
 import { Restaurant } from '../../../core/models/restaurant.model';
 import { User } from '../../../core/models/user.model';
 import { API_BASE } from '../../../core/config';
+import { BodyPortalDirective } from '../../../core/directives/body-portal.directive';
 
 @Component({
   selector: 'app-admin-restaurants',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatProgressSpinnerModule, MatSnackBarModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatProgressSpinnerModule, MatSnackBarModule, BodyPortalDirective],
   template: `
     <div class="restaurants-admin animate-in">
       <div class="page-header">
@@ -72,7 +73,7 @@ import { API_BASE } from '../../../core/config';
 
       <!-- Restaurant Form Modal -->
       @if (showForm()) {
-        <div class="modal-overlay" (click)="closeForm()">
+        <div class="modal-overlay" appBodyPortal (click)="closeForm()">
           <div class="modal-card animate-in" (click)="$event.stopPropagation()">
             <div class="modal-header">
               <h2>{{ editId() ? '✏️ Restoranni tahrirlash' : '+ Yangi Restoran' }}</h2>
@@ -177,12 +178,13 @@ import { API_BASE } from '../../../core/config';
 
     .modal-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(4px); z-index: 300;
+      backdrop-filter: blur(4px); z-index: 9999;
       display: flex; align-items: center; justify-content: center; padding: 20px;
     }
     .modal-card {
       background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto;
+      border-radius: var(--radius-lg); width: 100%; max-width: 580px;
+      display: flex; flex-direction: column; max-height: 90vh; overflow: hidden;
     }
     .modal-header {
       display: flex; align-items: center; justify-content: space-between;
@@ -195,7 +197,7 @@ import { API_BASE } from '../../../core/config';
     }
     .close-btn:hover { background: var(--danger); color: white; }
 
-    .modal-body { padding: 20px; }
+    .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
 
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 

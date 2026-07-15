@@ -27,4 +27,6 @@ public class RegisterRequest {
 
     // CLIENT, COURIER, ADMIN, MANAGER
     private String role;
+
+    private java.util.List<Long> restaurantIds;
 }

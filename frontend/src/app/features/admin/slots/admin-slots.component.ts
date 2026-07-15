@@ -6,11 +6,12 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { OrderService } from '../../../core/services/order.service';
 import { Slot, SlotRequest } from '../../../core/models/slot.model';
 import { User } from '../../../core/models/user.model';
+import { BodyPortalDirective } from '../../../core/directives/body-portal.directive';
 
 @Component({
   selector: 'app-admin-slots',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatSnackBarModule, MatProgressSpinnerModule],
+  imports: [CommonModule, FormsModule, MatSnackBarModule, MatProgressSpinnerModule, BodyPortalDirective],
   template: `
     <div class="slots-page animate-in">
       <!-- Header -->
@@ -157,7 +158,7 @@ import { User } from '../../../core/models/user.model';
 
     <!-- Create/Edit Modal -->
     @if (showModal()) {
-      <div class="modal-overlay" (click)="closeModal()">
+      <div class="modal-overlay" appBodyPortal (click)="closeModal()">
         <div class="modal-box" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <h2>{{ editingSlot ? '✏️ Smenani tahrirlash' : '➕ Yangi smena yaratish' }}</h2>
@@ -174,11 +175,11 @@ import { User } from '../../../core/models/user.model';
             <div class="form-row">
               <div class="form-group">
                 <label>Boshlanish sanasi *</label>
-                <input type="date" [(ngModel)]="form.date" class="form-input" id="slot-date-input" />
+                <input type="date" [(ngModel)]="form.date" [min]="todayStr()" class="form-input" id="slot-date-input" />
               </div>
               <div class="form-group">
                 <label>Tugash sanasi *</label>
-                <input type="date" [(ngModel)]="form.endDate" class="form-input" id="slot-end-date-input" />
+                <input type="date" [(ngModel)]="form.endDate" [min]="form.date || todayStr()" class="form-input" id="slot-end-date-input" />
               </div>
             </div>
 
@@ -218,7 +219,7 @@ import { User } from '../../../core/models/user.model';
 
     <!-- Delete Confirm Modal -->
     @if (showDeleteModal()) {
-      <div class="modal-overlay" (click)="showDeleteModal.set(false)">
+      <div class="modal-overlay" appBodyPortal (click)="showDeleteModal.set(false)">
         <div class="modal-box small" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <h2>🗑️ Smenani o'chirish</h2>
@@ -241,7 +242,7 @@ import { User } from '../../../core/models/user.model';
 
     <!-- Reverse Penalty Confirm Modal -->
     @if (showReverseModal()) {
-      <div class="modal-overlay" (click)="showReverseModal.set(false)">
+      <div class="modal-overlay" appBodyPortal (click)="showReverseModal.set(false)">
         <div class="modal-box small" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <h2>↩️ Jarimani bekor qilish</h2>
@@ -275,7 +276,7 @@ import { User } from '../../../core/models/user.model';
 
     <!-- Force End Slot Modal -->
     @if (showForceEndModal()) {
-      <div class="modal-overlay" (click)="showForceEndModal.set(false)">
+      <div class="modal-overlay" appBodyPortal (click)="showForceEndModal.set(false)">
         <div class="modal-box small" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <h2>🛑 Smenani majburiy tugatish</h2>
@@ -471,7 +472,7 @@ import { User } from '../../../core/models/user.model';
     /* Modal */
     .modal-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-      backdrop-filter: blur(8px); z-index: 1000;
+      backdrop-filter: blur(8px); z-index: 9999;
       display: flex; align-items: center; justify-content: center; padding: 20px;
       animation: fadeIn 0.2s ease;
     }
@@ -480,6 +481,7 @@ import { User } from '../../../core/models/user.model';
       border-radius: var(--radius-lg); width: 100%; max-width: 520px;
       box-shadow: 0 25px 60px rgba(0,0,0,0.5);
       animation: slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      display: flex; flex-direction: column; max-height: 90vh; overflow: hidden;
     }
     .modal-box.small { max-width: 400px; }
     .modal-header {
@@ -493,7 +495,7 @@ import { User } from '../../../core/models/user.model';
       border-radius: 6px; transition: var(--transition);
     }
     .close-btn:hover { color: var(--text); background: var(--bg-card2); }
-    .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+    .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; flex: 1; }
     .modal-footer {
       padding: 16px 24px; border-top: 1px solid var(--border);
       display: flex; justify-content: flex-end; gap: 12px;
@@ -584,10 +586,15 @@ export class AdminSlotsComponent implements OnInit {
     });
   }
 
+  todayStr(): string {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }
+
   openCreate(): void {
     this.editingSlot = null;
     const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const today = this.todayStr();
     // Hozirgi vaqtdan keyingi soatni taklif qilamiz
     const nextHour = new Date(now.getTime() + 60 * 60 * 1000);
     const startH = String(nextHour.getHours()).padStart(2, '0');
@@ -617,6 +624,14 @@ export class AdminSlotsComponent implements OnInit {
   }
 
   saveSlot(): void {
+    const today = this.todayStr();
+    if (!this.form.date) {
+      this.form.date = today;
+    }
+    if (!this.form.endDate) {
+      this.form.endDate = this.form.date;
+    }
+
     if (!this.form.name || !this.form.date || !this.form.endDate || !this.form.startTime || !this.form.endTime) {
       this.snack.open('❌ Barcha majburiy maydonlarni to\'ldiring!', '', { duration: 3000 });
       return;

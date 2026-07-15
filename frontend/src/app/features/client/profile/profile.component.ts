@@ -29,7 +29,11 @@ interface MenuItem {
           <div class="menu-item" (click)="item.action()">
             <div class="menu-item-left">
               <div class="menu-icon-wrapper" [ngClass]="item.colorClass">
-                <span class="menu-icon">{{ item.icon }}</span>
+                @if (item.icon === 'logout') {
+                  <span class="material-icons" style="font-size: 20px; color: #f87171;">logout</span>
+                } @else {
+                  <span class="menu-icon">{{ item.icon }}</span>
+                }
               </div>
               <span class="menu-text">{{ item.label }}</span>
             </div>
@@ -373,7 +377,7 @@ export class ClientProfileComponent implements OnInit {
         colorClass: 'violet',
         action: () => this.showInfo(
           'Maxfiylik siyosati',
-          "Maxfiylik siyosati: Shaxsiy ma'lumotlaringiz xavfsizligi FoodDelivery tomonidan kafolatlanadi."
+          "Maxfiylik siyosati: Shaxsiy ma'lumotlaringiz xavfsizligi Mango Food tomonidan kafolatlanadi."
         )
       },
       {
@@ -382,11 +386,11 @@ export class ClientProfileComponent implements OnInit {
         colorClass: 'indigo',
         action: () => this.showInfo(
           'Foydalanuvchi shartnomasi',
-          'Foydalanuvchi shartnomasi: FoodDelivery xizmatlaridan foydalangan holda, siz shartlarimizga rozilik bildirasiz.'
+          'Foydalanuvchi shartnomasi: Mango Food xizmatlaridan foydalangan holda, siz shartlarimizga rozilik bildirasiz.'
         )
       },
       {
-        icon: '🚪',
+        icon: 'logout',
         label: 'Chiqish',
         colorClass: 'red',
         action: () => this.logout()
@@ -406,7 +410,7 @@ export class ClientProfileComponent implements OnInit {
 
   logout(): void {
     this.auth.logout();
-    this.snack.open('🚪 Tizimdan chiqildi!', '', { duration: 3000 });
+    this.snack.open('Tizimdan chiqildi!', '', { duration: 3000 });
   }
 }
 

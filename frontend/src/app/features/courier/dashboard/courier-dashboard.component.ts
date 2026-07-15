@@ -369,42 +369,70 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
             <div class="earnings-amount">{{ totalEarnings | number:'1.0-0' }} <span class="currency">so'm</span></div>
           </div>
 
-          <!-- Menu items -->
-          <div class="profil-menu">
-            <div class="profil-menu-item" (click)="openEarningsModal()" style="cursor: pointer;">
-              <div class="profil-menu-icon">📊</div>
-              <span>Daromad</span>
-              <span class="profil-chevron">›</span>
+          <!-- Menu items (Styled to match Client Profile) -->
+          <div class="profile-menu-list">
+            <div class="menu-item" (click)="openEarningsModal()">
+              <div class="menu-item-left">
+                <div class="menu-icon-wrapper blue">
+                  <span class="menu-icon">📊</span>
+                </div>
+                <span class="menu-text">Daromad</span>
+              </div>
+              <span class="chevron">&rsaquo;</span>
             </div>
-            <div class="profil-menu-item">
-              <div class="profil-menu-icon">💳</div>
-              <span>Balans</span>
-              <span class="profil-chevron">›</span>
+            <div class="menu-item">
+              <div class="menu-item-left">
+                <div class="menu-icon-wrapper purple">
+                  <span class="menu-icon">💳</span>
+                </div>
+                <span class="menu-text">Balans</span>
+              </div>
+              <span class="chevron">&rsaquo;</span>
             </div>
-            <div class="profil-menu-item">
-              <div class="profil-menu-icon">🛵</div>
-              <span>Transport ijarasi</span>
-              <span class="profil-chevron">›</span>
+            <div class="menu-item">
+              <div class="menu-item-left">
+                <div class="menu-icon-wrapper pink">
+                  <span class="menu-icon">🛵</span>
+                </div>
+                <span class="menu-text">Transport ijarasi</span>
+              </div>
+              <span class="chevron">&rsaquo;</span>
             </div>
-            <div class="profil-menu-item">
-              <div class="profil-menu-icon">💬</div>
-              <span>Qo'llab-quvvatlash</span>
-              <span class="profil-chevron">›</span>
+            <div class="menu-item">
+              <div class="menu-item-left">
+                <div class="menu-icon-wrapper violet">
+                  <span class="menu-icon">💬</span>
+                </div>
+                <span class="menu-text">Qo'llab-quvvatlash</span>
+              </div>
+              <span class="chevron">&rsaquo;</span>
             </div>
-            <div class="profil-menu-item">
-              <div class="profil-menu-icon">❓</div>
-              <span>Ko'p beriladigan savollar</span>
-              <span class="profil-chevron">›</span>
+            <div class="menu-item">
+              <div class="menu-item-left">
+                <div class="menu-icon-wrapper indigo">
+                  <span class="menu-icon">❓</span>
+                </div>
+                <span class="menu-text">Ko'p beriladigan savollar</span>
+              </div>
+              <span class="chevron">&rsaquo;</span>
             </div>
-            <div class="profil-menu-item">
-              <div class="profil-menu-icon">🎓</div>
-              <span>Bilimlar bazasi</span>
-              <span class="profil-chevron">›</span>
+            <div class="menu-item">
+              <div class="menu-item-left">
+                <div class="menu-icon-wrapper blue">
+                  <span class="menu-icon">🎓</span>
+                </div>
+                <span class="menu-text">Bilimlar bazasi</span>
+              </div>
+              <span class="chevron">&rsaquo;</span>
             </div>
-            <div class="profil-menu-item" (click)="auth.logout()">
-              <div class="profil-menu-icon">🚪</div>
-              <span style="color: #ef4444">Chiqish</span>
-              <span class="profil-chevron">›</span>
+            <div class="menu-item" (click)="auth.logout()">
+              <div class="menu-item-left">
+                <div class="menu-icon-wrapper red">
+                  <span class="material-icons" style="font-size: 20px; color: #f87171;">logout</span>
+                </div>
+                <span class="menu-text" style="color: #ef4444">Chiqish</span>
+              </div>
+              <span class="chevron">&rsaquo;</span>
             </div>
           </div>
         </div>
@@ -779,8 +807,8 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
           </div>
 
           <div class="week-calendar">
-            @for (day of weekDays; track day.date) {
-              <div class="week-day" [class.week-day-active]="day.date === selectedDate()" (click)="selectCalendarDay(day)">
+            @for (day of scheduleWeekDays; track day.date) {
+              <div class="week-day" [class.week-day-active]="day.date === selectedDate()" [class.week-day-disabled]="day.isPast" (click)="selectScheduleDay(day)">
                 <span class="week-day-name">{{ day.label }}</span>
                 <span class="week-day-num">{{ day.dayNum }}</span>
                 @if (day.hasSlot) {
@@ -1764,22 +1792,103 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .profil-stat-val  { font-size: 0.82rem; font-weight: 700; color: var(--text); margin-bottom: 2px; }
     .profil-stat-lbl  { font-size: 0.7rem; color: var(--text-muted); }
 
-    .profil-menu {
-      margin: 14px 16px 0;
-      background: var(--bg-card);
-      border-radius: 14px;
-      overflow: hidden;
-      border: 1px solid var(--border);
+    .profile-menu-list {
+      display: flex;
+      flex-direction: column;
+      padding: 16px 16px 0;
+      gap: 8px;
     }
-    .profil-menu-item {
-      display: flex; align-items: center; gap: 12px;
-      padding: 15px 16px;
+
+    .menu-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      border-radius: 16px;
       cursor: pointer;
-      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+      text-align: left;
     }
-    .profil-menu-icon { font-size: 1.1rem; width: 28px; text-align: center; }
-    .profil-menu-item span:nth-child(2) { flex: 1; font-size: 0.92rem; font-weight: 500; color: var(--text); }
-    .profil-chevron { font-size: 1.1rem; color: var(--text-muted); }
+    .menu-item:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.14);
+      transform: translateX(4px);
+    }
+    .menu-item:active {
+      transform: scale(0.98);
+      background: rgba(255,255,255,0.06);
+    }
+
+    .menu-item-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    /* ── Icon Wrappers ───────────────────────────── */
+    .menu-icon-wrapper {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: transform 0.2s ease;
+    }
+    .menu-item:hover .menu-icon-wrapper {
+      transform: scale(1.08) rotate(-4deg);
+    }
+
+    .menu-icon-wrapper.purple {
+      background: linear-gradient(135deg, rgba(99,102,241,0.3), rgba(139,92,246,0.2));
+      box-shadow: 0 4px 12px rgba(99,102,241,0.25);
+    }
+    .menu-icon-wrapper.blue {
+      background: linear-gradient(135deg, rgba(59,130,246,0.3), rgba(96,165,250,0.2));
+      box-shadow: 0 4px 12px rgba(59,130,246,0.25);
+    }
+    .menu-icon-wrapper.pink {
+      background: linear-gradient(135deg, rgba(236,72,153,0.3), rgba(244,114,182,0.2));
+      box-shadow: 0 4px 12px rgba(236,72,153,0.25);
+    }
+    .menu-icon-wrapper.red {
+      background: linear-gradient(135deg, rgba(239,68,68,0.3), rgba(252,165,165,0.15));
+      box-shadow: 0 4px 12px rgba(239,68,68,0.25);
+    }
+    .menu-icon-wrapper.violet {
+      background: linear-gradient(135deg, rgba(139,92,246,0.3), rgba(167,139,250,0.2));
+      box-shadow: 0 4px 12px rgba(139,92,246,0.25);
+    }
+    .menu-icon-wrapper.indigo {
+      background: linear-gradient(135deg, rgba(79,70,229,0.3), rgba(129,140,248,0.2));
+      box-shadow: 0 4px 12px rgba(79,70,229,0.25);
+    }
+
+    .menu-icon {
+      font-size: 1.2rem;
+    }
+    .menu-text {
+      font-size: 1rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.9);
+      letter-spacing: 0.01em;
+    }
+    .chevron {
+      font-size: 1.5rem;
+      color: rgba(255,255,255,0.25);
+      font-weight: 300;
+      line-height: 1;
+      transition: color 0.2s, transform 0.2s;
+    }
+    .menu-item:hover .chevron {
+      color: rgba(167,139,250,0.7);
+      transform: translateX(2px);
+    }
 
     /* ===== PASTKI NAVIGATSIYA ===== */
     .bottom-nav {
@@ -1925,6 +2034,16 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
     .week-day-active { background: var(--primary) !important; }
     .week-day-active .week-day-name,
     .week-day-active .week-day-num { color: #fff !important; }
+    .week-day-disabled {
+      color: rgba(255, 255, 255, 0.2) !important;
+      opacity: 0.4;
+      pointer-events: none !important;
+      cursor: not-allowed !important;
+    }
+    .week-day-disabled .week-day-name,
+    .week-day-disabled .week-day-num {
+      color: rgba(255, 255, 255, 0.2) !important;
+    }
     .week-day-name { font-size: 0.68rem; font-weight: 600; color: var(--text-muted); }
     .week-day-num  { font-size: 0.9rem; font-weight: 700; color: var(--text); }
     .week-day-dot  {
@@ -3650,6 +3769,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
   }
 
   weekDays: { label: string; dayNum: number; date: string; isToday: boolean; hasSlot: boolean }[] = [];
+  scheduleWeekDays: { label: string; dayNum: number; date: string; isToday: boolean; isPast: boolean; hasSlot: boolean }[] = [];
 
   get initial(): string {
     return (this.auth.user()?.name?.[0] ?? 'K').toUpperCase();
@@ -3757,6 +3877,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     const monday = this.currentWeekMonday();
     const today = new Date();
     const labels = ['Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan', 'Yak'];
+    
     this.weekDays = labels.map((label, i) => {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
@@ -3768,6 +3889,21 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
         hasSlot: false
       };
     });
+
+    const todayZero = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    this.scheduleWeekDays = labels.map((label, i) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const dZero = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      return {
+        label,
+        dayNum: d.getDate(),
+        date: this.toLocalDateStr(d),
+        isToday: d.toDateString() === today.toDateString(),
+        isPast: dZero.getTime() < todayZero.getTime(),
+        hasSlot: false
+      };
+    });
   }
 
   prevWeek(): void {
@@ -3775,7 +3911,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     mon.setDate(mon.getDate() - 7);
     this.currentWeekMonday.set(mon);
     this.buildWeekDays();
-    this.selectedDate.set(this.toLocalDateStr(mon));
+    this.updateSelectedDateForWeek();
   }
 
   nextWeek(): void {
@@ -3783,7 +3919,24 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     mon.setDate(mon.getDate() + 7);
     this.currentWeekMonday.set(mon);
     this.buildWeekDays();
-    this.selectedDate.set(this.toLocalDateStr(mon));
+    this.updateSelectedDateForWeek();
+  }
+
+  updateSelectedDateForWeek(): void {
+    const today = new Date();
+    const todayStr = this.toLocalDateStr(today);
+    const hasToday = this.scheduleWeekDays.some(d => d.date === todayStr);
+    if (hasToday) {
+      this.selectedDate.set(todayStr);
+    } else {
+      const firstActive = this.scheduleWeekDays.find(d => !d.isPast);
+      if (firstActive) {
+        this.selectedDate.set(firstActive.date);
+      } else {
+        const mon = this.currentWeekMonday();
+        this.selectedDate.set(this.toLocalDateStr(mon));
+      }
+    }
   }
 
   currentWeekMonthLabel(): string {
@@ -3798,6 +3951,11 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
   }
 
   selectCalendarDay(day: { date: string; isToday: boolean }): void {
+    this.selectedDate.set(day.date);
+  }
+
+  selectScheduleDay(day: { date: string; isToday: boolean; isPast?: boolean }): void {
+    if (day.isPast) return;
     this.selectedDate.set(day.date);
   }
 
@@ -3969,7 +4127,16 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     this.endCurrentSlot();
   }
 
-  openScheduleModal(): void { this.showScheduleModal.set(true); }
+  openScheduleModal(): void {
+    const today = new Date();
+    const dayOfWeek = today.getDay() === 0 ? 6 : today.getDay() - 1;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - dayOfWeek);
+    this.currentWeekMonday.set(monday);
+    this.selectedDate.set(this.toLocalDateStr(today));
+    this.buildWeekDays();
+    this.showScheduleModal.set(true);
+  }
   closeScheduleModal(): void { this.showScheduleModal.set(false); }
 
   private parseLocalDateTime(dateStr: string, timeStr: string): Date {

@@ -108,6 +108,10 @@ export class OrderService {
     return this.http.get<Restaurant>(`${BASE}/manager/my-restaurant`);
   }
 
+  getManagerRestaurants(): Observable<Restaurant[]> {
+    return this.http.get<Restaurant[]>(`${BASE}/manager/my-restaurants`);
+  }
+
   updateManagerRestaurant(req: RestaurantAdminRequest): Observable<Restaurant> {
     return this.http.put<Restaurant>(`${BASE}/manager/my-restaurant`, req);
   }

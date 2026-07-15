@@ -17,7 +17,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
         <div class="footer-col about-col">
           <div class="footer-logo">
             <span class="logo-icon" aria-hidden="true">🍽️</span>
-            <span class="logo-text">Food<span class="accent-color">Delivery</span></span>
+            <span class="logo-text">Mango<span class="accent-color">Food</span></span>
           </div>
           <p class="about-desc">
             Eng mazali taomlarni onlayn buyurtma qiling. Sifatli xizmat va tezkor yetkazib berish.
@@ -75,7 +75,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
           <ul class="contact-details">
             <li><span class="icon">📍</span> Qarshi shahar, Mustaqillik ko'chasi</li>
             <li><span class="icon">📞</span> +998 90 123 45 67</li>
-            <li><span class="icon">✉️</span> info&#64;fooddelivery.uz</li>
+            <li><span class="icon">✉️</span> info&#64;mangofood.uz</li>
             <li>
               <span class="icon">🕒</span> 
               <div>
@@ -119,7 +119,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
       <div class="footer-bottom">
         <div class="footer-bottom-container">
           <p class="copyright-text">
-            &copy; 2025 FoodDelivery. Barcha huquqlar himoyalangan.
+            &copy; 2025 MangoFood. Barcha huquqlar himoyalangan.
           </p>
           <p class="powered-text">
             Made with ❤️ in Uzbekistan

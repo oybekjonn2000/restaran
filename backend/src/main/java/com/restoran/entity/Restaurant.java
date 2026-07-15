@@ -31,7 +31,7 @@ public class Restaurant {
     @Builder.Default
     private boolean isActive = true;
 
-    @OneToOne
+    @ManyToOne
     @JoinColumn(name = "owner_id")
     private User owner;
 

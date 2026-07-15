@@ -5,27 +5,32 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { OrderService } from '../../../core/services/order.service';
 import { ClientStats } from '../../../core/models/user.model';
+import { BodyPortalDirective } from '../../../core/directives/body-portal.directive';
 
 @Component({
   selector: 'app-admin-clients',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatProgressSpinnerModule, MatSnackBarModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatProgressSpinnerModule, MatSnackBarModule, BodyPortalDirective],
   template: `
     <div class="clients-admin animate-in">
       <div class="page-header">
-        <div>
-          <h1 class="page-title">👥 Mijozlar Boshqaruvi</h1>
-          <p style="color: var(--text-muted); font-size: 0.875rem;">Mijozlar hisoblarini boshqarish, buyurtma statslarini va aylanmalarini nazorat qilish</p>
+        <div class="header-left">
+          <div class="title-wrap">
+            <span class="material-icons title-icon">people</span>
+            <h1 class="page-title">Mijozlar Boshqaruvi</h1>
+          </div>
+          <p class="page-subtitle">Mijozlar hisoblarini boshqarish, buyurtma statslarini va aylanmalarini nazorat qilish</p>
         </div>
-        <button class="btn btn-primary" (click)="openAddForm()" id="add-client-btn">
-          + Yangi Mijoz
+        <button class="btn-add-client" (click)="openAddForm()" id="add-client-btn">
+          <span class="material-icons">person_add</span>
+          Yangi Mijoz
         </button>
       </div>
 
       <!-- Search -->
-      <div class="search-box" style="margin-bottom: 20px; max-width: 320px; display: flex; align-items: center; gap: 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 30px; padding: 8px 16px;">
-        <span>🔍</span>
-        <input [(ngModel)]="searchQ" type="text" placeholder="Ism yoki email qidiring..." class="search-input" style="background: none; border: none; outline: none; color: var(--text); font-size: 0.88rem; width: 100%;" id="client-search">
+      <div class="search-bar-container">
+        <span class="material-icons search-icon">search</span>
+        <input [(ngModel)]="searchQ" type="text" placeholder="Ism yoki email qidiring..." class="search-input" id="client-search">
       </div>
 
       @if (loading()) {
@@ -48,20 +53,38 @@ import { ClientStats } from '../../../core/models/user.model';
             <tbody>
               @for (c of filteredClients; track c.id) {
                 <tr [id]="'client-row-' + c.id">
-                  <td data-label="Mijoz"><strong>{{ c.name }}</strong></td>
+                  <td data-label="Mijoz" class="td-client-name">
+                    <span class="client-avatar-initial">{{ c.name[0].toUpperCase() }}</span>
+                    <strong>{{ c.name }}</strong>
+                  </td>
                   <td data-label="Aloqa">
                     <div class="contact-info">
-                      <span>📧 {{ c.email }}</span>
-                      <span class="phone-text">📞 {{ c.phone || 'Kiritilmagan' }}</span>
+                      <span class="contact-item"><span class="material-icons contact-icon">email</span>{{ c.email }}</span>
+                      <span class="contact-item phone-text"><span class="material-icons contact-icon">phone</span>{{ c.phone || 'Kiritilmagan' }}</span>
                     </div>
                   </td>
-                  <td data-label="Manzil">{{ c.address || 'Kiritilmagan' }}</td>
-                  <td data-label="Buyurtmalar"><span class="count-badge">{{ c.totalOrdersCount }} ta</span></td>
-                  <td data-label="Jami Xarid"><strong>{{ c.totalSpent | number:'1.0-0' }} so'm</strong></td>
+                  <td data-label="Manzil">
+                    <span class="address-item">
+                      <span class="material-icons address-icon">place</span>
+                      {{ c.address || 'Kiritilmagan' }}
+                    </span>
+                  </td>
+                  <td data-label="Buyurtmalar">
+                    <span class="count-badge">
+                      <span class="material-icons badge-icon">shopping_bag</span>
+                      {{ c.totalOrdersCount }} ta
+                    </span>
+                  </td>
+                  <td data-label="Jami Xarid">
+                    <span class="spent-badge">
+                      <span class="material-icons badge-icon">payments</span>
+                      {{ c.totalSpent | number:'1.0-0' }} so'm
+                    </span>
+                  </td>
                   <td data-label="Amallar">
                     <div class="action-btns">
-                      <button class="btn btn-outline btn-sm" (click)="openEditForm(c)">✏️ Tahrirlash</button>
-                      <button class="btn btn-outline btn-danger-outline btn-sm" (click)="deleteClient(c)">🗑️</button>
+                      <button class="btn-edit" (click)="openEditForm(c)"><span class="material-icons">edit</span>Tahrirlash</button>
+                      <button class="btn-delete" (click)="deleteClient(c)"><span class="material-icons">delete</span></button>
                     </div>
                   </td>
                 </tr>
@@ -72,7 +95,7 @@ import { ClientStats } from '../../../core/models/user.model';
 
         @if (filteredClients.length === 0) {
           <div class="empty-state">
-            <div class="icon">👥</div>
+            <span class="material-icons empty-icon">person_off</span>
             <h3>Qidiruv bo'yicha mijoz topilmadi</h3>
           </div>
         }
@@ -80,45 +103,63 @@ import { ClientStats } from '../../../core/models/user.model';
 
       <!-- Client Form Modal -->
       @if (showForm()) {
-        <div class="modal-overlay" (click)="closeForm()">
+        <div class="modal-overlay" appBodyPortal (click)="closeForm()">
           <div class="modal-card animate-in" (click)="$event.stopPropagation()">
             <div class="modal-header">
-              <h2>{{ editId() ? '✏️ Mijozni tahrirlash' : '+ Yangi Mijoz' }}</h2>
+              <h2>
+                <span class="material-icons header-modal-icon">{{ editId() ? 'edit' : 'person_add' }}</span>
+                {{ editId() ? 'Mijozni tahrirlash' : 'Yangi Mijoz' }}
+              </h2>
               <button class="close-btn" (click)="closeForm()">✕</button>
             </div>
             <div class="modal-body">
               <form [formGroup]="clientForm" (ngSubmit)="saveClient()">
                 <div class="form-group">
                   <label class="form-label">To'liq Ism *</label>
-                  <input formControlName="name" class="form-control" placeholder="Ism familiya..." id="client-form-name">
+                  <div class="input-with-icon">
+                    <span class="material-icons input-field-icon">person</span>
+                    <input formControlName="name" class="form-control" placeholder="Ism familiya..." id="client-form-name">
+                  </div>
                 </div>
 
                 <div class="form-group">
                   <label class="form-label">Email *</label>
-                  <input formControlName="email" type="email" class="form-control" placeholder="client@food.uz" id="client-form-email">
+                  <div class="input-with-icon">
+                    <span class="material-icons input-field-icon">email</span>
+                    <input formControlName="email" type="email" class="form-control" placeholder="client@food.uz" id="client-form-email">
+                  </div>
                 </div>
 
                 @if (!editId()) {
                   <div class="form-group">
                     <label class="form-label">Parol *</label>
-                    <input formControlName="password" type="password" class="form-control" placeholder="Kamida 6 belgi" id="client-form-password">
+                    <div class="input-with-icon">
+                      <span class="material-icons input-field-icon">lock</span>
+                      <input formControlName="password" type="password" class="form-control" placeholder="Kamida 6 belgi" id="client-form-password">
+                    </div>
                   </div>
                 }
 
                 <div class="form-row">
                   <div class="form-group">
                     <label class="form-label">Telefon raqami</label>
-                    <input formControlName="phone" class="form-control" placeholder="+998901234567" id="client-form-phone">
+                    <div class="input-with-icon">
+                      <span class="material-icons input-field-icon">phone</span>
+                      <input formControlName="phone" class="form-control" placeholder="+998901234567" id="client-form-phone">
+                    </div>
                   </div>
                   <div class="form-group">
                     <label class="form-label">Manzil</label>
-                    <input formControlName="address" class="form-control" placeholder="Shahar, ko'cha, uy" id="client-form-address">
+                    <div class="input-with-icon">
+                      <span class="material-icons input-field-icon">place</span>
+                      <input formControlName="address" class="form-control" placeholder="Shahar, ko'cha, uy" id="client-form-address">
+                    </div>
                   </div>
                 </div>
 
                 <div class="form-actions">
-                  <button type="button" class="btn btn-outline" (click)="closeForm()">Bekor qilish</button>
-                  <button type="submit" class="btn btn-primary" [disabled]="saving() || clientForm.invalid">
+                  <button type="button" class="btn-modal-cancel" (click)="closeForm()">Bekor qilish</button>
+                  <button type="submit" class="btn-modal-save" [disabled]="saving() || clientForm.invalid">
                     @if (saving()) { <mat-spinner diameter="16" color="accent"></mat-spinner> }
                     {{ editId() ? 'Saqlash' : 'Yaratish' }}
                   </button>
@@ -131,84 +172,453 @@ import { ClientStats } from '../../../core/models/user.model';
     </div>
   `,
   styles: [`
-    .clients-admin { max-width: 1100px; margin: 0 auto; }
+    .clients-admin {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 8px;
+    }
 
+    /* Page Header */
+    .page-header {
+      padding: 12px 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+    .title-icon {
+      font-size: 2.2rem;
+      background: linear-gradient(135deg, #a78bfa, #f97316);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .page-title {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #fff;
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+    .page-subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin: 0;
+    }
+
+    /* Add Client Button */
+    .btn-add-client {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);
+      transition: all 0.25s ease;
+      font-family: inherit;
+    }
+    .btn-add-client:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(249, 115, 22, 0.45);
+    }
+    .btn-add-client:active {
+      transform: translateY(0);
+    }
+
+    /* Search Bar */
+    .search-bar-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 30px;
+      padding: 10px 18px;
+      max-width: 360px;
+      margin-bottom: 24px;
+      transition: all 0.25s ease;
+    }
+    .search-bar-container:focus-within {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .search-icon {
+      color: var(--text-muted);
+      font-size: 1.3rem;
+    }
+    .search-input {
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-size: 0.9rem;
+      width: 100%;
+      font-family: inherit;
+    }
+
+    /* Table Styling */
     .table-wrap {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: var(--radius-lg);
       overflow: hidden;
+      box-shadow: var(--shadow-lg);
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    .data-table th {
+      background: rgba(255, 255, 255, 0.02);
+      padding: 16px 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      border-bottom: 1.5px solid rgba(255, 255, 255, 0.08);
+    }
+    .data-table td {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      vertical-align: middle;
+    }
+    .data-table tbody tr {
+      transition: all 0.2s ease;
+    }
+    .data-table tbody tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .data-table tbody tr:last-child td {
+      border-bottom: none;
     }
 
-    .contact-info { display: flex; flex-direction: column; }
-    .phone-text { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+    /* Client Initial Avatar */
+    .td-client-name {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.95rem;
+    }
+    .client-avatar-initial {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: white;
+      box-shadow: 0 4px 10px rgba(249, 115, 22, 0.3);
+    }
 
-    .action-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    /* Contact Info */
+    .contact-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .contact-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.88rem;
+      color: var(--text);
+    }
+    .contact-icon {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+    }
+    .phone-text {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
 
+    /* Address */
+    .address-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.88rem;
+    }
+    .address-icon {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+    }
+
+    /* Badges */
     .count-badge {
-      background: rgba(249,115,22,0.1);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(249, 115, 22, 0.1);
       color: var(--primary);
-      padding: 2px 8px;
-      border-radius: 8px;
+      padding: 6px 14px;
+      border-radius: 20px;
       font-size: 0.8rem;
       font-weight: 600;
+      border: 1px solid rgba(249, 115, 22, 0.2);
+    }
+    .spent-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(34, 197, 94, 0.1);
+      color: #4ade80;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+    .badge-icon {
+      font-size: 1rem;
     }
 
-    .btn-danger-outline { border-color: rgba(239,68,68,0.3) !important; color: #ef4444 !important; }
-    .btn-danger-outline:hover { background: rgba(239,68,68,0.1) !important; }
+    /* Action Buttons */
+    .action-btns {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-edit {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(249, 115, 22, 0.08);
+      border: 1.5px solid rgba(249, 115, 22, 0.35);
+      color: var(--primary);
+      padding: 6px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .btn-edit .material-icons {
+      font-size: 1rem;
+    }
+    .btn-edit:hover {
+      background: var(--primary);
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);
+      transform: translateY(-1px);
+    }
+    .btn-delete {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(239, 68, 68, 0.08);
+      border: 1.5px solid rgba(239, 68, 68, 0.35);
+      color: #ef4444;
+      padding: 6px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-delete .material-icons {
+      font-size: 1.15rem;
+    }
+    .btn-delete:hover {
+      background: #ef4444;
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+      transform: translateY(-1px);
+    }
 
+    /* Modal Form Styling */
     .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(4px); z-index: 300;
-      display: flex; align-items: flex-start; justify-content: center;
-      padding: 30px 20px; overflow-y: auto;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
     }
     .modal-card {
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); width: 100%; max-width: 480px;
+      background: linear-gradient(160deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 480px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+      overflow: hidden;
     }
     .modal-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
-    .modal-header h2 { font-size: 1.1rem; font-weight: 700; }
-    .close-btn {
-      background: var(--bg-card2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 6px 10px; cursor: pointer; transition: var(--transition);
+    .modal-header h2 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: white;
+      margin: 0;
     }
-    .close-btn:hover { background: var(--danger); color: white; }
+    .header-modal-icon {
+      font-size: 1.5rem;
+      color: var(--primary);
+    }
+    .modal-header .close-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .modal-header .close-btn:hover {
+      background: var(--danger);
+      color: white;
+      border-color: transparent;
+    }
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .input-with-icon {
+      position: relative;
+    }
+    .input-field-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 1.15rem;
+    }
+    .form-control {
+      padding-left: 44px;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    .btn-modal-cancel {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      padding: 12px;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .btn-modal-cancel:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .btn-modal-save {
+      flex: 1;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-modal-save:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(249, 115, 22, 0.4);
+    }
+    .btn-modal-save:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
 
-    .modal-body { padding: 20px; }
-
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
-    .form-actions { display: flex; gap: 10px; margin-top: 16px; }
-    .form-actions .btn { flex: 1; justify-content: center; gap: 8px; }
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      text-align: center;
+      color: var(--text-muted);
+    }
+    .empty-icon {
+      font-size: 3.5rem;
+      color: var(--text-muted);
+      opacity: 0.4;
+      margin-bottom: 16px;
+    }
 
     @media (max-width: 768px) {
       .page-header { flex-direction: column; align-items: stretch; gap: 12px; }
-      .page-header button { width: 100%; }
+      .btn-add-client { width: 100%; justify-content: center; }
+      .search-bar-container { max-width: 100%; }
 
-      /* Card-style responsive table */
       .data-table, .data-table thead, .data-table tbody,
       .data-table th, .data-table td, .data-table tr {
         display: block;
       }
       .data-table thead { display: none; }
       .data-table tr {
-        border-bottom: 1px solid var(--border);
-        padding: 12px 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 16px;
       }
       .data-table tr:last-child { border-bottom: none; }
       .data-table td {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 6px 0;
+        padding: 8px 0;
         border-bottom: 1px dashed rgba(255,255,255,0.05);
-        font-size: 0.85rem;
+        font-size: 0.88rem;
       }
-      .data-table td:last-child { border-bottom: none; padding-top: 10px; }
+      .data-table td:last-child { border-bottom: none; padding-top: 12px; }
       .data-table td::before {
         content: attr(data-label);
         font-weight: 600;
@@ -217,8 +627,12 @@ import { ClientStats } from '../../../core/models/user.model';
         text-transform: uppercase;
         min-width: 100px;
         flex-shrink: 0;
+        text-align: left;
       }
       .action-btns { justify-content: flex-end; }
+      .td-client-name { justify-content: space-between; }
+      .td-client-name strong { order: 2; }
+      .client-avatar-initial { display: none; }
       .form-row { grid-template-columns: 1fr; }
     }
   `]

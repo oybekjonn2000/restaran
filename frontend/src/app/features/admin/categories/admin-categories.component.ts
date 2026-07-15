@@ -8,11 +8,12 @@ import { OrderService } from '../../../core/services/order.service';
 import { Category } from '../../../core/models/category.model';
 import { Restaurant } from '../../../core/models/restaurant.model';
 import { API_BASE } from '../../../core/config';
+import { BodyPortalDirective } from '../../../core/directives/body-portal.directive';
 
 @Component({
   selector: 'app-admin-categories',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatProgressSpinnerModule, MatSnackBarModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatProgressSpinnerModule, MatSnackBarModule, BodyPortalDirective],
   template: `
     <div class="categories-admin animate-in">
       <div class="page-header">
@@ -116,7 +117,7 @@ import { API_BASE } from '../../../core/config';
 
       <!-- Category Form Modal -->
       @if (showForm()) {
-        <div class="modal-overlay" (click)="closeForm()">
+        <div class="modal-overlay" appBodyPortal (click)="closeForm()">
           <div class="modal-card animate-in" (click)="$event.stopPropagation()">
             <div class="modal-header">
               <h2>{{ editId() ? '✏️ Kategoriyani tahrirlash' : '+ Yangi Kategoriya' }}</h2>
@@ -250,13 +251,14 @@ import { API_BASE } from '../../../core/config';
 
     .modal-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(4px); z-index: 300;
-      display: flex; align-items: flex-start; justify-content: center;
-      padding: 30px 20px; overflow-y: auto;
+      backdrop-filter: blur(4px); z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
     }
     .modal-card {
       background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+      border-radius: var(--radius-lg); width: 100%; max-width: 480px;
+      display: flex; flex-direction: column; max-height: 90vh; overflow: hidden;
     }
     .modal-header {
       display: flex; align-items: center; justify-content: space-between;
@@ -268,7 +270,7 @@ import { API_BASE } from '../../../core/config';
       border-radius: 8px; padding: 6px 10px; cursor: pointer; transition: var(--transition);
     }
     .close-btn:hover { background: var(--danger); color: white; }
-    .modal-body { padding: 24px; }
+    .modal-body { padding: 24px; overflow-y: auto; flex: 1; }
     .field-error { font-size: 0.75rem; color: #ef4444; margin-top: 4px; display: block; }
     .form-actions { display: flex; gap: 10px; margin-top: 20px; }
     .form-actions .btn { flex: 1; justify-content: center; }

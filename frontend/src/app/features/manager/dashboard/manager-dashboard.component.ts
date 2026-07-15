@@ -4,13 +4,14 @@ import { FormsModule } from '@angular/forms';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { OrderService } from '../../../core/services/order.service';
 import { Order, ORDER_STATUS_LABELS, OrderStatus } from '../../../core/models/order.model';
+import { BodyPortalDirective } from '../../../core/directives/body-portal.directive';
 
 const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','COURIER_AT_RESTAURANT','DELIVERING','COURIER_AT_CLIENT','DELIVERED','CANCELED'];
 
 @Component({
   selector: 'app-manager-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatProgressSpinnerModule],
+  imports: [CommonModule, FormsModule, MatProgressSpinnerModule, BodyPortalDirective],
   template: `
     <div class="manager-dashboard animate-in">
       <div class="page-header">
@@ -240,7 +241,7 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
 
       <!-- Cancel Confirm Modal -->
       @if (cancelTarget()) {
-        <div class="modal-overlay" (click)="cancelTarget.set(null)">
+        <div class="modal-overlay" appBodyPortal (click)="cancelTarget.set(null)">
           <div class="modal-card" (click)="$event.stopPropagation()">
             <div class="modal-icon">⚠️</div>
             <h3 class="modal-title">Buyurtmani bekor qilish</h3>
@@ -421,7 +422,7 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
     /* Cancel Modal */
     .modal-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.6);
-      display: flex; align-items: center; justify-content: center; z-index: 1000;
+      display: flex; align-items: center; justify-content: center; z-index: 9999;
       backdrop-filter: blur(4px);
     }
     .modal-card {
@@ -432,6 +433,7 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
       max-width: 380px; width: 90%;
       text-align: center;
       animation: popIn 0.25s ease;
+      display: flex; flex-direction: column; max-height: 90vh; overflow-y: auto;
     }
     @keyframes popIn { from { transform: scale(0.88); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     .modal-icon { font-size: 2.5rem; margin-bottom: 12px; }
