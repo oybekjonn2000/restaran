@@ -6,6 +6,7 @@ import { OrderService } from '../../../core/services/order.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { Order, ORDER_STATUS_LABELS, OrderStatus } from '../../../core/models/order.model';
 import { Slot, ActiveSlotResponse } from '../../../core/models/slot.model';
+import { API_BASE } from '../../../core/config';
 
 type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
 
@@ -117,6 +118,22 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
                     <button class="searching-action-btn schedule-btn" (click)="openScheduleModal()">
                       <span class="btn-icon">📅</span>
                       <span class="btn-text">Smenalar jadvali</span>
+                    </button>
+                  </div>
+
+                  <!-- Mini Yandex Map for Courier Real-time Position -->
+                  <div class="searching-map-container" style="margin: 15px 0; border-radius: 12px; overflow: hidden; height: 200px; border: 1px solid var(--border); position: relative; width: 100%; align-self: stretch;">
+                    <div id="courier-main-map" style="width: 100%; height: 100%;"></div>
+                    <!-- Find Me FAB Button -->
+                    <button class="find-me-fab" (click)="recenterToCourier()" style="position: absolute; right: 10px; bottom: 10px; z-index: 1000; width: 40px; height: 40px; border-radius: 50%; background: #ffffff; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s, background 0.2s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='#ffffff'">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color: #4b6bfb;">
+                        <circle cx="12" cy="12" r="10"/>
+                        <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                        <line x1="12" y1="1" x2="12" y2="4"/>
+                        <line x1="12" y1="20" x2="12" y2="23"/>
+                        <line x1="1" y1="12" x2="4" y2="12"/>
+                        <line x1="20" y1="12" x2="23" y2="12"/>
+                      </svg>
                     </button>
                   </div>
 
@@ -3334,6 +3351,11 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
 export class CourierDashboardComponent implements OnInit, OnDestroy {
   activeTab = signal<TabType>('jadval');
   showScheduleModal = signal(false);
+
+  // GPS tracking fields
+  gpsWs: WebSocket | null = null;
+  gpsWatchId: number | null = null;
+  trackedOrderId: number | null = null;
   selectedDate = signal<string>(this.toLocalDateStr(new Date()));
   currentWeekMonday = signal<Date>(new Date());
 
@@ -3407,7 +3429,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
   }
 
   get filteredEarningsTotal(): number {
-    return this.filteredEarningsOrders.reduce((s, o) => s + (o.deliveryFee || 0), 0);
+    return this.filteredEarningsOrders.reduce((s, o) => s + (o.totalEarning || 0), 0);
   }
 
   get filteredEarningsSlotsCount(): number {
@@ -3502,7 +3524,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     
     return filteredSlots.map(s => {
       const dayOrders = this.allOrders().filter(o => o.status === 'DELIVERED' && o.createdAt.startsWith(s.date));
-      const slotEarnings = dayOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+      const slotEarnings = dayOrders.reduce((sum, o) => sum + (o.totalEarning || 0), 0);
       return {
         id: s.id,
         name: s.name,
@@ -3535,7 +3557,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
             const oTime = o.createdAt.split('T')[1]?.substring(0, 5);
             return oTime >= s.startTime.substring(0, 5) && oTime <= s.endTime.substring(0, 5);
           });
-          const slotEarnings = slotOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+          const slotEarnings = slotOrders.reduce((sum, o) => sum + (o.totalEarning || 0), 0);
           return { type: 'slot', id: s.id, title: s.name, subtitle: `${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)}`, amount: slotEarnings, ordersCount: slotOrders.length, date: s.date, isCancelled: false, isCancelledReversed: false };
         }),
         ...targetCancelled.map(s => ({
@@ -3597,7 +3619,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
         const oTime = o.createdAt.split('T')[1]?.substring(0, 5);
         return oTime >= s.startTime.substring(0, 5) && oTime <= s.endTime.substring(0, 5);
       });
-      const slotEarnings = slotOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+      const slotEarnings = slotOrders.reduce((sum, o) => sum + (o.totalEarning || 0), 0);
       const d = new Date(s.date);
       const dateLabel = `${weekdayShort[d.getDay()]}, ${d.getDate()}-${monthsShort[d.getMonth()]}`;
       return { type: 'slot', id: s.id, title: s.name, subtitle: `${dateLabel} · ${s.startTime.substring(0, 5)} - ${s.endTime.substring(0, 5)}`, amount: slotEarnings, ordersCount: slotOrders.length, date: s.date, isCancelled: false, isCancelledReversed: false };
@@ -3706,19 +3728,19 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     
     const duration = this.getShiftDuration(s.startTime, s.endTime);
     const guarantee = this.getShiftGuarantee(s.startTime, s.endTime);
-    const orderEarnings = dayOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+    const orderEarnings = dayOrders.reduce((sum, o) => sum + (o.totalEarning || 0), 0);
     const penalty = s.penaltyAmount || 0;
     const netEarnings = orderEarnings - penalty;
     
     const mappedOrders = dayOrders.map(o => {
       const orderTime = new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
       
-      const totalFee = o.deliveryFee || 15000;
-      const basePickup = 7000;
-      const restDist = Math.floor((o.distance || 3) * 350) + 1200;
-      const restArrivalBonus = Math.floor(restDist * 1.5);
-      const clientDist = Math.floor((o.distance || 3) * 650) + 1800;
-      const clientArrivalBonus = Math.max(0, totalFee - basePickup - restArrivalBonus);
+      const totalFee = o.totalEarning || 0;
+      const basePickup = o.baseFee || 9000;
+      const restDist = o.pickupDistanceKm ? Math.round(o.pickupDistanceKm * 1000) : 0;
+      const restArrivalBonus = o.pickupFee || 0;
+      const clientDist = o.deliveryDistanceKm ? Math.round(o.deliveryDistanceKm * 1000) : 0;
+      const clientArrivalBonus = o.courierDeliveryFee || 0;
       
       return {
         id: o.id,
@@ -3782,18 +3804,21 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
   get totalEarnings(): number {
     return this.allOrders()
       .filter(o => o.status === 'DELIVERED')
-      .reduce((s, o) => s + (o.deliveryFee || 0), 0);
+      .reduce((s, o) => s + (o.totalEarning || 0), 0);
   }
 
   get totalDistance(): number {
     return this.allOrders()
       .filter(o => o.status === 'DELIVERED')
-      .reduce((s, o) => s + (o.distance || 0), 0);
+      .reduce((s, o) => s + (o.totalDistanceKm || o.distance || 0), 0);
   }
 
   private pollInterval: any;
   private mapsInitialized = new Set<string>();
   private courierStartCoords = [38.870000, 65.810000];
+  private mainMapInstance: any = null;
+  private mainCourierMarker: any = null;
+  private mainMapWatchId: any = null;
 
   constructor(
     private orderService: OrderService,
@@ -3859,12 +3884,20 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.pollInterval) clearInterval(this.pollInterval);
     if (this.countdownInterval) clearInterval(this.countdownInterval);
+    this.stopGpsTracking();
+    if (this.mainMapWatchId !== null) {
+      navigator.geolocation.clearWatch(this.mainMapWatchId);
+      this.mainMapWatchId = null;
+    }
   }
 
   switchTab(tab: TabType): void {
     this.activeTab.set(tab);
     if (tab === 'profil') {
       this.auth.fetchMe().subscribe();
+    }
+    if (tab === 'smena') {
+      setTimeout(() => this.initMainMap(), 300);
     }
   }
 
@@ -3969,6 +4002,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
           ['COURIER_ACCEPTED','COURIER_AT_RESTAURANT','DELIVERING','COURIER_AT_CLIENT','DELIVERED'].includes(o.status)
         ));
         this.deliveredCount.set(orders.filter(o => o.status === 'DELIVERED').length);
+        this.checkGpsTracking();
         if (showLoader) this.loading.set(false);
         if (this.activeTab() === 'smena') {
           setTimeout(() => this.initMainMap(), 200);
@@ -4475,6 +4509,12 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
   initMainMap(): void {
     const ymaps = (window as any).ymaps;
     if (!ymaps) return;
+
+    if (this.mainMapWatchId !== null) {
+      navigator.geolocation.clearWatch(this.mainMapWatchId);
+      this.mainMapWatchId = null;
+    }
+
     ymaps.ready(() => {
       const el = document.getElementById('courier-main-map');
       if (!el) return;
@@ -4488,6 +4528,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
         const restCoords = [rLat, rLng];
 
         const map = new ymaps.Map('courier-main-map', { center: this.courierStartCoords, zoom: 13, controls: ['zoomControl'] });
+        this.mainMapInstance = map;
         
         let startCoords = this.courierStartCoords;
         let endCoords = restCoords;
@@ -4502,10 +4543,78 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
           { referencePoints: [startCoords, endCoords], params: { routingMode: 'auto' } },
           { boundsAutoApply: true }
         ));
+
+        // Start watching the courier location to dynamically update coordinates
+        this.mainMapWatchId = navigator.geolocation.watchPosition((pos) => {
+          this.courierStartCoords = [pos.coords.latitude, pos.coords.longitude];
+        }, (err) => console.warn(err), { enableHighAccuracy: true });
+
       } else {
-        new ymaps.Map('courier-main-map', { center: [38.866127, 65.816309], zoom: 13, controls: ['zoomControl'] });
+        let centerCoords = this.courierStartCoords || [38.870000, 65.810000];
+
+        const map = new ymaps.Map('courier-main-map', { center: centerCoords, zoom: 15, controls: ['zoomControl'] });
+        this.mainMapInstance = map;
+
+        // Add Courier placemark
+        const courierPlacemark = new ymaps.Placemark(centerCoords, {
+          balloonContent: 'Sizning joylashuvingiz'
+        }, {
+          preset: 'islands#blueCircleDotIconWithGlyph',
+          iconGlyph: 'auto'
+        });
+        map.geoObjects.add(courierPlacemark);
+        this.mainCourierMarker = courierPlacemark;
+
+        // Start watching the courier's location to move the marker dynamically
+        this.mainMapWatchId = navigator.geolocation.watchPosition((pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const newCoords = [lat, lng];
+          this.courierStartCoords = newCoords;
+
+          if (this.mainCourierMarker) {
+            this.mainCourierMarker.geometry.setCoordinates(newCoords);
+          }
+          if (this.mainMapInstance) {
+            this.mainMapInstance.setCenter(newCoords, 15, { duration: 300 });
+          }
+        }, (err) => {
+          console.warn('Geolocation error inside main map:', err);
+        }, {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        });
       }
     });
+  }
+
+  recenterToCourier(): void {
+    if (!navigator.geolocation) {
+      this.snack.open("Geolokatsiya sizning brauzeringizda qo'llab-quvvatlanmaydi", '', { duration: 3000 });
+      return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        this.courierStartCoords = [lat, lng];
+
+        const ymaps = (window as any).ymaps;
+        if (ymaps && this.mainMapInstance) {
+          this.mainMapInstance.setCenter(this.courierStartCoords, 15, { duration: 500 });
+          if (this.mainCourierMarker) {
+            this.mainCourierMarker.geometry.setCoordinates(this.courierStartCoords);
+          }
+        }
+      },
+      (err) => {
+        console.error(err);
+        this.snack.open("GPS-ni yoqing va joylashuvni aniqlashga ruxsat bering!", '', { duration: 3000 });
+      },
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
   }
 
   initRouteMap(orderId: number, start: number[], end: number[], containerId: string): void {
@@ -4526,5 +4635,109 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
 
   statusLabel(status: OrderStatus): string {
     return ORDER_STATUS_LABELS[status] ?? status;
+  }
+
+  checkGpsTracking(): void {
+    const activeOrder = this.currentDeliveries().find(o =>
+      ['COURIER_ACCEPTED', 'COURIER_AT_RESTAURANT', 'DELIVERING', 'COURIER_AT_CLIENT'].includes(o.status)
+    );
+
+    if (activeOrder) {
+      if (this.trackedOrderId !== activeOrder.id) {
+        this.stopGpsTracking();
+        this.startGpsTracking(activeOrder.id);
+      }
+    } else {
+      this.stopGpsTracking();
+    }
+  }
+
+  startGpsTracking(orderId: number): void {
+    if (!navigator.geolocation) {
+      this.snack.open('⚠️ Joylashuvni aniqlash brauzeringiz tomonidan qo\'llab-quvvatlanmaydi!', 'Yopish', { duration: 4000 });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        // Permission granted, start tracking
+        this.runGpsTracking(orderId);
+      },
+      (err) => {
+        console.error('GPS permission error:', err);
+        let msg = '⚠️ Joylashuvga ruxsat berilmadi! GPS kuzatuvi boshlanmadi.';
+        if (err.code === err.PERMISSION_DENIED) {
+          msg = '⚠️ Joylashuvga ruxsat berilmadi! Iltimos, brauzer sozlamalarida joylashuvga ruxsat bering.';
+        }
+        this.snack.open(msg, 'Yopish', { duration: 5000 });
+      }
+    );
+  }
+
+  runGpsTracking(orderId: number): void {
+    const token = this.auth.getToken();
+    if (!token) return;
+
+    const wsProtocol = API_BASE.startsWith('https') ? 'wss' : 'ws';
+    const cleanBase = API_BASE.replace(/^https?:\/\//, '');
+    const wsUrl = `${wsProtocol}://${cleanBase}/ws/gps?token=${token}&orderId=${orderId}`;
+
+    try {
+      this.gpsWs = new WebSocket(wsUrl);
+      this.trackedOrderId = orderId;
+
+      this.gpsWs.onopen = () => {
+        console.log('>>> GPS WebSocket connected for order:', orderId);
+      };
+
+      this.gpsWs.onerror = (err) => {
+        console.error('>>> GPS WS error:', err);
+      };
+
+      this.gpsWs.onclose = () => {
+        console.log('>>> GPS WS closed');
+      };
+
+      this.gpsWatchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          if (this.gpsWs && this.gpsWs.readyState === WebSocket.OPEN) {
+            this.gpsWs.send(JSON.stringify({
+              latitude: lat,
+              longitude: lng,
+              gpsSignalLost: false
+            }));
+          }
+        },
+        (err) => {
+          console.warn('>>> GPS position watch error/signal lost:', err);
+          if (this.gpsWs && this.gpsWs.readyState === WebSocket.OPEN) {
+            this.gpsWs.send(JSON.stringify({
+              gpsSignalLost: true
+            }));
+          }
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        }
+      );
+    } catch (e) {
+      console.error('Error starting GPS WS connection:', e);
+    }
+  }
+
+  stopGpsTracking(): void {
+    if (this.gpsWatchId !== null) {
+      navigator.geolocation.clearWatch(this.gpsWatchId);
+      this.gpsWatchId = null;
+    }
+    if (this.gpsWs) {
+      this.gpsWs.close();
+      this.gpsWs = null;
+    }
+    this.trackedOrderId = null;
   }
 }

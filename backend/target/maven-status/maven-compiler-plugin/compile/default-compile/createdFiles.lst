@@ -23,6 +23,7 @@ com\restoran\entity\Restaurant.class
 com\restoran\entity\User$UserBuilder.class
 com\restoran\controller\AdminController$ClientUpdateRequest.class
 com\restoran\controller\CourierController.class
+com\restoran\security\WebSocketConfig.class
 com\restoran\service\SlotService$CancelResult.class
 com\restoran\controller\CartController.class
 com\restoran\entity\CartItem$CartItemBuilder.class
@@ -59,6 +60,7 @@ com\restoran\repository\CartItemRepository.class
 com\restoran\entity\Role.class
 com\restoran\service\CartService$CartItemDto.class
 com\restoran\service\FoodService.class
+com\restoran\security\GpsWebSocketHandler.class
 com\restoran\controller\AdminController$RestaurantAdminRequest.class
 com\restoran\entity\OrderItem$OrderItemBuilder.class
 com\restoran\service\CartService.class

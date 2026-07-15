@@ -71,6 +71,69 @@ public class Order {
     @Builder.Default
     private Boolean isReady = false;
 
+    @Column(name = "courier_accepted_at")
+    private LocalDateTime courierAcceptedAt;
+
+    @Column(name = "courier_start_latitude")
+    private Double courierStartLatitude;
+
+    @Column(name = "courier_start_longitude")
+    private Double courierStartLongitude;
+
+    @Column(name = "restaurant_latitude")
+    private Double restaurantLatitude;
+
+    @Column(name = "restaurant_longitude")
+    private Double restaurantLongitude;
+
+    @Column(name = "courier_arrived_at_restaurant_at")
+    private LocalDateTime courierArrivedAtRestaurantAt;
+
+    @Column(name = "distance_to_restaurant")
+    @Builder.Default
+    private Double distanceToRestaurant = 0.0;
+
+    @Column(name = "eta_to_restaurant")
+    private LocalDateTime etaToRestaurant;
+
+    @Column(name = "courier_latitude")
+    private Double courierLatitude;
+
+    @Column(name = "courier_longitude")
+    private Double courierLongitude;
+
+    @Column(name = "gps_signal_lost")
+    @Builder.Default
+    private Boolean gpsSignalLost = false;
+
+    @Column(name = "base_fee")
+    @Builder.Default
+    private Double baseFee = 9000.0;
+
+    @Column(name = "pickup_distance_km")
+    @Builder.Default
+    private Double pickupDistanceKm = 0.0;
+
+    @Column(name = "delivery_distance_km")
+    @Builder.Default
+    private Double deliveryDistanceKm = 0.0;
+
+    @Column(name = "pickup_fee")
+    @Builder.Default
+    private Double pickupFee = 0.0;
+
+    @Column(name = "courier_delivery_fee")
+    @Builder.Default
+    private Double courierDeliveryFee = 0.0;
+
+    @Column(name = "total_distance_km")
+    @Builder.Default
+    private Double totalDistanceKm = 0.0;
+
+    @Column(name = "total_earning")
+    @Builder.Default
+    private Double totalEarning = 0.0;
+
     @Transient
     private boolean courierActiveOnShift;
 

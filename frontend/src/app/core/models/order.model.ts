@@ -21,6 +21,24 @@ export interface Order {
   yandexDelivery?: boolean;
   isReady?: boolean;
   courierActiveOnShift?: boolean;
+  courierAcceptedAt?: string;
+  courierStartLatitude?: number;
+  courierStartLongitude?: number;
+  restaurantLatitude?: number;
+  restaurantLongitude?: number;
+  courierArrivedAtRestaurantAt?: string;
+  distanceToRestaurant?: number;
+  etaToRestaurant?: string;
+  courierLatitude?: number;
+  courierLongitude?: number;
+  gpsSignalLost?: boolean;
+  baseFee?: number;
+  pickupDistanceKm?: number;
+  deliveryDistanceKm?: number;
+  pickupFee?: number;
+  courierDeliveryFee?: number;
+  totalDistanceKm?: number;
+  totalEarning?: number;
   createdAt: string;
   items: OrderItem[];
 }

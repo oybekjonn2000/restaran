@@ -94,6 +94,13 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
                   <td>
                     @if (order.courier) {
                       <span class="courier-chip">🏍️ {{ order.courier.name }}</span>
+                      <div class="courier-earning-details" style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.4; margin-top: 4px; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 4px; text-align: left;">
+                        <div>💰 Baza: {{ order.baseFee || 9000 | number:'1.0-0' }} so'm</div>
+                        <div>🏪 Restorangacha: {{ order.pickupDistanceKm || 0 | number:'1.2-2' }} km ({{ order.pickupFee || 0 | number:'1.0-0' }} so'm)</div>
+                        <div>📍 Mijozgacha: {{ order.deliveryDistanceKm || 0 | number:'1.2-2' }} km ({{ order.courierDeliveryFee || 0 | number:'1.0-0' }} so'm)</div>
+                        <div>🏍️ Jami masofa: {{ order.totalDistanceKm || 0 | number:'1.2-2' }} km</div>
+                        <div style="color: #10b981; font-weight: 700;">💸 Daromad: {{ order.totalEarning || 0 | number:'1.0-0' }} so'm</div>
+                      </div>
                     } @else if (order.status !== 'CANCELED') {
                       <select class="courier-select" (change)="assignCourier(order.id, +$any($event.target).value)"
                               [id]="'courier-select-' + order.id">
@@ -143,6 +150,18 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
               <p><strong>Manzil:</strong> {{ selectedOrder()!.deliveryAddress || '—' }}</p>
               <p><strong>Izoh:</strong> {{ selectedOrder()!.note || '—' }}</p>
               <p><strong>Holat:</strong> {{ statusLabel(selectedOrder()!.status) }}</p>
+              @if (selectedOrder()!.courier) {
+                <div class="courier-payment-details" style="font-size: 0.85rem; display: flex; flex-direction: column; gap: 6px; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 8px; border: 1px solid var(--border); margin-top: 10px;">
+                  <div style="display: flex; justify-content: space-between;"><span>👤 Kuryer:</span> <strong>{{ selectedOrder()!.courier?.name }}</strong></div>
+                  <div style="display: flex; justify-content: space-between;"><span>💵 Bazaviy to'lov:</span> <span>{{ selectedOrder()!.baseFee || 9000 | number:'1.0-0' }} so'm</span></div>
+                  <div style="display: flex; justify-content: space-between;"><span>🏪 Restorangacha masofa:</span> <span>{{ selectedOrder()!.pickupDistanceKm || 0 | number:'1.2-2' }} km</span></div>
+                  <div style="display: flex; justify-content: space-between;"><span>🏪 Restorangacha haq:</span> <span>{{ selectedOrder()!.pickupFee || 0 | number:'1.0-0' }} so'm</span></div>
+                  <div style="display: flex; justify-content: space-between;"><span>📍 Mijozgacha masofa:</span> <span>{{ selectedOrder()!.deliveryDistanceKm || 0 | number:'1.2-2' }} km</span></div>
+                  <div style="display: flex; justify-content: space-between;"><span>📍 Yetkazib berish haqi:</span> <span>{{ selectedOrder()!.courierDeliveryFee || 0 | number:'1.0-0' }} so'm</span></div>
+                  <div style="display: flex; justify-content: space-between;"><span>🏍️ Jami bosilgan masofa:</span> <strong>{{ selectedOrder()!.totalDistanceKm || 0 | number:'1.2-2' }} km</strong></div>
+                  <div style="display: flex; justify-content: space-between; color: #10b981; font-weight: bold; border-top: 1px solid var(--border); padding-top: 6px; margin-top: 4px;"><span>💸 Jami kuryer daromadi:</span> <span>{{ selectedOrder()!.totalEarning || 0 | number:'1.0-0' }} so'm</span></div>
+                </div>
+              }
               @if (selectedOrder()!.cancelReason) {
                 <div class="cancel-reason-box">
                   <span>⚠️ Bekor qilish sababi:</span>

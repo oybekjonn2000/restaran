@@ -105,6 +105,13 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
                     <td data-label="Kuryer">
                       @if (order.courier) {
                         <span class="courier-tag">🏍️ {{ order.courier.name }}</span>
+                        <div class="courier-earning-details" style="font-size: 0.72rem; color: #a1a1aa; line-height: 1.4; margin-top: 4px; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 4px; text-align: left;">
+                          <div>💰 Baza: {{ order.baseFee || 9000 | number:'1.0-0' }} so'm</div>
+                          <div>🏪 Restorangacha: {{ order.pickupDistanceKm || 0 | number:'1.2-2' }} km ({{ order.pickupFee || 0 | number:'1.0-0' }} so'm)</div>
+                          <div>📍 Mijozgacha: {{ order.deliveryDistanceKm || 0 | number:'1.2-2' }} km ({{ order.courierDeliveryFee || 0 | number:'1.0-0' }} so'm)</div>
+                          <div>🏍️ Jami masofa: {{ order.totalDistanceKm || 0 | number:'1.2-2' }} km</div>
+                          <div style="color: #10b981; font-weight: 700;">💸 Daromad: {{ order.totalEarning || 0 | number:'1.0-0' }} so'm</div>
+                        </div>
                       } @else {
                         <span class="no-courier">Tayinlanmagan</span>
                       }

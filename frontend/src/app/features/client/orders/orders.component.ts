@@ -1,8 +1,10 @@
-import { Component, OnInit, OnDestroy, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, inject, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { OrderService } from '../../../core/services/order.service';
 import { Order, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, OrderStatus } from '../../../core/models/order.model';
+import { API_BASE } from '../../../core/config';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-client-orders',
@@ -99,6 +101,38 @@ import { Order, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, OrderStatus } from '..
                       <div class="yandex-title">Yandex Yetkazib berish</div>
                       <div class="yandex-text">Kuryer topilmadi, buyurtmangiz Yandex orqali yetkaziladi. To'lov summasi haydovchining telefonida ko'rsatiladi.</div>
                     </div>
+                  </div>
+                }
+
+                <!-- REAL-TIME TRACKING SECTION -->
+                @if (order.status !== 'DELIVERED' && order.status !== 'CANCELED') {
+                  <div class="tracking-section">
+                    <div class="tracking-stats">
+                      <div class="stat-grid">
+                        <div class="stat-box">
+                          <span class="stat-lbl">Qabul qilindi</span>
+                          <span class="stat-val">{{ order.courierAcceptedAt ? (order.courierAcceptedAt | date:'HH:mm') : '-' }}</span>
+                        </div>
+                        <div class="stat-box">
+                          <span class="stat-lbl">Restoranga keldi</span>
+                          <span class="stat-val">{{ order.courierArrivedAtRestaurantAt ? (order.courierArrivedAtRestaurantAt | date:'HH:mm') : '-' }}</span>
+                        </div>
+                        <div class="stat-box">
+                          <span class="stat-lbl">Restorangacha masofa</span>
+                          <span class="stat-val">{{ order.distanceToRestaurant ? (order.distanceToRestaurant | number:'1.1-2') + ' km' : '0 km' }}</span>
+                        </div>
+                        <div class="stat-box">
+                          <span class="stat-lbl">Kutilmoqda (ETA)</span>
+                          <span class="stat-val">{{ order.etaToRestaurant ? (order.etaToRestaurant | date:'HH:mm') : '-' }}</span>
+                        </div>
+                      </div>
+                      @if (order.gpsSignalLost) {
+                        <div class="gps-lost-banner animate-in">
+                          ⚠️ GPS signali yo'qoldi! Oxirgi joylashuv ko'rsatilmoqda.
+                        </div>
+                      }
+                    </div>
+                    <div [id]="'tracking-map-' + order.id" class="mini-tracking-map"></div>
                   </div>
                 }
 
@@ -226,12 +260,77 @@ import { Order, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, OrderStatus } from '..
     .yandex-content { display: flex; flex-direction: column; gap: 3px; }
     .yandex-title { font-size: 0.75rem; font-weight: 600; color: #f59e0b; text-transform: uppercase; letter-spacing: 0.5px; }
     .yandex-text { font-size: 0.875rem; color: #fde68a; line-height: 1.4; }
+
+    .tracking-section {
+      margin: 12px 20px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .tracking-stats {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .stat-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .stat-lbl {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .stat-val {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-top: 2px;
+    }
+    .gps-lost-banner {
+      margin-top: 8px;
+      background: rgba(239, 68, 68, 0.12);
+      color: #f87171;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      text-align: center;
+      font-weight: 600;
+    }
+    .mini-tracking-map {
+      width: 100%;
+      height: 220px;
+      background: #111827;
+    }
+    @media (max-width: 576px) {
+      .stat-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+    }
   `]
 })
 export class ClientOrdersComponent implements OnInit, OnDestroy {
   orders = signal<Order[]>([]);
   loading = signal(true);
   private pollInterval: any;
+
+  // Tracking properties
+  private orderMaps = new Map<number, any>();
+  private courierPlacemarks = new Map<number, any>();
+  private trackingSockets = new Map<number, WebSocket>();
+  
+  private auth = inject(AuthService);
+  private ngZone = inject(NgZone);
 
   constructor(private orderService: OrderService) {}
 
@@ -245,6 +344,11 @@ export class ClientOrdersComponent implements OnInit, OnDestroy {
     if (this.pollInterval) {
       clearInterval(this.pollInterval);
     }
+    // Clean up all maps and WebSockets
+    this.trackingSockets.forEach(ws => ws.close());
+    this.trackingSockets.clear();
+    this.orderMaps.clear();
+    this.courierPlacemarks.clear();
   }
 
   load(showLoader = true): void {
@@ -253,11 +357,228 @@ export class ClientOrdersComponent implements OnInit, OnDestroy {
       next: (orders) => {
         this.orders.set(orders);
         if (showLoader) this.loading.set(false);
+        // Process maps for active orders
+        setTimeout(() => this.initializeActiveOrderMaps(), 100);
       },
       error: () => {
         if (showLoader) this.loading.set(false);
       }
     });
+  }
+
+  initializeActiveOrderMaps(): void {
+    const ymaps = (window as any).ymaps;
+    if (!ymaps) return;
+
+    const activeOrders = this.orders().filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELED');
+    
+    activeOrders.forEach(order => {
+      const containerId = 'tracking-map-' + order.id;
+      const el = document.getElementById(containerId);
+      if (!el) return;
+
+      // If map is already initialized, just update coords and check WS connection
+      if (this.orderMaps.has(order.id)) {
+        const map = this.orderMaps.get(order.id);
+        this.updateCourierMarker(order, map);
+        if (order.courier && !this.trackingSockets.has(order.id)) {
+          this.connectToOrderTrackingWs(order.id);
+        }
+        return;
+      }
+
+      // Initialize new map
+      ymaps.ready(() => {
+        // Double check container still exists
+        if (!document.getElementById(containerId)) return;
+
+        const restLat = order.restaurantLatitude || (order.restaurant?.latitude) || 38.866127;
+        const restLng = order.restaurantLongitude || (order.restaurant?.longitude) || 65.816309;
+        const restCoords = [restLat, restLng];
+
+        const clientLat = order.latitude || 38.866127;
+        const clientLng = order.longitude || 65.816309;
+        const clientCoords = [clientLat, clientLng];
+
+        const map = new ymaps.Map(containerId, {
+          center: restCoords,
+          zoom: 13,
+          controls: ['zoomControl']
+        });
+
+        this.orderMaps.set(order.id, map);
+
+        // Add Restaurant marker
+        const restPlacemark = new ymaps.Placemark(restCoords, {
+          balloonContentHeader: `🏪 ${order.restaurant?.name || 'Restoran'}`,
+          hintContent: 'Tayyorlash punkti'
+        }, {
+          preset: 'islands#redFoodIcon',
+          iconColor: '#ff4444'
+        });
+        map.geoObjects.add(restPlacemark);
+
+        // Add Client marker
+        const clientPlacemark = new ymaps.Placemark(clientCoords, {
+          balloonContentHeader: '📍 Mening manzilim',
+          hintContent: 'Yetkazish manzili'
+        }, {
+          preset: 'islands#violetDotIconWithCaption',
+          iconColor: '#8b5cf6'
+        });
+        map.geoObjects.add(clientPlacemark);
+
+        // Fit map bounds
+        map.setBounds([restCoords, clientCoords], { checkZoomRange: true, zoomMargin: 40 });
+
+        // Update courier location if already available
+        this.updateCourierMarker(order, map);
+
+        // Establish WebSocket tracking if courier is assigned
+        if (order.courier) {
+          this.connectToOrderTrackingWs(order.id);
+        }
+      });
+    });
+
+    // Close sockets for orders that are no longer active
+    this.trackingSockets.forEach((ws, orderId) => {
+      const orderStillActive = activeOrders.some(o => o.id === orderId);
+      if (!orderStillActive) {
+        ws.close();
+        this.trackingSockets.delete(orderId);
+        this.orderMaps.delete(orderId);
+        this.courierPlacemarks.delete(orderId);
+      }
+    });
+  }
+
+  updateCourierMarker(order: Order, map: any): void {
+    if (!order.courierLatitude || !order.courierLongitude) return;
+
+    const ymaps = (window as any).ymaps;
+    const newCoords = [order.courierLatitude, order.courierLongitude];
+
+    let courierPlacemark = this.courierPlacemarks.get(order.id);
+
+    if (!courierPlacemark) {
+      courierPlacemark = new ymaps.Placemark(newCoords, {
+        balloonContentHeader: `🏍️ Kuryer: ${order.courier?.name || 'Yo\'lda'}`,
+        hintContent: 'Kuryerning joriy joylashuvi'
+      }, {
+        preset: 'islands#blueSportIcon',
+        iconColor: '#3b82f6'
+      });
+      map.geoObjects.add(courierPlacemark);
+      this.courierPlacemarks.set(order.id, courierPlacemark);
+
+      // Adjust bounds to fit courier too
+      const restLat = order.restaurantLatitude || (order.restaurant?.latitude) || 38.866127;
+      const restLng = order.restaurantLongitude || (order.restaurant?.longitude) || 65.816309;
+      const clientLat = order.latitude || 38.866127;
+      const clientLng = order.longitude || 65.816309;
+      map.setBounds([
+        [restLat, restLng],
+        [clientLat, clientLng],
+        newCoords
+      ], { checkZoomRange: true, zoomMargin: 40 });
+    } else {
+      const oldCoords = courierPlacemark.geometry.getCoordinates();
+      if (oldCoords[0] !== newCoords[0] || oldCoords[1] !== newCoords[1]) {
+        this.animateMarker(courierPlacemark, oldCoords, newCoords);
+      }
+    }
+  }
+
+  connectToOrderTrackingWs(orderId: number): void {
+    const token = this.auth.getToken();
+    if (!token || this.trackingSockets.has(orderId)) return;
+
+    const wsProtocol = API_BASE.startsWith('https') ? 'wss' : 'ws';
+    const cleanBase = API_BASE.replace(/^https?:\/\//, '');
+    const wsUrl = `${wsProtocol}://${cleanBase}/ws/gps?token=${token}&orderId=${orderId}`;
+
+    try {
+      const ws = new WebSocket(wsUrl);
+      this.trackingSockets.set(orderId, ws);
+
+      ws.onmessage = (event) => {
+        this.ngZone.run(() => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.error) {
+              console.warn('WS tracking error response:', data.error);
+              return;
+            }
+
+            // Update stats and coords on matching order object
+            this.orders.update(orders => {
+              return orders.map(o => {
+                if (o.id === orderId) {
+                  return {
+                    ...o,
+                    courierLatitude: data.courierLatitude,
+                    courierLongitude: data.courierLongitude,
+                    courierStartLatitude: data.courierStartLatitude,
+                    courierStartLongitude: data.courierStartLongitude,
+                    distanceToRestaurant: data.distanceToRestaurant,
+                    etaToRestaurant: data.etaToRestaurant || undefined,
+                    courierAcceptedAt: data.courierAcceptedAt || undefined,
+                    courierArrivedAtRestaurantAt: data.courierArrivedAtRestaurantAt || undefined,
+                    gpsSignalLost: data.gpsSignalLost,
+                    status: data.status
+                  };
+                }
+                return o;
+              });
+            });
+
+            // Trigger visual marker update on map
+            const map = this.orderMaps.get(orderId);
+            if (map) {
+              const updatedOrder = this.orders().find(o => o.id === orderId);
+              if (updatedOrder) {
+                this.updateCourierMarker(updatedOrder, map);
+              }
+            }
+          } catch (err) {
+            console.error('Error parsing WS tracking message:', err);
+          }
+        });
+      };
+
+      ws.onerror = (err) => {
+        console.error(`WebSocket error for order #${orderId}:`, err);
+      };
+
+      ws.onclose = () => {
+        console.log(`WebSocket closed for order #${orderId}`);
+        this.trackingSockets.delete(orderId);
+      };
+    } catch (e) {
+      console.error('Failed to create tracking WebSocket connection:', e);
+    }
+  }
+
+  animateMarker(placemark: any, startCoords: number[], endCoords: number[], duration = 1200): void {
+    const startTime = performance.now();
+    
+    const update = (time: number) => {
+      const elapsed = time - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Interpolate coordinates
+      const lat = startCoords[0] + (endCoords[0] - startCoords[0]) * progress;
+      const lng = startCoords[1] + (endCoords[1] - startCoords[1]) * progress;
+      
+      placemark.geometry.setCoordinates([lat, lng]);
+      
+      if (progress < 1) {
+        requestAnimationFrame(update);
+      }
+    };
+    
+    requestAnimationFrame(update);
   }
 
   statusLabel(status: OrderStatus): string {

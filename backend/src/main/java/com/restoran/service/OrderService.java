@@ -25,6 +25,12 @@ public class OrderService {
     private final RestaurantRepository restaurantRepository;
     private final TelegramBotService telegramBotService;
 
+    @org.springframework.beans.factory.annotation.Value("${courier.pay.base-fee:9000.0}")
+    private double payBaseFee;
+
+    @org.springframework.beans.factory.annotation.Value("${courier.pay.per-km-rate:1600.0}")
+    private double payPerKmRate;
+
     private static final double REST_LAT = 38.866127;
     private static final double REST_LNG = 65.816309;
     private static final double BASE_FEE = 10000.0;
@@ -127,21 +133,61 @@ public class OrderService {
 
         order.setStatus(status);
 
+        if (status == OrderStatus.COURIER_AT_RESTAURANT) {
+            order.setCourierArrivedAtRestaurantAt(java.time.LocalDateTime.now());
+        }
+
         if (status == OrderStatus.PREPARING) {
             // Auto-assign courier when restaurant accepts
             if (order.getCourier() == null) {
                 autoAssignCourier(order);
             }
         } else if (status == OrderStatus.DELIVERED) {
-            // Balansni oshirish — faqat kuryer smenada faol bo'lsa yetkazish summasi balansga qo'shiladi!
+            // Calculate kuryer earnings
             if (order.getCourier() != null) {
+                // Base fee
+                order.setBaseFee(payBaseFee);
+
+                // Pickup distance
+                double pickupDist = order.getDistanceToRestaurant() != null ? order.getDistanceToRestaurant() : 0.0;
+                if (pickupDist == 0.0 && order.getCourierStartLatitude() != null && order.getCourierStartLongitude() != null) {
+                    double restLat = order.getRestaurantLatitude() != null ? order.getRestaurantLatitude() : REST_LAT;
+                    double restLng = order.getRestaurantLongitude() != null ? order.getRestaurantLongitude() : REST_LNG;
+                    pickupDist = calculateDistance(order.getCourierStartLatitude(), order.getCourierStartLongitude(), restLat, restLng);
+                }
+                pickupDist = Math.round(pickupDist * 100.0) / 100.0; // 2 decimal places
+                order.setPickupDistanceKm(pickupDist);
+
+                // Delivery distance
+                double deliveryDist = order.getDistance() != null ? order.getDistance() : 0.0;
+                if (deliveryDist == 0.0 && order.getLatitude() != null && order.getLongitude() != null) {
+                    double restLat = order.getRestaurantLatitude() != null ? order.getRestaurantLatitude() : REST_LAT;
+                    double restLng = order.getRestaurantLongitude() != null ? order.getRestaurantLongitude() : REST_LNG;
+                    deliveryDist = calculateDistance(restLat, restLng, order.getLatitude(), order.getLongitude());
+                }
+                deliveryDist = Math.round(deliveryDist * 100.0) / 100.0; // 2 decimal places
+                order.setDeliveryDistanceKm(deliveryDist);
+
+                // Fees
+                double pFee = pickupDist * payPerKmRate;
+                double dFee = deliveryDist * payPerKmRate;
+                order.setPickupFee(Math.round(pFee * 100.0) / 100.0);
+                order.setCourierDeliveryFee(Math.round(dFee * 100.0) / 100.0);
+
+                // Totals
+                double totDist = pickupDist + deliveryDist;
+                order.setTotalDistanceKm(Math.round(totDist * 100.0) / 100.0);
+
+                double totalEarn = payBaseFee + order.getPickupFee() + order.getCourierDeliveryFee();
+                order.setTotalEarning(Math.round(totalEarn * 100.0) / 100.0);
+
+                // Update courier balance if courier is active on shift
                 User courier = order.getCourier();
                 boolean isActive = slotRepository.findActiveSlotForCourier(courier.getId()).isPresent();
                 order.setCourierActiveOnShift(isActive);
                 if (isActive) {
                     long currentBalance = courier.getBalance() != null ? courier.getBalance() : 0L;
-                    double fee = order.getDeliveryFee() != null ? order.getDeliveryFee() : 0.0;
-                    courier.setBalance(currentBalance + (long) fee);
+                    courier.setBalance(currentBalance + (long) order.getTotalEarning().doubleValue());
                     userRepository.save(courier);
                 }
             }
@@ -274,6 +320,20 @@ public class OrderService {
         setCourierOnOrder(order, courier);
         order.setStatus(OrderStatus.COURIER_ACCEPTED);
         order.setAssignedAt(null); // Qabul qilingach sanoq to'xtaydi
+        order.setCourierAcceptedAt(java.time.LocalDateTime.now());
+        
+        // Save restaurant coordinates
+        double rLat = REST_LAT;
+        double rLng = REST_LNG;
+        if (order.getRestaurant() != null && order.getRestaurant().getLatitude() != null && order.getRestaurant().getLongitude() != null) {
+            rLat = order.getRestaurant().getLatitude();
+            rLng = order.getRestaurant().getLongitude();
+        }
+        order.setRestaurantLatitude(rLat);
+        order.setRestaurantLongitude(rLng);
+        order.setDistanceToRestaurant(0.0);
+        order.setGpsSignalLost(false);
+
         return orderRepository.save(order);
     }
 
@@ -407,6 +467,71 @@ public class OrderService {
                 order.setCourier(null);
             }
         }
+
+        return orderRepository.save(order);
+    }
+
+    public Order updateCourierLocation(Long orderId, Double lat, Double lng, Boolean gpsSignalLost) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Buyurtma topilmadi: " + orderId));
+
+        if (order.getStatus() == OrderStatus.DELIVERED || order.getStatus() == OrderStatus.CANCELED) {
+            throw new RuntimeException("Buyurtma yakunlangan. Kuzatuv to'xtatildi.");
+        }
+
+        if (gpsSignalLost != null && gpsSignalLost) {
+            order.setGpsSignalLost(true);
+            return orderRepository.save(order);
+        }
+
+        order.setGpsSignalLost(false);
+
+        if (lat == null || lng == null) {
+            return order;
+        }
+
+        // Set start coordinates if null
+        if (order.getCourierStartLatitude() == null || order.getCourierStartLongitude() == null) {
+            order.setCourierStartLatitude(lat);
+            order.setCourierStartLongitude(lng);
+        }
+
+        // Set restaurant coordinates if null
+        if (order.getRestaurantLatitude() == null || order.getRestaurantLongitude() == null) {
+            double rLat = REST_LAT;
+            double rLng = REST_LNG;
+            if (order.getRestaurant() != null && order.getRestaurant().getLatitude() != null && order.getRestaurant().getLongitude() != null) {
+                rLat = order.getRestaurant().getLatitude();
+                rLng = order.getRestaurant().getLongitude();
+            }
+            order.setRestaurantLatitude(rLat);
+            order.setRestaurantLongitude(rLng);
+        }
+
+        // Calculate and accumulate distance traveled until courier reaches restaurant
+        if (order.getStatus() == OrderStatus.COURIER_ACCEPTED) {
+            if (order.getCourierLatitude() != null && order.getCourierLongitude() != null) {
+                double delta = calculateDistance(order.getCourierLatitude(), order.getCourierLongitude(), lat, lng);
+                // Filter out unrealistic GPS jumps (e.g. > 5 km in single interval)
+                if (delta > 0 && delta < 5.0) {
+                    double currentDist = order.getDistanceToRestaurant() != null ? order.getDistanceToRestaurant() : 0.0;
+                    double newDist = currentDist + delta;
+                    order.setDistanceToRestaurant(Math.round(newDist * 100.0) / 100.0);
+                }
+            }
+        }
+
+        // Update live coordinates
+        order.setCourierLatitude(lat);
+        order.setCourierLongitude(lng);
+
+        // Calculate ETA to restaurant
+        double rLat = order.getRestaurantLatitude();
+        double rLng = order.getRestaurantLongitude();
+        double remainingDist = calculateDistance(lat, lng, rLat, rLng);
+        // Assume avg speed of 30 km/h (which is 0.5 km per minute). So remainingDist * 2 minutes.
+        long minutesToArrive = (long) Math.ceil(remainingDist * 2.0);
+        order.setEtaToRestaurant(java.time.LocalDateTime.now().plusMinutes(minutesToArrive));
 
         return orderRepository.save(order);
     }
