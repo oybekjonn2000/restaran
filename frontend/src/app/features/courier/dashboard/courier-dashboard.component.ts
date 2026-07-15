@@ -228,6 +228,13 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
                         }
                       </div>
 
+                      @if (order.status === 'COURIER_ACCEPTED') {
+                        <button class="control-action-btn cancel-request-btn" (click)="requestOrderCancel(order.id)" style="margin-top: 8px; background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); width: 100%; padding: 8px; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.82rem;">
+                          <span class="btn-icon">✕</span>
+                          <span class="btn-text">Bekor qilishni so'rash</span>
+                        </button>
+                      }
+
                       <!-- Verification Mode if "Yo'lga chiqdim" is swiped -->
                       @if (showOrderItemsVerificationId() === order.id) {
                         <div class="order-verification-box">
@@ -261,21 +268,27 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
                         </div>
                       } @else {
                         <!-- Regular Swipe-to-Confirm action -->
-                        <div class="active-order-actions" style="margin-top: 10px;">
-                          <div class="swipe-container" 
-                               (mousedown)="onSwipeStart($event, order, false)" 
-                               (touchstart)="onSwipeStart($event, order, false)">
-                            <div class="swipe-track">
-                              <div class="swipe-bg" [style.width.%]="activeSwipingOrderId() === order.id ? swipePercent() : 0"></div>
-                              <div class="swipe-handle" [style.transform]="activeSwipingOrderId() === order.id ? 'translateX(' + swipeTranslateX() + 'px)' : 'translateX(0px)'">
-                                <span class="swipe-arrow">➔</span>
+                        @if (order.status === 'CANCELLATION_REQUESTED') {
+                          <div class="cancellation-waiting-banner" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 14px; text-align: center; color: #f59e0b; font-weight: 700; margin-top: 10px; font-size: 0.85rem;">
+                            ⚠️ Bekor qilish so'rovi yuborildi. Admin javobi kutilmoqda...
+                          </div>
+                        } @else {
+                          <div class="active-order-actions" style="margin-top: 10px;">
+                            <div class="swipe-container" 
+                                 (mousedown)="onSwipeStart($event, order, false)" 
+                                 (touchstart)="onSwipeStart($event, order, false)">
+                              <div class="swipe-track">
+                                <div class="swipe-bg" [style.width.%]="activeSwipingOrderId() === order.id ? swipePercent() : 0"></div>
+                                <div class="swipe-handle" [style.transform]="activeSwipingOrderId() === order.id ? 'translateX(' + swipeTranslateX() + 'px)' : 'translateX(0px)'">
+                                  <span class="swipe-arrow">➔</span>
+                                </div>
+                                <span class="swipe-text" [style.color]="activeSwipingOrderId() === order.id && swipePercent() > 50 ? '#fff' : '#4b6bfb'">
+                                  {{ swipeText(order.status) }}
+                                </span>
                               </div>
-                              <span class="swipe-text" [style.color]="activeSwipingOrderId() === order.id && swipePercent() > 50 ? '#fff' : '#4b6bfb'">
-                                {{ swipeText(order.status) }}
-                              </span>
                             </div>
                           </div>
-                        </div>
+                        }
                       }
                     </div>
                   }
@@ -4492,6 +4505,24 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     this.orderService.deliverOrder(id).subscribe({
       next: () => { this.actionLoading.set(null); this.snack.open('🎉 Topshirildi!', '', { duration: 3500 }); this.loadAll(false); },
       error: () => this.actionLoading.set(null)
+    });
+  }
+
+  requestOrderCancel(id: number): void {
+    if (!confirm("Rostdan ham buyurtmani bekor qilishni so'ramoqchimisiz? (Admin tasdig'i talab etiladi)")) {
+      return;
+    }
+    this.actionLoading.set(id);
+    this.orderService.requestCourierCancel(id).subscribe({
+      next: () => {
+        this.actionLoading.set(null);
+        this.snack.open('⚠️ Bekor qilish so\'rovi yuborildi!', '', { duration: 3000 });
+        this.loadAll(false);
+      },
+      error: (err) => {
+        this.actionLoading.set(null);
+        this.snack.open(`❌ ${err.error?.message || 'Bekor qilishni so\'rab bo\'lmadi'}`, '', { duration: 3000 });
+      }
     });
   }
 

@@ -41,6 +41,8 @@ export interface Order {
   totalEarning?: number;
   createdAt: string;
   items: OrderItem[];
+  dispatchAttempt?: number;
+  previousStatus?: string;
 }
 
 export interface OrderItem {
@@ -58,7 +60,9 @@ export type OrderStatus =
   | 'DELIVERING'
   | 'COURIER_AT_CLIENT'
   | 'DELIVERED'
-  | 'CANCELED';
+  | 'CANCELED'
+  | 'CANCELLATION_REQUESTED'
+  | 'TRANSFERRED_TO_YANDEX';
 
 export interface OrderRequest {
   deliveryAddress: string;
@@ -80,6 +84,8 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   COURIER_AT_CLIENT:     "📍 Kuryer manzilida",
   DELIVERED:             "🎉 Yetkazildi",
   CANCELED:              "❌ Bekor qilindi",
+  CANCELLATION_REQUESTED: "⚠️ Bekor qilish so'raldi",
+  TRANSFERRED_TO_YANDEX: "🚕 Yandexga o'tkazildi",
 };
 
 export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
@@ -91,4 +97,6 @@ export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   COURIER_AT_CLIENT:     "#14b8a6",
   DELIVERED:             "#10b981",
   CANCELED:              "#ef4444",
+  CANCELLATION_REQUESTED: "#eab308",
+  TRANSFERRED_TO_YANDEX: "#e11d48",
 };

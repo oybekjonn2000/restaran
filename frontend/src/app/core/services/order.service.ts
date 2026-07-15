@@ -52,6 +52,27 @@ export class OrderService {
     return this.http.put<Order>(`${BASE}/courier/${orderId}/deliver`, {});
   }
 
+  requestCourierCancel(orderId: number): Observable<Order> {
+    return this.http.post<Order>(`${BASE}/courier/${orderId}/request-cancel`, {});
+  }
+
+  // ===== ADMIN DISPATCH METHODS =====
+  getDispatchLogs(orderId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${BASE}/admin/orders/${orderId}/dispatch-logs`);
+  }
+
+  transferToCourier(orderId: number, courierId: number): Observable<Order> {
+    return this.http.put<Order>(`${BASE}/admin/orders/${orderId}/transfer-courier?courierId=${courierId}`, {});
+  }
+
+  transferToYandex(orderId: number): Observable<Order> {
+    return this.http.put<Order>(`${BASE}/admin/orders/${orderId}/transfer-yandex`, {});
+  }
+
+  rejectCancellation(orderId: number): Observable<Order> {
+    return this.http.put<Order>(`${BASE}/admin/orders/${orderId}/reject-cancellation`, {});
+  }
+
   // ===== ADMIN =====
   getAllOrders(): Observable<Order[]> {
     return this.http.get<Order[]>(`${BASE}/admin/orders`);

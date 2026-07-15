@@ -24,6 +24,7 @@ public class OrderService {
     private final FoodRepository foodRepository;
     private final RestaurantRepository restaurantRepository;
     private final TelegramBotService telegramBotService;
+    private final com.restoran.repository.OrderDispatchLogRepository orderDispatchLogRepository;
 
     @org.springframework.beans.factory.annotation.Value("${courier.pay.base-fee:9000.0}")
     private double payBaseFee;
@@ -45,6 +46,23 @@ public class OrderService {
                 * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
+    }
+
+    private void logDispatchEvent(Order order, User courier, String description, Boolean accepted, String declinedBy, String cancellationRequestedBy, String adminDecision, Boolean sentToYandex) {
+        OrderDispatchLog log = OrderDispatchLog.builder()
+            .order(order)
+            .courierId(courier != null ? courier.getId() : null)
+            .courierName(courier != null ? courier.getName() : null)
+            .sentAt(order.getAssignedAt())
+            .attemptNumber(order.getDispatchAttempt())
+            .accepted(accepted)
+            .declinedBy(declinedBy)
+            .cancellationRequestedBy(cancellationRequestedBy)
+            .adminDecision(adminDecision)
+            .sentToYandex(sentToYandex)
+            .actionDescription(description)
+            .build();
+        orderDispatchLogRepository.save(log);
     }
 
     public Order createOrder(Long userId, OrderRequest request) {
@@ -234,8 +252,49 @@ public class OrderService {
 
         if (activeCouriers.isEmpty()) {
             order.setYandexDelivery(true);
-            return; // Smenada kuryer yo'qligi uchun Yandex yetkazib beradi
+            order.setStatus(OrderStatus.TRANSFERRED_TO_YANDEX);
+            order.setCourier(null);
+            order.setAssignedAt(null);
+            logDispatchEvent(order, null, "Faol kuryer topilmadi. Yandexga o'tkazildi.", false, null, null, null, true);
+            return;
         }
+
+        String attemptedStr = order.getAttemptedCourierIds() != null ? order.getAttemptedCourierIds() : "";
+        
+        // Attempted bo'lmagan kuryerlarni olamiz
+        List<User> candidates = activeCouriers.stream()
+            .filter(c -> !attemptedStr.contains("[" + c.getId() + "]"))
+            .toList();
+
+        // Urinishlar sonini oshiramiz
+        int currentAttempt = order.getDispatchAttempt() != null ? order.getDispatchAttempt() : 0;
+        currentAttempt++;
+        order.setDispatchAttempt(currentAttempt);
+
+        // Agar nomzodlar qolmagan bo'lsa
+        if (candidates.isEmpty()) {
+            // Yagona kuryer bo'lsa, ikkinchi urinishni qiladi
+            if (activeCouriers.size() == 1) {
+                User singleCourier = activeCouriers.get(0);
+                long countTried = attemptedStr.chars().filter(ch -> ch == '[').count();
+                if (countTried < 2) {
+                    setCourierOnOrder(order, singleCourier);
+                    order.setAssignedAt(java.time.LocalDateTime.now());
+                    order.setAttemptedCourierIds(attemptedStr + "[" + singleCourier.getId() + "],");
+                    logDispatchEvent(order, singleCourier, "Yagona kuryer uchun 2-urinish boshlandi.", false, null, null, null, false);
+                    return;
+                }
+            }
+
+            // Aks holda (yoki yagona kuryerda 2-urinish ham tugagan bo'lsa) Yandexga o'tadi
+            order.setYandexDelivery(true);
+            order.setStatus(OrderStatus.TRANSFERRED_TO_YANDEX);
+            order.setCourier(null);
+            order.setAssignedAt(null);
+            logDispatchEvent(order, null, "Barcha faol kuryerlar urinishlari tugadi. Yandexga o'tkazildi.", false, null, null, null, true);
+            return;
+        }
+
         order.setYandexDelivery(false);
 
         List<OrderStatus> activeStatuses = List.of(
@@ -246,23 +305,7 @@ public class OrderService {
             OrderStatus.COURIER_AT_CLIENT
         );
 
-        final String finalAttempted = order.getAttemptedCourierIds() != null ? order.getAttemptedCourierIds() : "";
-
-        // Attempted bo'lmagan kuryerlarni olamiz
-        List<User> candidates = activeCouriers.stream()
-            .filter(c -> !finalAttempted.contains("[" + c.getId() + "]"))
-            .toList();
-
-        String nextAttempted = finalAttempted;
-        // Agar hamma faol kuryerlar urinib ko'rilgan bo'lsa, attempted ro'yxatini tozalab, hammasini nomzod qilamiz
-        if (candidates.isEmpty()) {
-            order.setAttemptedCourierIds("");
-            nextAttempted = "";
-            candidates = activeCouriers;
-        }
-
         // Yuklamasi (aktiv buyurtmalari soni) eng kam bo'lgan kuryerni tanlaymiz
-        final String currentAttempted = nextAttempted;
         User selectedCourier = candidates.stream()
             .min((c1, c2) -> {
                 long count1 = orderRepository.countByCourierAndStatusIn(c1, activeStatuses);
@@ -277,7 +320,8 @@ public class OrderService {
         if (selectedCourier != null) {
             setCourierOnOrder(order, selectedCourier);
             order.setAssignedAt(java.time.LocalDateTime.now());
-            order.setAttemptedCourierIds(currentAttempted + "[" + selectedCourier.getId() + "],");
+            order.setAttemptedCourierIds(attemptedStr + "[" + selectedCourier.getId() + "],");
+            logDispatchEvent(order, selectedCourier, "Kuryerga buyurtma yuborildi. Urinish #" + currentAttempt, false, null, null, null, false);
         }
     }
 
@@ -334,6 +378,7 @@ public class OrderService {
         order.setDistanceToRestaurant(0.0);
         order.setGpsSignalLost(false);
 
+        logDispatchEvent(order, courier, "Kuryer buyurtmani qabul qildi.", true, null, null, null, false);
         return orderRepository.save(order);
     }
 
@@ -346,6 +391,11 @@ public class OrderService {
         order.setAssignedAt(java.time.LocalDateTime.now());
         String attempted = order.getAttemptedCourierIds() != null ? order.getAttemptedCourierIds() : "";
         order.setAttemptedCourierIds(attempted + "[" + courierId + "],");
+        
+        int currentAttempt = order.getDispatchAttempt() != null ? order.getDispatchAttempt() : 0;
+        order.setDispatchAttempt(currentAttempt + 1);
+        
+        logDispatchEvent(order, courier, "Admin kuryerni tayinladi (Urinish #" + order.getDispatchAttempt() + ")", false, null, null, null, false);
         return orderRepository.save(order);
     }
 
@@ -360,6 +410,7 @@ public class OrderService {
             if (order.getCourier() != null && order.getAssignedAt() != null) {
                 if (order.getAssignedAt().plusMinutes(2).isBefore(java.time.LocalDateTime.now())) {
                     System.out.println(">>> Timeout: #" + order.getId() + " buyurtma kuryer tomonidan 2 daqiqa ichida qabul qilinmadi. Qayta taqsimlanmoqda...");
+                    logDispatchEvent(order, order.getCourier(), "Kuryer buyurtmani 2 daqiqa ichida qabul qilmadi.", false, String.valueOf(order.getCourier().getId()), null, null, false);
                     setCourierOnOrder(order, null);
                     order.setAssignedAt(null);
                     autoAssignCourier(order);
@@ -533,6 +584,88 @@ public class OrderService {
         long minutesToArrive = (long) Math.ceil(remainingDist * 2.0);
         order.setEtaToRestaurant(java.time.LocalDateTime.now().plusMinutes(minutesToArrive));
 
+        return orderRepository.save(order);
+    }
+
+    public Order requestCourierCancel(Long orderId, Long courierId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Buyurtma topilmadi: " + orderId));
+        if (order.getCourier() == null || !order.getCourier().getId().equals(courierId)) {
+            throw new RuntimeException("Siz bu buyurtmaga biriktirilmagansiz!");
+        }
+        if (order.getStatus() != OrderStatus.COURIER_ACCEPTED) {
+            throw new RuntimeException("Bekor qilishni so'rash imkonsiz: buyurtma holati mos kelmaydi.");
+        }
+        order.setPreviousStatus(order.getStatus().name());
+        order.setStatus(OrderStatus.CANCELLATION_REQUESTED);
+        logDispatchEvent(order, order.getCourier(), "Kuryer bekor qilishni so'radi.", false, null, String.valueOf(courierId), null, false);
+        return orderRepository.save(order);
+    }
+
+    public List<OrderDispatchLog> getDispatchLogs(Long orderId) {
+        return orderDispatchLogRepository.findByOrderIdOrderByLoggedAtDesc(orderId);
+    }
+
+    public Order transferToCourier(Long orderId, Long courierId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Buyurtma topilmadi: " + orderId));
+        User newCourier = userRepository.findById(courierId)
+            .orElseThrow(() -> new RuntimeException("Kuryer topilmadi: " + courierId));
+        
+        User oldCourier = order.getCourier();
+        String oldCourierName = oldCourier != null ? oldCourier.getName() : "Noma'lum";
+
+        // Assign to new courier
+        setCourierOnOrder(order, newCourier);
+        order.setStatus(OrderStatus.PREPARING); // Reset to PREPARING so it's active countdown
+        order.setAssignedAt(java.time.LocalDateTime.now());
+        
+        String attempted = order.getAttemptedCourierIds() != null ? order.getAttemptedCourierIds() : "";
+        order.setAttemptedCourierIds(attempted + "[" + courierId + "],");
+        
+        int currentAttempt = order.getDispatchAttempt() != null ? order.getDispatchAttempt() : 0;
+        order.setDispatchAttempt(currentAttempt + 1);
+
+        logDispatchEvent(order, newCourier, "Admin qarori: Boshqa kuryerga o'tkazildi (Eski kuryer: " + oldCourierName + ")", false, null, null, "TRANSFERRED_TO_COURIER", false);
+        return orderRepository.save(order);
+    }
+
+    public Order transferToYandex(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Buyurtma topilmadi: " + orderId));
+        
+        User oldCourier = order.getCourier();
+        String oldCourierName = oldCourier != null ? oldCourier.getName() : "Noma'lum";
+
+        setCourierOnOrder(order, null);
+        order.setAssignedAt(null);
+        order.setStatus(OrderStatus.TRANSFERRED_TO_YANDEX);
+        order.setYandexDelivery(true);
+
+        logDispatchEvent(order, null, "Admin qarori: Yandex Delivery ga yuborildi (Eski kuryer: " + oldCourierName + ")", false, null, null, "TRANSFERRED_TO_YANDEX", true);
+        return orderRepository.save(order);
+    }
+
+    public Order rejectCancellation(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Buyurtma topilmadi: " + orderId));
+        if (order.getStatus() != OrderStatus.CANCELLATION_REQUESTED) {
+            throw new RuntimeException("Buyurtmada bekor qilish so'rovi mavjud emas.");
+        }
+        
+        OrderStatus prev = OrderStatus.COURIER_ACCEPTED;
+        if (order.getPreviousStatus() != null) {
+            try {
+                prev = OrderStatus.valueOf(order.getPreviousStatus());
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+        
+        order.setStatus(prev);
+        order.setPreviousStatus(null);
+
+        logDispatchEvent(order, order.getCourier(), "Admin qarori: Bekor qilish rad etildi. Buyurtma kuryerda qoldirildi.", false, null, null, "REJECTED_CANCELLATION", false);
         return orderRepository.save(order);
     }
 }

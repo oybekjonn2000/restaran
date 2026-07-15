@@ -560,4 +560,26 @@ public class AdminController {
     public ResponseEntity<Slot> forceEndSlot(@PathVariable Long id) {
         return ResponseEntity.ok(slotService.adminForceEndSlot(id));
     }
+
+    @GetMapping("/orders/{id}/dispatch-logs")
+    public ResponseEntity<List<com.restoran.entity.OrderDispatchLog>> getDispatchLogs(@PathVariable Long id) {
+        return ResponseEntity.ok(orderService.getDispatchLogs(id));
+    }
+
+    @PutMapping("/orders/{id}/transfer-courier")
+    public ResponseEntity<Order> transferCourier(
+            @PathVariable Long id,
+            @RequestParam Long courierId) {
+        return ResponseEntity.ok(orderService.transferToCourier(id, courierId));
+    }
+
+    @PutMapping("/orders/{id}/transfer-yandex")
+    public ResponseEntity<Order> transferYandex(@PathVariable Long id) {
+        return ResponseEntity.ok(orderService.transferToYandex(id));
+    }
+
+    @PutMapping("/orders/{id}/reject-cancellation")
+    public ResponseEntity<Order> rejectCancellation(@PathVariable Long id) {
+        return ResponseEntity.ok(orderService.rejectCancellation(id));
+    }
 }

@@ -134,6 +134,13 @@ public class Order {
     @Builder.Default
     private Double totalEarning = 0.0;
 
+    @Column(name = "dispatch_attempt")
+    @Builder.Default
+    private Integer dispatchAttempt = 0;
+
+    @Column(name = "previous_status")
+    private String previousStatus;
+
     @Transient
     private boolean courierActiveOnShift;
 
@@ -141,6 +148,9 @@ public class Order {
     protected void onCreate() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
+        }
+        if (dispatchAttempt == null) {
+            dispatchAttempt = 0;
         }
     }
 }

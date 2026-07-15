@@ -595,6 +595,8 @@ export class ClientOrdersComponent implements OnInit, OnDestroy {
       COURIER_AT_CLIENT:     '95%',
       DELIVERED:             '100%',
       CANCELED:              '0%',
+      CANCELLATION_REQUESTED: '50%',
+      TRANSFERRED_TO_YANDEX: '30%',
     };
     return map[status] ?? '0%';
   }

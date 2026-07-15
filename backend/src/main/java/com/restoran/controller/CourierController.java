@@ -143,4 +143,12 @@ public class CourierController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         return ResponseEntity.ok(slotService.getAllSlotsForCourier(userDetails.getId()));
     }
+
+    /** Kuryer restoranga yetib bormay turib buyurtmani bekor qilishni so'raydi */
+    @PostMapping("/{orderId}/request-cancel")
+    public ResponseEntity<Order> requestCancel(
+            @PathVariable Long orderId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(orderService.requestCourierCancel(orderId, userDetails.getId()));
+    }
 }

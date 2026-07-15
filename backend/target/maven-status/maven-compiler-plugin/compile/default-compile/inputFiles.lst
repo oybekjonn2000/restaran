@@ -27,6 +27,7 @@ E:\Loyiha\restaran\backend\src\main\java\com\restoran\controller\ManagerControll
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\entity\Category.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\service\AuthService.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\service\SlotService.java
+E:\Loyiha\restaran\backend\src\main\java\com\restoran\repository\OrderDispatchLogRepository.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\security\GpsWebSocketHandler.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\controller\CourierController.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\dto\request\PasswordChangeRequest.java
@@ -42,6 +43,7 @@ E:\Loyiha\restaran\backend\src\main\java\com\restoran\dto\request\OrderRequest.j
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\repository\UserRepository.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\repository\RestaurantRepository.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\config\WebConfig.java
+E:\Loyiha\restaran\backend\src\main\java\com\restoran\entity\OrderDispatchLog.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\entity\User.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\entity\CartItem.java
 E:\Loyiha\restaran\backend\src\main\java\com\restoran\security\JwtUtils.java

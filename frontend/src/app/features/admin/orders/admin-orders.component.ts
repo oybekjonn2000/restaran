@@ -8,7 +8,18 @@ import { Order, ORDER_STATUS_LABELS, OrderStatus } from '../../../core/models/or
 import { User } from '../../../core/models/user.model';
 import { BodyPortalDirective } from '../../../core/directives/body-portal.directive';
 
-const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','COURIER_AT_RESTAURANT','DELIVERING','COURIER_AT_CLIENT','DELIVERED','CANCELED'];
+const ALL_STATUSES: OrderStatus[] = [
+  'PENDING',
+  'PREPARING',
+  'COURIER_ACCEPTED',
+  'COURIER_AT_RESTAURANT',
+  'DELIVERING',
+  'COURIER_AT_CLIENT',
+  'DELIVERED',
+  'CANCELED',
+  'CANCELLATION_REQUESTED',
+  'TRANSFERRED_TO_YANDEX'
+];
 
 @Component({
   selector: 'app-admin-orders',
@@ -81,6 +92,10 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
                           💬 {{ order.cancelReason | slice:0:25 }}{{ order.cancelReason!.length > 25 ? '...' : '' }}
                         </div>
                       }
+                    } @else if (order.status === 'CANCELLATION_REQUESTED') {
+                      <span class="canceled-badge" style="background: rgba(245,158,11,0.15); color: #f59e0b; border-color: rgba(245,158,11,0.25);">⚠️ Bekor so'raldi</span>
+                    } @else if (order.status === 'TRANSFERRED_TO_YANDEX') {
+                      <span class="canceled-badge" style="background: rgba(225,29,72,0.15); color: #e11d48; border-color: rgba(225,29,72,0.25);">🚕 Yandex Delivery</span>
                     } @else {
                       <select class="status-select" [ngModel]="order.status"
                               (change)="changeStatus(order.id, $any($event.target).value)"
@@ -92,7 +107,9 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
                     }
                   </td>
                   <td>
-                    @if (order.courier) {
+                    @if (order.status === 'TRANSFERRED_TO_YANDEX') {
+                      <span class="courier-chip" style="background: rgba(225,29,72,0.1); color: #e11d48; border-color: rgba(225,29,72,0.2);">🚕 Yandex Delivery</span>
+                    } @else if (order.courier) {
                       <span class="courier-chip">🏍️ {{ order.courier.name }}</span>
                       <div class="courier-earning-details" style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.4; margin-top: 4px; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 4px; text-align: left;">
                         <div>💰 Baza: {{ order.baseFee || 9000 | number:'1.0-0' }} so'm</div>
@@ -162,8 +179,78 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
                   <div style="display: flex; justify-content: space-between; color: #10b981; font-weight: bold; border-top: 1px solid var(--border); padding-top: 6px; margin-top: 4px;"><span>💸 Jami kuryer daromadi:</span> <span>{{ selectedOrder()!.totalEarning || 0 | number:'1.0-0' }} so'm</span></div>
                 </div>
               }
+              
+              <!-- TAQSIMLASH MA'LUMOTLARI (Dispatch Info) -->
+              <div class="dispatch-info-card" style="background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border); margin-top: 10px;">
+                <h4 style="margin: 0 0 8px; color: #fff; font-size: 0.85rem; letter-spacing: 0.5px;">⚡ TAQSIMLASH METRIKALARI</h4>
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px;">
+                  <span>Urinishlar soni:</span>
+                  <strong style="color: var(--primary);">{{ selectedOrder()!.dispatchAttempt || 0 }}-urinish</strong>
+                </div>
+                @if (selectedOrder()!.status === 'PREPARING' && selectedOrder()!.assignedAt) {
+                  <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px; color: #f59e0b;">
+                    <span>Qabul qilish uchun qolgan vaqt:</span>
+                    <strong>⏱️ {{ getTimeRemaining(selectedOrder()!) }}</strong>
+                  </div>
+                }
+              </div>
+
+              <!-- BEKOR QILISH SO'ROVI VA AMALLARI (Cancellation Requested Actions) -->
+              @if (selectedOrder()!.status === 'CANCELLATION_REQUESTED') {
+                <div class="cancel-request-card" style="background: rgba(239, 68, 68, 0.08); padding: 14px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.25); margin-top: 12px;">
+                  <h4 style="margin: 0 0 6px; color: #ef4444; font-size: 0.85rem;">⚠️ KURYER BEKOR QILISHNI SO'RADI</h4>
+                  <p style="font-size: 0.78rem; margin: 0 0 12px; color: var(--text-muted);">Ushbu kuryer buyurtmani restoranga yetib bormasdan bekor qilishni so'radi. Qarorni tanlang:</p>
+                  
+                  <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Option 1: Transfer to Courier -->
+                    <div style="display: flex; gap: 6px; align-items: center; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; border: 1px solid var(--border);">
+                      <select class="courier-select" [(ngModel)]="transferCourierId" style="flex: 1; font-size: 0.78rem; padding: 4px 8px; max-width: 100%;">
+                        <option value="0">-- Boshqa kuryerga berish --</option>
+                        @for (c of couriers(); track c.id) {
+                          <option [value]="c.id">🏍️ {{ c.name }}</option>
+                        }
+                      </select>
+                      <button (click)="transferToCourier(selectedOrder()!.id)" [disabled]="!transferCourierId || transferCourierId === '0'" style="background: #3b82f6; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer;">
+                        O'tkazish
+                      </button>
+                    </div>
+
+                    <!-- Option 2 & 3 row -->
+                    <div style="display: flex; gap: 8px;">
+                      <button (click)="transferToYandex(selectedOrder()!.id)" style="flex: 1; background: #e11d48; color: #fff; border: none; padding: 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                        🚕 Yandex ga o'tkazish
+                      </button>
+                      <button (click)="rejectCancellation(selectedOrder()!.id)" style="flex: 1; background: #10b981; color: #fff; border: none; padding: 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                        🚫 Rad etish (Kuryerda qolsin)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- AUDIT LOGS / TAQSIMLASH TARIXI -->
+              @if (dispatchLogs().length > 0) {
+                <div class="dispatch-audit-card" style="margin-top: 14px;">
+                  <h4 style="margin: 0 0 8px; color: #fff; font-size: 0.85rem; letter-spacing: 0.5px;">📋 TAQSIMLASH TARIXI (AUDIT LOGS)</h4>
+                  <div style="display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.15); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                    @for (log of dispatchLogs(); track log.id) {
+                      <div style="border-bottom: 1px dashed rgba(255,255,255,0.06); padding-bottom: 6px; font-size: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.7rem; margin-bottom: 2px;">
+                          <span>⏱️ {{ log.loggedAt | date:'dd.MM HH:mm:ss' }}</span>
+                          <span>Urinish #{{ log.attemptNumber }}</span>
+                        </div>
+                        <div style="color: #fff; font-weight: 600;">{{ log.actionDescription }}</div>
+                        @if (log.courierName) {
+                          <div style="color: var(--text-muted); font-size: 0.7rem; margin-top: 2px;">Kuryer: {{ log.courierName }}</div>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
               @if (selectedOrder()!.cancelReason) {
-                <div class="cancel-reason-box">
+                <div class="cancel-reason-box" style="margin-top: 10px;">
                   <span>⚠️ Bekor qilish sababi:</span>
                   <p>{{ selectedOrder()!.cancelReason }}</p>
                 </div>
@@ -547,7 +634,13 @@ export class AdminOrdersComponent implements OnInit, OnDestroy {
   canceling = signal(false);
   cancelReason = '';
   statuses = ALL_STATUSES;
+  
+  nowTick = signal<number>(Date.now());
+  transferCourierId = '0';
+  dispatchLogs = signal<any[]>([]);
+  
   private pollInterval: any;
+  private tickInterval: any;
 
   cancelPresets = [
     'Kuryer topilmadi',
@@ -570,10 +663,12 @@ export class AdminOrdersComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.load(true);
     this.pollInterval = setInterval(() => this.load(false), 4000);
+    this.tickInterval = setInterval(() => this.nowTick.set(Date.now()), 1000);
   }
 
   ngOnDestroy(): void {
     if (this.pollInterval) clearInterval(this.pollInterval);
+    if (this.tickInterval) clearInterval(this.tickInterval);
   }
 
   load(showLoader = true): void {
@@ -609,7 +704,63 @@ export class AdminOrdersComponent implements OnInit, OnDestroy {
     });
   }
 
-  viewOrder(order: Order): void { this.selectedOrder.set(order); }
+  viewOrder(order: Order): void {
+    this.selectedOrder.set(order);
+    this.transferCourierId = '0';
+    this.dispatchLogs.set([]);
+    this.orderService.getDispatchLogs(order.id).subscribe({
+      next: (logs) => this.dispatchLogs.set(logs)
+    });
+  }
+
+  getTimeRemaining(order: Order): string {
+    if (!order.assignedAt) return '';
+    const assignTime = new Date(order.assignedAt).getTime();
+    const diff = assignTime + 120000 - this.nowTick();
+    if (diff <= 0) return '0:00';
+    const sec = Math.floor((diff / 1000) % 60);
+    const min = Math.floor((diff / 1000 / 60) % 60);
+    return `${min}:${sec < 10 ? '0' + sec : sec}`;
+  }
+
+  transferToCourier(orderId: number): void {
+    const courierId = +this.transferCourierId;
+    if (!courierId) return;
+    this.orderService.transferToCourier(orderId, courierId).subscribe({
+      next: (updated) => {
+        this.selectedOrder.set(updated);
+        this.orders.update(list => list.map(o => o.id === orderId ? updated : o));
+        this.snack.open('✅ Buyurtma boshqa kuryerga yo\'naltirildi!', '', { duration: 3000 });
+        this.viewOrder(updated);
+      },
+      error: () => this.snack.open('❌ O\'tkazishda xatolik yuz berdi', '', { duration: 3000 })
+    });
+  }
+
+  transferToYandex(orderId: number): void {
+    if (!confirm("Ushbu buyurtmani Yandex Delivery ga o'tkazmoqchimisiz?")) return;
+    this.orderService.transferToYandex(orderId).subscribe({
+      next: (updated) => {
+        this.selectedOrder.set(updated);
+        this.orders.update(list => list.map(o => o.id === orderId ? updated : o));
+        this.snack.open('🚕 Buyurtma Yandex Delivery ga uzatildi!', '', { duration: 3000 });
+        this.viewOrder(updated);
+      },
+      error: () => this.snack.open('❌ O\'tkazishda xatolik yuz berdi', '', { duration: 3000 })
+    });
+  }
+
+  rejectCancellation(orderId: number): void {
+    this.orderService.rejectCancellation(orderId).subscribe({
+      next: (updated) => {
+        this.selectedOrder.set(updated);
+        this.orders.update(list => list.map(o => o.id === orderId ? updated : o));
+        this.snack.open('✅ Bekor qilish rad etildi, buyurtma kuryerda qoldi.', '', { duration: 3000 });
+        this.viewOrder(updated);
+      },
+      error: () => this.snack.open('❌ Rad etishda xatolik yuz berdi', '', { duration: 3000 })
+    });
+  }
 
   openCancelModal(order: Order): void {
     this.cancelModalOrder.set(order);

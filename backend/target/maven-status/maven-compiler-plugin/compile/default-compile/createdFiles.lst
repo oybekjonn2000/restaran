@@ -3,6 +3,7 @@ com\restoran\service\TelegramBotService.class
 com\restoran\dto\request\TelegramUser.class
 com\restoran\entity\CartItem.class
 com\restoran\dto\request\ProfileUpdateRequest.class
+com\restoran\repository\OrderDispatchLogRepository.class
 com\restoran\controller\AdminController$CourierStatsResponse.class
 com\restoran\dto\request\RegisterRequest.class
 com\restoran\dto\response\AuthResponse$AuthResponseBuilder.class
@@ -23,6 +24,7 @@ com\restoran\entity\Restaurant.class
 com\restoran\entity\User$UserBuilder.class
 com\restoran\controller\AdminController$ClientUpdateRequest.class
 com\restoran\controller\CourierController.class
+com\restoran\entity\OrderDispatchLog.class
 com\restoran\security\WebSocketConfig.class
 com\restoran\service\SlotService$CancelResult.class
 com\restoran\controller\CartController.class
@@ -60,6 +62,7 @@ com\restoran\repository\CartItemRepository.class
 com\restoran\entity\Role.class
 com\restoran\service\CartService$CartItemDto.class
 com\restoran\service\FoodService.class
+com\restoran\entity\OrderDispatchLog$OrderDispatchLogBuilder.class
 com\restoran\security\GpsWebSocketHandler.class
 com\restoran\controller\AdminController$RestaurantAdminRequest.class
 com\restoran\entity\OrderItem$OrderItemBuilder.class
