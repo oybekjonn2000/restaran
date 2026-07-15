@@ -97,7 +97,7 @@ import { Order, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, OrderStatus } from '..
                     <span class="yandex-icon">🚕</span>
                     <div class="yandex-content">
                       <div class="yandex-title">Yandex Yetkazib berish</div>
-                      <div class="yandex-text">Yetkazish yandex orqali bajariladi va summasini haydovchi sizga aytadi !</div>
+                      <div class="yandex-text">Kuryer topilmadi, buyurtmangiz Yandex orqali yetkaziladi. To'lov summasi haydovchining telefonida ko'rsatiladi.</div>
                     </div>
                   </div>
                 }

@@ -164,7 +164,7 @@ import { AuthService } from '../../../core/services/auth.service';
                 } @else {
                   <div class="summary-row yandex-fee-row">
                     <span class="s-label">Yetkazib berish:</span>
-                    <span class="s-value yandex-label">🚕 Yandex orqali (summasini haydovchi aytadi)</span>
+                    <span class="s-value yandex-label">🚕 Kuryer topilmadi, buyurtma Yandex orqali yetkaziladi (summasini haydovchining telefonida)</span>
                   </div>
                   <div class="summary-row total">
                     <span class="s-label">Jami summa:</span>

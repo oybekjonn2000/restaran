@@ -179,17 +179,19 @@ public class OrderService {
     }
 
     private void autoAssignCourier(Order order) {
-        // Smenada faol kuryer bormi?
-        boolean anyCourierOnShift = slotRepository.findByStartedTrueAndFinishedFalse().stream()
-            .anyMatch(s -> s.getCourier() != null);
+        // Smenada faol kuryerlar ro'yxati
+        List<User> activeCouriers = slotRepository.findByStartedTrueAndFinishedFalse().stream()
+            .map(Slot::getCourier)
+            .filter(c -> c != null)
+            .distinct()
+            .toList();
 
-        if (!anyCourierOnShift) {
+        if (activeCouriers.isEmpty()) {
             order.setYandexDelivery(true);
             return; // Smenada kuryer yo'qligi uchun Yandex yetkazib beradi
         }
         order.setYandexDelivery(false);
 
-        List<User> couriers = userRepository.findByRole(Role.COURIER);
         List<OrderStatus> activeStatuses = List.of(
             OrderStatus.PREPARING,
             OrderStatus.COURIER_ACCEPTED,
@@ -198,45 +200,38 @@ public class OrderService {
             OrderStatus.COURIER_AT_CLIENT
         );
 
-        String attempted = order.getAttemptedCourierIds() != null ? order.getAttemptedCourierIds() : "";
-        boolean assigned = false;
+        final String finalAttempted = order.getAttemptedCourierIds() != null ? order.getAttemptedCourierIds() : "";
 
-        for (User courier : couriers) {
-            String idStr = "[" + courier.getId() + "]";
-            if (attempted.contains(idStr)) {
-                continue;
-            }
+        // Attempted bo'lmagan kuryerlarni olamiz
+        List<User> candidates = activeCouriers.stream()
+            .filter(c -> !finalAttempted.contains("[" + c.getId() + "]"))
+            .toList();
 
-            // Kuryer faol smenada (started=true, finished=false) ekanligini tekshiramiz
-            if (slotRepository.findActiveSlotForCourier(courier.getId()).isEmpty()) {
-                continue;
-            }
-
-            if (!orderRepository.existsByCourierAndStatusIn(courier, activeStatuses)) {
-                setCourierOnOrder(order, courier);
-                order.setAssignedAt(java.time.LocalDateTime.now());
-                order.setAttemptedCourierIds(attempted + idStr + ",");
-                assigned = true;
-                break;
-            }
+        String nextAttempted = finalAttempted;
+        // Agar hamma faol kuryerlar urinib ko'rilgan bo'lsa, attempted ro'yxatini tozalab, hammasini nomzod qilamiz
+        if (candidates.isEmpty()) {
+            order.setAttemptedCourierIds("");
+            nextAttempted = "";
+            candidates = activeCouriers;
         }
 
-        // Agar hamma kuryerlar urinib ko'rilgan bo'lsa va topshirilmagan bo'lsa, ro'yxatni tozalab qaytadan urinamiz
-        if (!assigned && !couriers.isEmpty() && attempted.length() > 0) {
-            order.setAttemptedCourierIds("");
-            for (User courier : couriers) {
-                // Kuryer faol smenada ekanligini tekshiramiz
-                if (slotRepository.findActiveSlotForCourier(courier.getId()).isEmpty()) {
-                    continue;
+        // Yuklamasi (aktiv buyurtmalari soni) eng kam bo'lgan kuryerni tanlaymiz
+        final String currentAttempted = nextAttempted;
+        User selectedCourier = candidates.stream()
+            .min((c1, c2) -> {
+                long count1 = orderRepository.countByCourierAndStatusIn(c1, activeStatuses);
+                long count2 = orderRepository.countByCourierAndStatusIn(c2, activeStatuses);
+                if (count1 != count2) {
+                    return Long.compare(count1, count2);
                 }
+                return Long.compare(c1.getId(), c2.getId()); // tie-breaker sifatida ID
+            })
+            .orElse(null);
 
-                if (!orderRepository.existsByCourierAndStatusIn(courier, activeStatuses)) {
-                    setCourierOnOrder(order, courier);
-                    order.setAssignedAt(java.time.LocalDateTime.now());
-                    order.setAttemptedCourierIds("[" + courier.getId() + "],");
-                    break;
-                }
-            }
+        if (selectedCourier != null) {
+            setCourierOnOrder(order, selectedCourier);
+            order.setAssignedAt(java.time.LocalDateTime.now());
+            order.setAttemptedCourierIds(currentAttempted + "[" + selectedCourier.getId() + "],");
         }
     }
 
