@@ -98,10 +98,10 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
                     <td data-label="Jami Narx">
                       <div class="price-info">
                         <strong>{{ (order.totalPrice + (order.deliveryFee || 0)) | number:'1.0-0' }} so'm</strong>
-                        <span class="fee">(Kuryer: {{ order.deliveryFee | number:'1.0-0' }} so'm)</span>
+                        <span class="fee">(Kuryer: {{ order.totalEarning || order.deliveryFee || 0 | number:'1.0-0' }} so'm)</span>
                       </div>
                     </td>
-                    <td data-label="Masofa">{{ order.distance || 0 }} km</td>
+                    <td data-label="Masofa">{{ (order.deliveryDistanceKm || order.distance || 0) | number:'1.1-2' }} km</td>
                     <td data-label="Kuryer">
                       @if (order.courier) {
                         <span class="courier-tag">🏍️ {{ order.courier.name }}</span>

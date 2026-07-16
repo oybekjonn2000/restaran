@@ -45,13 +45,15 @@ public class CourierController {
     @PutMapping("/{orderId}/accept")
     public ResponseEntity<Order> acceptOrder(
             @PathVariable Long orderId,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
         if (!slotService.hasActiveSlot(userDetails.getId())) {
             throw new RuntimeException("Buyurtma qabul qilish uchun avval smenangizni boshlang!");
         }
 
-        return ResponseEntity.ok(orderService.acceptOrder(orderId, userDetails.getId()));
+        return ResponseEntity.ok(orderService.acceptOrder(orderId, userDetails.getId(), lat, lng));
     }
 
     /** Kuryer restoranga yetib keldi → COURIER_AT_RESTAURANT */

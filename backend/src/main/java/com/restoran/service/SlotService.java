@@ -604,8 +604,16 @@ public class SlotService {
                 if (slot.isStarted() && !slot.isFinished()) {
                     continue;
                 }
+                // Yakunlangan smenalarni o'chirmaymiz (statistika uchun saqlanadi)
+                if (slot.isFinished()) {
+                    continue;
+                }
+                // Kuryer band qilgan yoki kuryer biriktirilgan smenalarni o'chirmaymiz
+                if (slot.getCourier() != null || slot.getBookedBy() != null) {
+                    continue;
+                }
                 // Faol jarimasi bor smenalarni o'chirmaymiz (admin bekor qilishi uchun imkoniyat qolishi kerak)
-                if (slot.isPenaltyApplied()) {
+                if (slot.isPenaltyApplied() || slot.isPenaltyReversed()) {
                     continue;
                 }
                 slotRepository.delete(slot);
@@ -617,7 +625,7 @@ public class SlotService {
             // Shuning uchun faqat 2.5 soatdan keyin penaltyApplied=false (chinakam ochiq) smenalarni o'chiramiz.
             if (now.isAfter(startDateTime.plusMinutes(150))) {
                 if (slot.getCourier() == null && slot.getBookedBy() == null && !slot.isStarted()) {
-                    if (!slot.isPenaltyApplied()) {
+                    if (!slot.isPenaltyApplied() && !slot.isPenaltyReversed()) {
                         slotRepository.delete(slot);
                     }
                 }
