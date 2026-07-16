@@ -346,12 +346,9 @@ export class ClientProfileComponent implements OnInit {
     this.menuItems = [
       {
         icon: '💬',
-        label: 'Yordam',
+        label: 'Qo\'llab-quvvatlash',
         colorClass: 'purple',
-        action: () => this.showInfo(
-          'Yordam',
-          "Qo'llab-quvvatlash xizmati bilan bog'lanish uchun: +998 90 123-45-67"
-        )
+        action: () => this.auth.showSupportChat.set(!this.auth.showSupportChat())
       },
       {
         icon: '🅰️',

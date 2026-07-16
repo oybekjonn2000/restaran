@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { OrderService } from '../../../core/services/order.service';
@@ -13,7 +14,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
 @Component({
   selector: 'app-courier-dashboard',
   standalone: true,
-  imports: [CommonModule, MatProgressSpinnerModule, MatSnackBarModule],
+  imports: [CommonModule, FormsModule, MatProgressSpinnerModule, MatSnackBarModule],
   template: `
     <div class="courier-app">
 
@@ -351,13 +352,104 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
         </div>
       }
 
-      <!-- ===== CHATLAR TAB ===== -->
+      <!-- ===== CHATLAR TAB (SUPPORT CHAT) ===== -->
       @if (activeTab() === 'chatlar') {
-        <div class="tab-content center-tab animate-tab">
-          <div class="coming-soon">
-            <div class="coming-icon">💬</div>
-            <h3>Chatlar</h3>
-            <p>Tez orada qo'shiladi</p>
+        <div class="tab-content support-chat-tab animate-tab">
+          <div class="support-chat-container">
+            <div class="chat-header">
+              <span class="chat-header-title">💬 Qo'llab-quvvatlash xizmati</span>
+              <span class="chat-header-status" [class.status-closed]="activeTicket()?.status === 'closed'">
+                {{ activeTicket()?.status === 'closed' ? 'Yopilgan' : (activeTicket()?.status === 'in_progress' ? 'Jarayonda' : 'Aktiv') }}
+              </span>
+            </div>
+
+            <!-- Chat History -->
+            <div class="chat-history" id="support-chat-history">
+              @if (isSupportLoading()) {
+                <div class="chat-loading-state">
+                  <mat-spinner diameter="30"></mat-spinner>
+                  <p>Xabarlar yuklanmoqda...</p>
+                </div>
+              } @else {
+                @if (supportMessages().length === 0) {
+                  <div class="chat-empty-state">
+                    <span class="empty-chat-icon">👋</span>
+                    <h4>Qo'llab-quvvatlash chatiga xush kelibsiz!</h4>
+                    <p>Savolingiz yoki muammoingiz bo'lsa, bu yerda yozib qoldiring. Adminlarimiz tez orada javob berishadi.</p>
+                  </div>
+                } @else {
+                  @for (msg of supportMessages(); track msg.id) {
+                    <div class="chat-message-row" [class.msg-sent]="msg.senderType !== 'admin'" [class.msg-received]="msg.senderType === 'admin'">
+                      <div class="message-bubble">
+                        <!-- Message text -->
+                        @if (msg.message) {
+                          <div class="message-text">{{ msg.message }}</div>
+                        }
+
+                        <!-- Message attachment -->
+                        @if (msg.attachment) {
+                          <div class="message-attachment">
+                            @if (isImage(msg.attachment)) {
+                              <img [src]="getAttachmentUrl(msg.attachment)" class="attachment-image" (click)="openAttachment(getAttachmentUrl(msg.attachment))" style="cursor: pointer;" alt="Rasm" />
+                            } @else {
+                              <a [href]="getAttachmentUrl(msg.attachment)" target="_blank" class="attachment-file-link">
+                                📂 Faylni yuklab olish
+                              </a>
+                            }
+                          </div>
+                        }
+
+                        <!-- Message footer (Time + Seen checkmarks) -->
+                        <div class="message-footer">
+                          <span class="message-time">{{ msg.createdAt | date:'HH:mm' }}</span>
+                          @if (msg.senderType !== 'admin') {
+                            <span class="seen-status">
+                              @if (msg.seen) {
+                                <span class="seen-check double-check">✓✓</span>
+                              } @else {
+                                <span class="seen-check">✓</span>
+                              }
+                            </span>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  }
+                }
+              }
+            </div>
+
+            <!-- Attachment preview if any -->
+            @if (supportAttachmentName()) {
+              <div class="attachment-preview-bar animate-pop">
+                <span class="attach-name">📎 {{ supportAttachmentName() }}</span>
+                @if (isUploadingSupportAttachment()) {
+                  <span class="attach-uploading">(yuklanmoqda...)</span>
+                }
+                <button class="btn-clear-attach" (click)="clearSupportAttachment()">✕</button>
+              </div>
+            }
+
+            <!-- Input bar -->
+            <div class="chat-input-bar">
+              <label class="btn-chat-attach" title="Fayl yoki rasm yuklash">
+                📎
+                <input type="file" accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" (change)="onSupportFileSelected($event)" style="display: none;" />
+              </label>
+              <input
+                type="text"
+                class="chat-text-input"
+                [(ngModel)]="supportMessageInput"
+                (keyup.enter)="sendSupportMsg()"
+                placeholder="Xabar yozing..."
+                [disabled]="isSupportLoading() || isUploadingSupportAttachment()" />
+              <button 
+                class="btn-chat-send" 
+                (click)="sendSupportMsg()"
+                [disabled]="(!supportMessageInput().trim() && !supportAttachmentUrl()) || isSupportLoading() || isUploadingSupportAttachment()">
+                ➔
+              </button>
+            </div>
           </div>
         </div>
       }
@@ -430,7 +522,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
               </div>
               <span class="chevron">&rsaquo;</span>
             </div>
-            <div class="menu-item">
+            <div class="menu-item" (click)="switchTab('chatlar')">
               <div class="menu-item-left">
                 <div class="menu-icon-wrapper violet">
                   <span class="menu-icon">💬</span>
@@ -3370,6 +3462,271 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       0%, 100% { opacity: 1; }
       50% { opacity: 0.3; }
     }
+
+    /* SUPPORT CHAT STYLES */
+    .support-chat-tab {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 64px;
+      display: flex;
+      flex-direction: column;
+      background: #0d1117;
+      padding: 0 !important;
+    }
+    .support-chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      position: relative;
+    }
+    .chat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      background: #161b22;
+      border-bottom: 1px solid #21262d;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+    .chat-header-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .chat-header-status {
+      font-size: 0.76rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .chat-header-status.status-closed {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .chat-history {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: #0d1117;
+    }
+    .chat-loading-state, .chat-empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 20px;
+      color: #8b949e;
+      height: 100%;
+    }
+    .empty-chat-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+    }
+    .chat-empty-state h4 {
+      color: #fff;
+      font-size: 1.1rem;
+      margin: 0 0 8px 0;
+      font-weight: 700;
+    }
+    .chat-empty-state p {
+      font-size: 0.85rem;
+      max-width: 260px;
+      line-height: 1.4;
+      margin: 0;
+    }
+    .chat-message-row {
+      display: flex;
+      width: 100%;
+    }
+    .chat-message-row.msg-sent {
+      justify-content: flex-end;
+    }
+    .chat-message-row.msg-received {
+      justify-content: flex-start;
+    }
+    .message-bubble {
+      max-width: 78%;
+      padding: 10px 14px;
+      border-radius: 16px;
+      position: relative;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.45;
+    }
+    .msg-sent .message-bubble {
+      background: #1f6feb;
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .msg-received .message-bubble {
+      background: #21262d;
+      color: #c9d1d9;
+      border-bottom-left-radius: 4px;
+      border: 1px solid #30363d;
+    }
+    .message-text {
+      font-size: 0.92rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .message-attachment {
+      margin-top: 6px;
+      border-radius: 8px;
+      overflow: hidden;
+      max-width: 100%;
+    }
+    .attachment-image {
+      max-width: 100%;
+      max-height: 180px;
+      object-fit: cover;
+      display: block;
+      border-radius: 8px;
+    }
+    .attachment-file-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #58a6ff;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    .attachment-file-link:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+    .message-footer {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+      font-size: 0.68rem;
+      opacity: 0.75;
+    }
+    .msg-sent .message-time {
+      color: rgba(255, 255, 255, 0.8);
+    }
+    .msg-received .message-time {
+      color: #8b949e;
+    }
+    .seen-status {
+      display: inline-flex;
+      align-items: center;
+    }
+    .seen-check {
+      color: rgba(255, 255, 255, 0.6);
+      font-weight: bold;
+    }
+    .double-check {
+      color: #58a6ff;
+    }
+    .attachment-preview-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      background: #1f2937;
+      border-top: 1px solid #374151;
+      font-family: 'Inter', sans-serif;
+    }
+    .attach-name {
+      font-size: 0.85rem;
+      color: #e5e7eb;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+      max-width: 220px;
+    }
+    .attach-uploading {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-left: 6px;
+      font-style: italic;
+    }
+    .btn-clear-attach {
+      background: none;
+      border: none;
+      color: #9ca3af;
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 2px 6px;
+    }
+    .chat-input-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: #161b22;
+      border-top: 1px solid #21262d;
+      gap: 10px;
+    }
+    .btn-chat-attach {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-chat-attach:hover {
+      background: #30363d;
+      color: #fff;
+    }
+    .chat-text-input {
+      flex: 1;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 20px;
+      padding: 10px 16px;
+      color: #fff;
+      font-size: 0.92rem;
+      outline: none;
+      font-family: 'Inter', sans-serif;
+    }
+    .chat-text-input:focus {
+      border-color: #1f6feb;
+    }
+    .btn-chat-send {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #1f6feb;
+      border: none;
+      color: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-chat-send:disabled {
+      background: #21262d;
+      color: #8b949e;
+      cursor: not-allowed;
+    }
   `]
 })
 export class CourierDashboardComponent implements OnInit, OnDestroy {
@@ -3932,6 +4289,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.pollInterval) clearInterval(this.pollInterval);
     if (this.countdownInterval) clearInterval(this.countdownInterval);
+    this.stopSupportPolling();
     this.stopGpsTracking();
     if (this.mainMapWatchId !== null) {
       navigator.geolocation.clearWatch(this.mainMapWatchId);
@@ -3947,6 +4305,163 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     if (tab === 'smena') {
       setTimeout(() => this.initMainMap(), 300);
     }
+    if (tab === 'chatlar') {
+      this.initSupportChat();
+    } else {
+      this.stopSupportPolling();
+    }
+  }
+
+  activeTicket = signal<any>(null);
+  supportMessages = signal<any[]>([]);
+  supportMessageInput = signal<string>('');
+  isSupportLoading = signal<boolean>(false);
+  supportAttachmentUrl = signal<string | null>(null);
+  supportAttachmentName = signal<string | null>(null);
+  isUploadingSupportAttachment = signal<boolean>(false);
+  supportPollingInterval: any = null;
+
+  initSupportChat(): void {
+    this.isSupportLoading.set(true);
+    this.orderService.getOrCreateActiveTicket('courier').subscribe({
+      next: (ticket) => {
+        this.activeTicket.set(ticket);
+        this.loadSupportMessages(ticket.id);
+        this.startSupportPolling(ticket.id);
+      },
+      error: () => this.isSupportLoading.set(false)
+    });
+  }
+
+  loadSupportMessages(ticketId: number): void {
+    this.orderService.getTicketMessages(ticketId).subscribe({
+      next: (msgs) => {
+        this.isSupportLoading.set(false);
+        this.supportMessages.set(msgs);
+        this.orderService.markMessagesAsSeen(ticketId).subscribe();
+        setTimeout(() => this.scrollToChatBottom(), 100);
+      },
+      error: () => this.isSupportLoading.set(false)
+    });
+  }
+
+  startSupportPolling(ticketId: number): void {
+    this.stopSupportPolling();
+    this.supportPollingInterval = setInterval(() => {
+      this.orderService.getTicketMessages(ticketId).subscribe({
+        next: (msgs) => {
+          if (msgs.length !== this.supportMessages().length || JSON.stringify(msgs) !== JSON.stringify(this.supportMessages())) {
+            this.supportMessages.set(msgs);
+            this.orderService.markMessagesAsSeen(ticketId).subscribe();
+            setTimeout(() => this.scrollToChatBottom(), 100);
+          }
+        }
+      });
+    }, 2500);
+  }
+
+  stopSupportPolling(): void {
+    if (this.supportPollingInterval) {
+      clearInterval(this.supportPollingInterval);
+      this.supportPollingInterval = null;
+    }
+  }
+
+  sendSupportMsg(): void {
+    const text = this.supportMessageInput().trim();
+    const attach = this.supportAttachmentUrl();
+    const ticket = this.activeTicket();
+    if (!ticket || (!text && !attach)) return;
+
+    this.orderService.sendSupportMessage(ticket.id, text, attach).subscribe({
+      next: (newMsg) => {
+        this.supportMessageInput.set('');
+        this.supportAttachmentUrl.set(null);
+        this.supportAttachmentName.set(null);
+        
+        // Add locally immediately for real-time feel
+        const current = this.supportMessages();
+        this.supportMessages.set([...current, newMsg]);
+        setTimeout(() => this.scrollToChatBottom(), 100);
+      }
+    });
+  }
+
+  onSupportFileSelected(event: any): void {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate type
+    const allowedTypes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+      'application/pdf', 'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
+    const allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'doc', 'docx'];
+
+    if (!allowedTypes.includes(file.type) && !allowedExts.includes(fileExt || '')) {
+      this.snack.open('❌ Noto\'g\'ri fayl formati! JPG, PNG, WEBP, PDF, DOCX ruxsat etiladi.', '', { duration: 3000 });
+      return;
+    }
+
+    // Validate size (10 MB)
+    if (file.size > 10 * 1024 * 1024) {
+      this.snack.open('❌ Fayl hajmi 10 MB dan oshmasligi kerak!', '', { duration: 3000 });
+      return;
+    }
+
+    this.supportAttachmentName.set(file.name);
+    this.supportAttachmentUrl.set(null);
+    this.isUploadingSupportAttachment.set(true);
+
+    this.orderService.uploadImage(file).subscribe({
+      next: (res) => {
+        this.supportAttachmentUrl.set(res.url);
+        this.isUploadingSupportAttachment.set(false);
+      },
+      error: () => {
+        this.snack.open('❌ Fayl yuklashda xatolik yuz berdi', '', { duration: 3000 });
+        this.supportAttachmentName.set(null);
+        this.isUploadingSupportAttachment.set(false);
+      }
+    });
+  }
+
+  clearSupportAttachment(): void {
+    this.supportAttachmentUrl.set(null);
+    this.supportAttachmentName.set(null);
+  }
+
+  scrollToChatBottom(): void {
+    const container = document.getElementById('support-chat-history');
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }
+
+  openAttachment(url: string): void {
+    window.open(url, '_blank');
+  }
+
+  isImage(url: string): boolean {
+    if (!url) return false;
+    const lower = url.toLowerCase();
+    return lower.endsWith('.jpg') || 
+           lower.endsWith('.jpeg') || 
+           lower.endsWith('.png') || 
+           lower.endsWith('.webp') || 
+           lower.endsWith('.gif') || 
+           lower.endsWith('.svg') || 
+           lower.startsWith('data:image/');
+  }
+
+  getAttachmentUrl(url: string): string {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+      return url;
+    }
+    return `${API_BASE}${url}`;
   }
 
   switchToSmena(): void {
@@ -4550,7 +5065,10 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     this.actionLoading.set(id);
     this.orderService.arriveRestaurant(id).subscribe({
       next: () => { this.actionLoading.set(null); this.snack.open('🏪 Restorandasiz!', '', { duration: 3000 }); this.loadAll(false); },
-      error: () => this.actionLoading.set(null)
+      error: (err) => {
+        this.actionLoading.set(null);
+        this.snack.open(`❌ ${err.error?.message || err.error || 'Xatolik yuz berdi'}`, '', { duration: 4000 });
+      }
     });
   }
 
@@ -4558,7 +5076,10 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     this.actionLoading.set(id);
     this.orderService.pickupOrder(id).subscribe({
       next: () => { this.actionLoading.set(null); this.snack.open('🚗 Yo\'lga chiqdingiz!', '', { duration: 3000 }); this.loadAll(false); },
-      error: () => this.actionLoading.set(null)
+      error: (err) => {
+        this.actionLoading.set(null);
+        this.snack.open(`❌ ${err.error?.message || err.error || 'Xatolik yuz berdi'}`, '', { duration: 4000 });
+      }
     });
   }
 
@@ -4566,7 +5087,10 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     this.actionLoading.set(id);
     this.orderService.arriveClient(id).subscribe({
       next: () => { this.actionLoading.set(null); this.snack.open('📍 Mijoz manzilidisiz!', '', { duration: 3000 }); this.loadAll(false); },
-      error: () => this.actionLoading.set(null)
+      error: (err) => {
+        this.actionLoading.set(null);
+        this.snack.open(`❌ ${err.error?.message || err.error || 'Xatolik yuz berdi'}`, '', { duration: 4000 });
+      }
     });
   }
 
@@ -4574,7 +5098,10 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     this.actionLoading.set(id);
     this.orderService.deliverOrder(id).subscribe({
       next: () => { this.actionLoading.set(null); this.snack.open('🎉 Topshirildi!', '', { duration: 3500 }); this.loadAll(false); },
-      error: () => this.actionLoading.set(null)
+      error: (err) => {
+        this.actionLoading.set(null);
+        this.snack.open(`❌ ${err.error?.message || err.error || 'Xatolik yuz berdi'}`, '', { duration: 4000 });
+      }
     });
   }
 

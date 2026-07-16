@@ -300,4 +300,46 @@ export class OrderService {
     formData.append('file', file);
     return this.http.post<{ url: string }>(`${BASE}/upload`, formData);
   }
+
+  // ===== SUPPORT CHAT =====
+  getOrCreateActiveTicket(type: string): Observable<any> {
+    return this.http.get<any>(`${BASE}/support/ticket/active?type=${type}`);
+  }
+
+  getTicketMessages(ticketId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${BASE}/support/tickets/${ticketId}/messages`);
+  }
+
+  sendSupportMessage(ticketId: number, message: string, attachment?: string | null): Observable<any> {
+    return this.http.post<any>(`${BASE}/support/tickets/${ticketId}/messages`, { message, attachment });
+  }
+
+  markMessagesAsSeen(ticketId: number): Observable<any> {
+    return this.http.put<any>(`${BASE}/support/tickets/${ticketId}/seen`, {});
+  }
+
+  adminGetTickets(type?: string, status?: string, search?: string): Observable<any[]> {
+    let url = `${BASE}/support/admin/tickets`;
+    const params: string[] = [];
+    if (type) params.push(`type=${type}`);
+    if (status) params.push(`status=${status}`);
+    if (search) params.push(`search=${encodeURIComponent(search)}`);
+    if (params.length > 0) {
+      url += `?${params.join('&')}`;
+    }
+    return this.http.get<any[]>(url);
+  }
+
+  adminUpdateTicketStatus(ticketId: number, status: string): Observable<any> {
+    return this.http.put<any>(`${BASE}/support/admin/tickets/${ticketId}/status?status=${status}`, {});
+  }
+
+  adminAssignTicket(ticketId: number, adminId: number): Observable<any> {
+    return this.http.put<any>(`${BASE}/support/admin/tickets/${ticketId}/assign?adminId=${adminId}`, {});
+  }
+
+  adminGetUnreadCount(type?: string): Observable<any> {
+    const url = type ? `${BASE}/support/admin/unread-count?type=${type}` : `${BASE}/support/admin/unread-count`;
+    return this.http.get<any>(url);
+  }
 }

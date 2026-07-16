@@ -233,34 +233,10 @@ public class RestaurantApplication {
                     totalCalculated += o.getTotalEarning();
                 }
 
-                // If this is Eshmat (who has the 56,100 balance), adjust the last order slightly 
-                // so the sum matches 56,100 exactly!
-                if (courier.getPhone() != null && courier.getPhone().equals("+998901234568") && deliveredOrders.size() == 4) {
-                    // Let's force them to sum to exactly 56100.0
-                    double[] earnings = {12500.0, 13200.0, 14800.0, 15600.0};
-                    double[] dists = {2.18, 2.62, 3.62, 4.12};
-
-                    for (int i = 0; i < 4; i++) {
-                        Order o = deliveredOrders.get(i);
-                        o.setBaseFee(9000.0);
-                        o.setPickupDistanceKm(dists[i] * 0.4);
-                        o.setDeliveryDistanceKm(dists[i] * 0.6);
-                        o.setPickupFee(Math.round(o.getPickupDistanceKm() * 1600.0 * 100.0) / 100.0);
-                        o.setCourierDeliveryFee(Math.round(o.getDeliveryDistanceKm() * 1600.0 * 100.0) / 100.0);
-                        o.setTotalDistanceKm(dists[i]);
-                        o.setTotalEarning(earnings[i]);
-                        o.setDeliveryFee(o.getTotalEarning());
-                        o.setCreatedAt(LocalDateTime.of(today, LocalTime.of(13 + i, 15 + i * 10)));
-                        orderRepository.save(o);
-                    }
-                    totalCalculated = 56100.0;
-                    System.out.println(">>> databaseFixer: Force adjusted Eshmat's orders to sum up to 56100 UZS.");
-                } else {
-                    // Adjust courier's balance in users table to match the calculated total
-                    courier.setBalance((long) totalCalculated);
-                    userRepository.save(courier);
-                    System.out.println(">>> databaseFixer: Updated balance of " + courier.getName() + " to match order earnings: " + courier.getBalance());
-                }
+                // Adjust courier's balance in users table to match the calculated total
+                courier.setBalance((long) totalCalculated);
+                userRepository.save(courier);
+                System.out.println(">>> databaseFixer: Updated balance of " + courier.getName() + " to match order earnings: " + courier.getBalance());
 
                 // 2. Create/recreate slot for this courier on the order dates
                 // Group order dates

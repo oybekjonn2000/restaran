@@ -12,6 +12,8 @@ const USER_KEY = 'food_user';
 @Injectable({ providedIn: 'root' })
 export class AuthService {
 
+  showSupportChat = signal<boolean>(false);
+
   private _user = signal<AuthResponse | null>(this.loadUser());
   readonly user = this._user.asReadonly();
   readonly isLoggedIn = computed(() => !!this._user());
