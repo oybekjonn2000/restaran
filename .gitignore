@@ -1,0 +1,24 @@
+# Java Target
+backend/target/
+
+# Database Files
+*.db
+*.mv.db
+*.trace.db
+data/
+backend/data/
+
+# Compiled Java Classes
+*.class
+
+# Log Files
+*.log
+backend/backend_err.log
+backend/backend_run.log
+
+# IDEs
+.vscode/
+.idea/
+.settings/
+.project
+.classpath

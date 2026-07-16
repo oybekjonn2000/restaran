@@ -210,7 +210,9 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
 
                       <!-- Control Actions Row: Marshrut va Telefon Call -->
                       <div class="active-order-controls-row">
-                        <button class="control-action-btn route-btn" (click)="openYandexRoute(order)">
+                        <button 
+                          [class]="'control-action-btn route-btn ' + ((order.status === 'COURIER_ACCEPTED' || order.status === 'COURIER_AT_RESTAURANT') ? 'to-restaurant' : 'to-client')"
+                          (click)="openYandexRoute(order)">
                           <span class="btn-icon">🗺️</span>
                           <span class="btn-text">Marshrutni tuzish</span>
                         </button>
@@ -396,7 +398,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
               <span>Haftalik daromad <span class="arrow-right">›</span></span>
               <span class="wallet-icon">💳</span>
             </div>
-            <div class="earnings-amount">{{ totalEarnings | number:'1.0-0' }} <span class="currency">so'm</span></div>
+            <div class="earnings-amount">{{ weeklyEarnings | number:'1.0-0' }} <span class="currency">so'm</span></div>
           </div>
 
           <!-- Menu items (Styled to match Client Profile) -->
@@ -1525,14 +1527,23 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       text-decoration: none;
       box-sizing: border-box;
     }
-    .control-action-btn.route-btn {
-      background: linear-gradient(135deg, #f97316, #ea580c);
+    .control-action-btn.route-btn.to-restaurant {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
       color: #fff;
-      box-shadow: 0 4px 12px rgba(234, 88, 12, 0.25);
+      box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25);
     }
-    .control-action-btn.route-btn:hover {
+    .control-action-btn.route-btn.to-restaurant:hover {
       transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(234, 88, 12, 0.35);
+      box-shadow: 0 6px 16px rgba(29, 78, 216, 0.35);
+    }
+    .control-action-btn.route-btn.to-client {
+      background: linear-gradient(135deg, #10b981, #047857);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(4, 120, 87, 0.25);
+    }
+    .control-action-btn.route-btn.to-client:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(4, 120, 87, 0.35);
     }
     .control-action-btn.call-btn {
       background: rgba(16, 185, 129, 0.15);
@@ -3567,6 +3578,10 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
         ...targetSlots.map(s => {
           const dayOrders = orders.filter(o => o.createdAt.startsWith(s.date));
           const slotOrders = dayOrders.filter(o => {
+            const sameDaySlots = targetSlots.filter(fs => fs.date === s.date);
+            if (sameDaySlots.length <= 1) {
+              return true;
+            }
             const oTime = o.createdAt.split('T')[1]?.substring(0, 5);
             return oTime >= s.startTime.substring(0, 5) && oTime <= s.endTime.substring(0, 5);
           });
@@ -3629,6 +3644,10 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     const completedItems = filteredSlots.map(s => {
       const dayOrders = orders.filter(o => o.createdAt.startsWith(s.date));
       const slotOrders = dayOrders.filter(o => {
+        const sameDaySlots = filteredSlots.filter(fs => fs.date === s.date);
+        if (sameDaySlots.length <= 1) {
+          return true;
+        }
         const oTime = o.createdAt.split('T')[1]?.substring(0, 5);
         return oTime >= s.startTime.substring(0, 5) && oTime <= s.endTime.substring(0, 5);
       });
@@ -3817,6 +3836,22 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
   get totalEarnings(): number {
     return this.allOrders()
       .filter(o => o.status === 'DELIVERED')
+      .reduce((s, o) => s + (o.totalEarning || 0), 0);
+  }
+
+  get weeklyEarnings(): number {
+    const mon = new Date(this.currentWeekMonday());
+    const sun = new Date(mon);
+    sun.setDate(mon.getDate() + 6);
+    const monStr = this.toLocalDateStr(mon);
+    const sunStr = this.toLocalDateStr(sun);
+    
+    return this.allOrders()
+      .filter(o => o.status === 'DELIVERED')
+      .filter(o => {
+        const dStr = o.createdAt.split('T')[0];
+        return dStr >= monStr && dStr <= sunStr;
+      })
       .reduce((s, o) => s + (o.totalEarning || 0), 0);
   }
 
@@ -4463,17 +4498,52 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
 
   acceptOrder(id: number): void {
     this.actionLoading.set(id);
-    this.orderService.acceptOrder(id).subscribe({
-      next: () => {
-        this.actionLoading.set(null);
-        this.snack.open('🏍️ Buyurtma qabul qilindi!', '', { duration: 3000 });
-        this.loadAll(false);
-      },
-      error: (err) => {
-        this.actionLoading.set(null);
-        this.snack.open(`❌ ${err.error?.message || 'Qabul qilib bo\'lmadi'}`, '', { duration: 3000 });
-      }
-    });
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          this.orderService.acceptOrder(id, lat, lng).subscribe({
+            next: () => {
+              this.actionLoading.set(null);
+              this.snack.open('🏍️ Buyurtma qabul qilindi!', '', { duration: 3000 });
+              this.loadAll(false);
+            },
+            error: (err) => {
+              this.actionLoading.set(null);
+              this.snack.open(`❌ ${err.error?.message || 'Qabul qilib bo\'lmadi'}`, '', { duration: 3000 });
+            }
+          });
+        },
+        (err) => {
+          console.error('Accept order geolocation error:', err);
+          this.orderService.acceptOrder(id).subscribe({
+            next: () => {
+              this.actionLoading.set(null);
+              this.snack.open('🏍️ Buyurtma qabul qilindi!', '', { duration: 3000 });
+              this.loadAll(false);
+            },
+            error: (err) => {
+              this.actionLoading.set(null);
+              this.snack.open(`❌ ${err.error?.message || 'Qabul qilib bo\'lmadi'}`, '', { duration: 3000 });
+            }
+          });
+        },
+        { enableHighAccuracy: true, timeout: 3000 }
+      );
+    } else {
+      this.orderService.acceptOrder(id).subscribe({
+        next: () => {
+          this.actionLoading.set(null);
+          this.snack.open('🏍️ Buyurtma qabul qilindi!', '', { duration: 3000 });
+          this.loadAll(false);
+        },
+        error: (err) => {
+          this.actionLoading.set(null);
+          this.snack.open(`❌ ${err.error?.message || 'Qabul qilib bo\'lmadi'}`, '', { duration: 3000 });
+        }
+      });
+    }
   }
 
   arriveAtRestaurant(id: number): void {
@@ -4532,8 +4602,18 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     if (order.restaurant?.latitude) { rLat = order.restaurant.latitude; rLng = order.restaurant.longitude!; }
     const restCoords = [rLat, rLng];
 
-    // Har doim belgilangan restorandan mijozning manzilgacha marshrut tuzish
-    const url = `https://yandex.ru/maps/?rtext=${restCoords[0]},${restCoords[1]}~${order.latitude || 41.3111},${order.longitude || 69.2797}&rtt=auto`;
+    const isToRestaurant = (order.status === 'COURIER_ACCEPTED' || order.status === 'COURIER_AT_RESTAURANT');
+    let startLat = this.courierStartCoords ? this.courierStartCoords[0] : 38.870000;
+    let startLng = this.courierStartCoords ? this.courierStartCoords[1] : 65.810000;
+
+    let url: string;
+    if (isToRestaurant) {
+      // Courier -> Restaurant
+      url = `https://yandex.ru/maps/?rtext=${startLat},${startLng}~${restCoords[0]},${restCoords[1]}&rtt=auto`;
+    } else {
+      // Courier -> Client
+      url = `https://yandex.ru/maps/?rtext=${startLat},${startLng}~${order.latitude || 41.3111},${order.longitude || 69.2797}&rtt=auto`;
+    }
     window.open(url, '_blank');
   }
 

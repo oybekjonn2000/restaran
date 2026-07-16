@@ -144,7 +144,7 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
                         <span class="fee-text">(Yetkazish: {{ order.deliveryFee | number:'1.0-0' }} so'm)</span>
                       </div>
                     </td>
-                    <td data-label="Masofa">{{ order.distance || 0 }} km</td>
+                    <td data-label="Masofa">{{ (order.deliveryDistanceKm || order.distance || 0) | number:'1.1-2' }} km</td>
                     <td data-label="Kuryer to'lovi">
                       @if (order.courier) {
                         <div class="courier-badge">🏍️ {{ order.courier.name }}</div>

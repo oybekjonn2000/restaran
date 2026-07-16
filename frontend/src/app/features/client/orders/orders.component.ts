@@ -75,10 +75,10 @@ import { AuthService } from '../../../core/services/auth.service';
                     }
                   </div>
                   <div class="order-total" style="font-size: 0.85rem;">
-                    @if (order.deliveryFee) {
-                      <span>Taomlar: {{ order.totalPrice | number:'1.0-0' }} so'm | Yetkazish: {{ order.deliveryFee | number:'1.0-0' }} so'm ({{ order.distance }} km) | </span>
+                    @if (order.deliveryFee || order.totalEarning) {
+                      <span>Taomlar: {{ order.totalPrice | number:'1.0-0' }} so'm | Yetkazish: {{ (order.totalEarning || order.deliveryFee || 0) | number:'1.0-0' }} so'm ({{ (order.deliveryDistanceKm || order.distance || 0) | number:'1.1-2' }} km) | </span>
                     }
-                    Jami: <strong>{{ (order.totalPrice + (order.deliveryFee || 0)) | number:'1.0-0' }} so'm</strong>
+                    Jami: <strong>{{ (order.totalPrice + (order.totalEarning || order.deliveryFee || 0)) | number:'1.0-0' }} so'm</strong>
                   </div>
                 </div>
 

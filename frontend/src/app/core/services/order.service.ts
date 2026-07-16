@@ -32,8 +32,12 @@ export class OrderService {
     return this.http.get<Order[]>(`${BASE}/courier/my-orders`);
   }
 
-  acceptOrder(orderId: number): Observable<Order> {
-    return this.http.put<Order>(`${BASE}/courier/${orderId}/accept`, {});
+  acceptOrder(orderId: number, lat?: number, lng?: number): Observable<Order> {
+    let url = `${BASE}/courier/${orderId}/accept`;
+    if (lat !== undefined && lng !== undefined) {
+      url += `?lat=${lat}&lng=${lng}`;
+    }
+    return this.http.put<Order>(url, {});
   }
 
   arriveRestaurant(orderId: number): Observable<Order> {

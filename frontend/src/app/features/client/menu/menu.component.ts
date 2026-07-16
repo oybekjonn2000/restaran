@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -110,7 +110,7 @@ import { API_BASE } from '../../../core/config';
       <!-- Clear Cart Confirmation Modal -->
       @if (showConfirmDialog()) {
         <div class="modal-backdrop" (click)="closeConfirm()">
-          <div class="modal-card animate-in" (click)="$event.stopPropagation()">
+          <div class="modal-card" (click)="$event.stopPropagation()">
             <div class="modal-header">
               <h2>⚠️ Savatni tozalash</h2>
               <button class="modal-close" (click)="closeConfirm()">✕</button>
@@ -312,25 +312,28 @@ import { API_BASE } from '../../../core/config';
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(4px);
-      z-index: 200;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(5px);
+      z-index: 9999;
+      animation: modalFadeIn 0.25s ease forwards;
     }
 
     .modal-card {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      width: 100%;
-      max-width: 440px;
+      width: 90%;
+      max-width: 460px;
       box-shadow: var(--shadow-lg);
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      z-index: 10000;
+      animation: modalScaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
     }
 
     .modal-header {
@@ -344,6 +347,22 @@ import { API_BASE } from '../../../core/config';
     .modal-close { background: none; border: none; font-size: 1.25rem; color: var(--text-muted); cursor: pointer; }
     .modal-close:hover { color: var(--danger); }
 
+    @keyframes modalFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes modalScaleUp {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -48%) scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+
     @media (max-width: 640px) {
       .menu-header { flex-direction: column; }
       .search-box { min-width: auto; width: 100%; }
@@ -352,7 +371,7 @@ import { API_BASE } from '../../../core/config';
     }
   `]
 })
-export class MenuComponent implements OnInit {
+export class MenuComponent implements OnInit, OnDestroy {
   restaurant = signal<Restaurant | null>(null);
   categories = signal<Category[]>([]);
   allFoods = signal<Food[]>([]);
@@ -379,6 +398,43 @@ export class MenuComponent implements OnInit {
     this.restaurantId = Number(this.route.snapshot.params['restaurantId']);
   }
 
+  ngOnDestroy(): void {
+    document.body.style.overflow = '';
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  handleKeyDown(event: KeyboardEvent): void {
+    if (!this.showConfirmDialog()) return;
+
+    if (event.key === 'Escape') {
+      this.closeConfirm();
+      event.preventDefault();
+    }
+
+    if (event.key === 'Tab') {
+      const modalElement = document.querySelector('.modal-card');
+      if (!modalElement) return;
+
+      const focusables = modalElement.querySelectorAll('button, [tabindex="0"]');
+      if (focusables.length === 0) return;
+
+      const first = focusables[0] as HTMLElement;
+      const last = focusables[focusables.length - 1] as HTMLElement;
+
+      if (event.shiftKey) {
+        if (document.activeElement === first) {
+          last.focus();
+          event.preventDefault();
+        }
+      } else {
+        if (document.activeElement === last) {
+          first.focus();
+          event.preventDefault();
+        }
+      }
+    }
+  }
+
   getFullUrl(url: string | null | undefined): string {
     if (!url) return '';
     if (url.startsWith('/uploads')) {
@@ -388,6 +444,7 @@ export class MenuComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    window.scrollTo(0, 0);
     // Check if we have only 1 active restaurant to hide back button
     this.orderService.getRestaurants().subscribe({
       next: (rests) => {
@@ -451,6 +508,11 @@ export class MenuComponent implements OnInit {
     if (!this.cart.canAdd(food)) {
       this.pendingFood = food;
       this.showConfirmDialog.set(true);
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => {
+        const firstBtn = document.querySelector('.modal-card .btn-outline') as HTMLElement;
+        if (firstBtn) firstBtn.focus();
+      });
       return;
     }
 
@@ -466,6 +528,7 @@ export class MenuComponent implements OnInit {
   closeConfirm(): void {
     this.showConfirmDialog.set(false);
     this.pendingFood = null;
+    document.body.style.overflow = '';
   }
 
   confirmClearAndAdd(): void {

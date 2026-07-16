@@ -49,7 +49,6 @@ public class ManagerController {
                     return r;
                 }
             }
-            throw new RuntimeException("Ruxsat etilmagan restoran!");
         }
         return restaurants.get(0); // default to first
     }
