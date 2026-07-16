@@ -101,6 +101,11 @@ public class OrderService {
             .note(request.getNote())
             .build();
 
+        if (request.getDeliveryAddress() != null && !request.getDeliveryAddress().isBlank()) {
+            user.setAddress(request.getDeliveryAddress().trim());
+            userRepository.save(user);
+        }
+
         double total = 0;
         for (OrderRequest.OrderItemRequest itemReq : request.getItems()) {
             Food food = foodRepository.findById(itemReq.getFoodId())

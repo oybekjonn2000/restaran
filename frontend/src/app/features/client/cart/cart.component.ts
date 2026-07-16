@@ -107,41 +107,54 @@ import { AuthService } from '../../../core/services/auth.service';
             <!-- Map & Address Card -->
             <div class="card map-card">
               <h3 class="form-section-title">📍 Yetkazib berish manzili</h3>
-               <div class="search-input-wrapper">
-                <span class="search-icon">🔍</span>
-                <input
-                  type="text"
-                  [(ngModel)]="deliveryAddress"
-                  (input)="onAddressInput($event)"
-                  class="search-address-input"
-                  placeholder="Manzilni kiriting (masalan: Qarshi...)"
-                  id="delivery-address" />
-                @if (deliveryAddress) {
-                  <button class="clear-input-btn" (click)="clearAddress()" title="Tozalash">✕</button>
-                }
-              </div>
 
-              <!-- Suggestions Dropdown -->
-              @if (suggestions().length > 0) {
-                <div class="suggestions-list">
-                  @for (sug of suggestions(); track sug.value) {
-                    <div class="suggestion-item" (click)="selectSuggestion(sug)">
-                      <span class="sug-icon">📍</span>
-                      <div class="sug-info">
-                        <span class="sug-title">{{ sug.title }}</span>
-                        <span class="sug-subtitle">{{ sug.subtitle }}</span>
-                      </div>
-                    </div>
+              @if (hasSavedAddress && !isEditingAddress) {
+                <div class="saved-address-view">
+                  <div class="saved-address-content">
+                    <span class="saved-address-icon">🏡</span>
+                    <span class="saved-address-text">{{ deliveryAddress }}</span>
+                  </div>
+                  <button type="button" class="btn btn-outline btn-sm change-address-btn" (click)="enableAddressEdit()">
+                    🔄 Manzilni o'zgartirish
+                  </button>
+                </div>
+              } @else {
+                <div class="search-input-wrapper">
+                  <span class="search-icon">🔍</span>
+                  <input
+                    type="text"
+                    [(ngModel)]="deliveryAddress"
+                    (input)="onAddressInput($event)"
+                    class="search-address-input"
+                    placeholder="Manzilni kiriting (masalan: Qarshi...)"
+                    id="delivery-address" />
+                  @if (deliveryAddress) {
+                    <button class="clear-input-btn" (click)="clearAddress()" title="Tozalash">✕</button>
                   }
                 </div>
-              }
 
-              <div class="map-container-wrap">
-                <div id="yandex-map" class="y-map"></div>
-                <button type="button" class="locate-me-btn" (click)="locateMe()" id="locate-me-btn">
-                  📍 Joylashuvni aniqlash
-                </button>
-              </div>
+                <!-- Suggestions Dropdown -->
+                @if (suggestions().length > 0) {
+                  <div class="suggestions-list">
+                    @for (sug of suggestions(); track sug.value) {
+                      <div class="suggestion-item" (click)="selectSuggestion(sug)">
+                        <span class="sug-icon">📍</span>
+                        <div class="sug-info">
+                          <span class="sug-title">{{ sug.title }}</span>
+                          <span class="sug-subtitle">{{ sug.subtitle }}</span>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+
+                <div class="map-container-wrap">
+                  <div id="yandex-map" class="y-map"></div>
+                  <button type="button" class="locate-me-btn" (click)="locateMe()" id="locate-me-btn">
+                    📍 Joylashuvni aniqlash
+                  </button>
+                </div>
+              }
             </div>
 
             <!-- Summary Card -->
@@ -556,6 +569,37 @@ import { AuthService } from '../../../core/services/auth.service';
       font-weight: 800;
     }
 
+    .saved-address-view {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 12px 0;
+    }
+    .saved-address-content {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .saved-address-icon {
+      font-size: 1.5rem;
+    }
+    .saved-address-text {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .change-address-btn {
+      align-self: flex-start;
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
     .map-card {
       position: relative;
     }
@@ -776,6 +820,9 @@ export class CartComponent implements OnInit, AfterViewInit {
   note = '';
   ordering = signal(false);
 
+  hasSavedAddress = false;
+  isEditingAddress = false;
+
   latitude = 38.866127;
   longitude = 65.816309;
   map: any;
@@ -809,6 +856,11 @@ export class CartComponent implements OnInit, AfterViewInit {
     const user = this.auth.user();
     if (user?.address) {
       this.deliveryAddress = user.address;
+      this.hasSavedAddress = true;
+      this.isEditingAddress = false;
+    } else {
+      this.hasSavedAddress = false;
+      this.isEditingAddress = true;
     }
   }
 
@@ -824,6 +876,13 @@ export class CartComponent implements OnInit, AfterViewInit {
 
   goBack(): void {
     window.history.back();
+  }
+
+  enableAddressEdit(): void {
+    this.isEditingAddress = true;
+    setTimeout(() => {
+      this.initMap();
+    }, 100);
   }
 
   checkCourierActive(): void {
@@ -1170,6 +1229,7 @@ export class CartComponent implements OnInit, AfterViewInit {
       items: this.cart.getOrderItems()
     }).subscribe({
       next: (order) => {
+        this.auth.fetchMe().subscribe();
         this.ordering.set(false);
         this.cart.clear();
         this.note = '';
