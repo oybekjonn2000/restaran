@@ -12,95 +12,96 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
   imports: [CommonModule, ReactiveFormsModule, RouterLink, MatProgressSpinnerModule],
   template: `
     <div class="auth-page">
-      <div class="auth-bg">
-        <div class="bg-circle c1"></div>
-        <div class="bg-circle c2"></div>
-        <div class="bg-circle c3"></div>
+      <!-- Top Header Area with Gradient -->
+      <div class="auth-header">
+        <div class="header-top-row">
+          <a routerLink="/client/restaurants" class="back-btn-icon" title="Asosiy menyuga qaytish">←</a>
+          <span class="more-options">•••</span>
+        </div>
+        <h1 class="header-title">Mango<br>Food Login</h1>
       </div>
 
-      <div class="auth-card animate-in">
-        <!-- Logo -->
-        <div class="auth-logo">
-          <span class="logo-icon">🍽️</span>
-          <h1 class="logo-text">Food<span>Delivery</span></h1>
-        </div>
-
-        <a routerLink="/client/restaurants" class="back-btn">
-          <span class="back-arrow">←</span>
-          Asosiy menyuga qaytish
-        </a>
-
-        <h2 class="auth-title">Xush kelibsiz!</h2>
-        <p class="auth-subtitle">Hisobingizga kiring</p>
-
-        <!-- Demo accounts -->
-        <div class="demo-accounts">
-          <p class="demo-label">⚡ Tezkor kirish:</p>
-          <div class="demo-btns">
-            <button (click)="fillDemo('client')" class="demo-btn client">🛒 Mijoz</button>
-            <button (click)="fillDemo('courier')" class="demo-btn courier">🏍️ Kuryer</button>
-            <button (click)="fillDemo('admin')" class="demo-btn admin">👨‍🍳 Admin</button>
-            <button (click)="fillDemo('manager10')" class="demo-btn manager">🏪 Manager10</button>
+      <!-- Main Form Sheet -->
+      <div class="auth-sheet animate-slide-up">
+        <!-- Demo Accounts (Subtle) -->
+        <div class="demo-section">
+          <span class="demo-label">⚡ Tezkor kirish:</span>
+          <div class="demo-chips">
+            <button type="button" (click)="fillDemo('client')" class="demo-chip client">Mijoz</button>
+            <button type="button" (click)="fillDemo('courier')" class="demo-chip courier">Kuryer</button>
+            <button type="button" (click)="fillDemo('admin')" class="demo-chip admin">Admin</button>
+            <button type="button" (click)="fillDemo('manager10')" class="demo-chip manager">Manager</button>
           </div>
         </div>
 
         <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form">
-          <div class="form-group">
-            <label class="form-label">📱 Telefon raqam</label>
-            <input
-              formControlName="phone"
-              type="tel"
-              class="form-control"
-              placeholder="+998 90 123 45 67"
-              id="login-phone">
+          <!-- Phone field -->
+          <div class="form-group-new">
+            <label class="form-label-new">Telefon raqam</label>
+            <div class="input-container-new">
+              <input
+                formControlName="phone"
+                type="tel"
+                class="form-control-new"
+                placeholder="+998901234567"
+                id="login-phone">
+              @if (form.get('phone')?.valid) {
+                <span class="field-icon success-check">✓</span>
+              }
+            </div>
             @if (form.get('phone')?.touched && form.get('phone')?.invalid) {
-              <span class="error">Telefon raqamni kiriting</span>
+              <span class="error-msg-new">Telefon raqamni kiriting</span>
             }
           </div>
 
-          <div class="form-group">
-            <label class="form-label">🔒 Parol</label>
-            <div class="input-wrap">
+          <!-- Password field -->
+          <div class="form-group-new">
+            <label class="form-label-new">Parol</label>
+            <div class="input-container-new">
               <input
                 formControlName="password"
                 [type]="showPwd ? 'text' : 'password'"
-                class="form-control"
-                placeholder="Parolni kiriting"
+                class="form-control-new"
+                placeholder="••••••••"
                 id="login-password">
-              <button type="button" class="eye-btn" (click)="showPwd = !showPwd">
+              <button type="button" class="field-icon eye-toggle" (click)="showPwd = !showPwd">
                 {{ showPwd ? '🙈' : '👁️' }}
               </button>
             </div>
             @if (form.get('password')?.touched && form.get('password')?.invalid) {
-              <span class="error">Parol kiriting</span>
+              <span class="error-msg-new">Parol kiriting</span>
             }
           </div>
 
-          <div class="remember-me-group">
-            <label class="remember-label">
-              <input type="checkbox" formControlName="rememberMe" id="remember-me-chk">
-              Eslab qolish (Remember Me)
+          <!-- Remember me & Forgot Password -->
+          <div class="options-row-new">
+            <label class="remember-label-new">
+              <input type="checkbox" formControlName="rememberMe">
+              <span>Eslab qolish</span>
             </label>
+            <a class="forgot-link">Parol esdan chiqdimi ?</a>
           </div>
 
           @if (errorMsg) {
-            <div class="alert-error">⚠️ {{ errorMsg }}</div>
+            <div class="alert-error-new">⚠️ {{ errorMsg }}</div>
           }
 
-          <button type="submit" class="btn btn-primary submit-btn" [disabled]="loading">
+          <!-- Submit Button -->
+          <button type="submit" class="btn-signin-gradient" [disabled]="loading">
             @if (loading) {
               <mat-spinner diameter="20" color="accent"></mat-spinner>
-              Kirilmoqda...
+              KIRILMOQDA...
             } @else {
-              Kirish →
+              KIRISH
             }
           </button>
         </form>
 
-        <p class="auth-footer">
-          Hali hisobingiz yo'qmi?
-          <a routerLink="/auth/register" class="link">Ro'yxatdan o'ting</a>
-        </p>
+        <!-- Footer -->
+        <div class="footer-row-new">
+          <span class="footer-text">Hisobingiz yo'qmi ?</span>
+          <a routerLink="/auth/register" class="signup-link">RO'YXATDAN O'TISH</a>
+        </div>
       </div>
     </div>
   `,
@@ -108,230 +109,286 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
     .auth-page {
       min-height: 100vh;
       display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--bg);
-      padding: 20px;
+      flex-direction: column;
+      background: #0f172a;
+      font-family: 'Poppins', sans-serif;
       position: relative;
-      overflow: hidden;
     }
 
-    .auth-bg {
-      position: absolute;
-      inset: 0;
-      overflow: hidden;
-      pointer-events: none;
-    }
-
-    .bg-circle {
-      position: absolute;
-      border-radius: 50%;
-      opacity: 0.08;
-      animation: float 6s ease-in-out infinite;
-    }
-
-    .c1 { width: 400px; height: 400px; background: var(--primary); top: -100px; right: -100px; }
-    .c2 { width: 300px; height: 300px; background: #8b5cf6; bottom: -80px; left: -80px; animation-delay: -2s; }
-    .c3 { width: 200px; height: 200px; background: #3b82f6; top: 50%; left: 10%; animation-delay: -4s; }
-
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50%       { transform: translateY(-20px); }
-    }
-
-    .auth-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 40px;
-      width: 100%;
-      max-width: 420px;
-      box-shadow: var(--shadow-lg);
-      position: relative;
-      z-index: 1;
-    }
-
-    .auth-logo {
+    .auth-header {
+      padding: 40px 24px 70px 24px;
+      background: linear-gradient(135deg, #f97316 0%, #0f172a 100%);
+      color: #fff;
       display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .header-top-row {
+      display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 10px;
       margin-bottom: 28px;
     }
-
-    .logo-icon { font-size: 2rem; }
-
-    .logo-text {
+    .back-btn-icon {
+      color: #fff;
       font-size: 1.5rem;
-      font-weight: 800;
-      color: var(--text);
+      text-decoration: none;
+      font-weight: bold;
+      transition: transform 0.2s;
     }
-    .logo-text span { color: var(--primary); }
-
-    .auth-title {
-      font-size: 1.5rem;
+    .back-btn-icon:hover {
+      transform: translateX(-3px);
+    }
+    .more-options {
+      font-size: 1.2rem;
+      cursor: pointer;
+      opacity: 0.8;
+      letter-spacing: 2px;
+    }
+    .header-title {
+      font-size: 2.2rem;
       font-weight: 700;
-      color: var(--text);
-      margin-bottom: 4px;
+      line-height: 1.25;
+      margin: 0;
+      letter-spacing: 0.5px;
     }
 
-    .auth-subtitle {
-      color: var(--text-muted);
-      font-size: 0.9rem;
-      margin-bottom: 20px;
+    .auth-sheet {
+      flex: 1;
+      background: #0f172a;
+      border-radius: 40px 40px 0 0;
+      margin-top: -30px;
+      padding: 36px 28px;
+      box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
     }
 
-    .demo-accounts {
-      background: var(--bg-card2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 12px 16px;
-      margin-bottom: 20px;
+    .demo-section {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px dashed #334155;
+      border-radius: 16px;
+      padding: 12px 14px;
+      margin-bottom: 24px;
     }
-
     .demo-label {
-      font-size: 0.8rem;
-      color: var(--text-muted);
+      display: block;
+      font-size: 0.78rem;
+      color: #94a3b8;
       margin-bottom: 8px;
+      font-weight: 600;
     }
-
-    .demo-btns {
+    .demo-chips {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
     }
-
-    .demo-btn {
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 0.8rem;
+    .demo-chip {
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-size: 0.75rem;
       font-weight: 600;
       cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+    .demo-chip.client   { background: rgba(249,115,22,0.06); color: #f97316; border-color: rgba(249,115,22,0.15); }
+    .demo-chip.courier  { background: rgba(139,92,246,0.06); color: #8b5cf6; border-color: rgba(139,92,246,0.15); }
+    .demo-chip.admin    { background: rgba(59,130,246,0.06); color: #3b82f6; border-color: rgba(59,130,246,0.15); }
+    .demo-chip.manager  { background: rgba(16,185,129,0.06); color: #10b981; border-color: rgba(16,185,129,0.15); }
+    .demo-chip:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group-new {
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .form-label-new {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #94a3b8;
+      letter-spacing: 0.5px;
+      transition: color 0.2s ease;
+    }
+    .form-group-new:focus-within .form-label-new {
+      color: #f97316;
+    }
+    .input-container-new {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 0 16px;
+      transition: all 0.25s ease;
+    }
+    .input-container-new:focus-within {
+      border-color: #f97316;
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+    }
+    .form-control-new {
+      width: 100%;
+      background: transparent;
       border: none;
-      transition: var(--transition);
+      padding: 14px 0;
+      font-size: 0.95rem;
+      color: #f1f5f9;
+      outline: none;
       font-family: 'Poppins', sans-serif;
     }
-
-    .demo-btn.client   { background: rgba(249,115,22,0.15); color: #f97316; border: 1px solid rgba(249,115,22,0.3); }
-    .demo-btn.courier  { background: rgba(139,92,246,0.15); color: #8b5cf6; border: 1px solid rgba(139,92,246,0.3); }
-    .demo-btn.admin    { background: rgba(59,130,246,0.15); color: #3b82f6; border: 1px solid rgba(59,130,246,0.3); }
-    .demo-btn.manager  { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
-    .demo-btn:hover    { transform: scale(1.05); }
-
-    .auth-form { display: flex; flex-direction: column; gap: 4px; }
-
-    .input-wrap {
-      position: relative;
+    .form-control-new::placeholder {
+      color: #475569;
     }
-
-    .eye-btn {
+    .form-control-new:-webkit-autofill,
+    .form-control-new:-webkit-autofill:hover, 
+    .form-control-new:-webkit-autofill:focus, 
+    .form-control-new:-webkit-autofill:active {
+      -webkit-box-shadow: 0 0 0 30px #1e293b inset !important;
+      -webkit-text-fill-color: #f1f5f9 !important;
+      transition: background-color 5000s ease-in-out 0s;
+    }
+    .field-icon {
       position: absolute;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
+      right: 16px;
+      font-size: 1.1rem;
+      color: #64748b;
       background: none;
       border: none;
       cursor: pointer;
-      font-size: 1.1rem;
-      padding: 4px;
-    }
-
-    .error {
-      font-size: 0.78rem;
-      color: var(--danger);
-      margin-top: 4px;
-    }
-
-    .alert-error {
-      background: rgba(239,68,68,0.1);
-      border: 1px solid rgba(239,68,68,0.3);
-      border-radius: var(--radius);
-      padding: 10px 14px;
-      font-size: 0.875rem;
-      color: #ef4444;
-      margin-bottom: 8px;
-    }
-
-    .submit-btn {
-      width: 100%;
-      justify-content: center;
-      padding: 14px;
-      font-size: 1rem;
-      margin-top: 8px;
-      gap: 10px;
-    }
-
-    .submit-btn:disabled {
-      opacity: 0.7;
-      cursor: not-allowed;
-    }
-
-    .auth-footer {
-      text-align: center;
-      margin-top: 20px;
-      font-size: 0.875rem;
-      color: var(--text-muted);
-    }
-
-    .back-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 18px;
-      padding: 8px 18px;
-      border-radius: 50px;
-      font-size: 0.82rem;
-      font-weight: 600;
-      color: var(--primary);
-      background: rgba(249, 115, 22, 0.08);
-      border: 1.5px solid rgba(249, 115, 22, 0.35);
-      text-decoration: none;
-      transition: all 0.25s ease;
-      letter-spacing: 0.02em;
-    }
-    .back-btn:hover {
-      background: rgba(249, 115, 22, 0.18);
-      border-color: var(--primary);
-      transform: translateX(-3px);
-      box-shadow: 0 0 14px rgba(249, 115, 22, 0.25);
-    }
-    .back-arrow {
-      display: inline-block;
-      font-size: 1rem;
-      transition: transform 0.25s ease;
-    }
-    .back-btn:hover .back-arrow {
-      transform: translateX(-4px);
-    }
-
-    .link {
-      color: var(--primary);
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .remember-me-group {
       display: flex;
       align-items: center;
-      margin-top: 10px;
-      margin-bottom: 12px;
+      justify-content: center;
     }
-    .remember-label {
+    .success-check {
+      color: #10b981;
+      font-weight: bold;
+    }
+    .eye-toggle {
+      color: #94a3b8;
+      transition: color 0.2s;
+    }
+    .eye-toggle:hover {
+      color: #f97316;
+    }
+    .error-msg-new {
+      font-size: 0.78rem;
+      color: #ef4444;
+      margin-top: 4px;
+      padding-left: 4px;
+    }
+
+    .options-row-new {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+    }
+    .remember-label-new {
       display: flex;
       align-items: center;
       gap: 8px;
       font-size: 0.85rem;
-      color: var(--text-muted);
+      color: #94a3b8;
       cursor: pointer;
       user-select: none;
     }
-    .remember-label input {
-      accent-color: var(--primary);
+    .remember-label-new input {
+      accent-color: #f97316;
       width: 16px;
       height: 16px;
       cursor: pointer;
     }
+    .forgot-link {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .forgot-link:hover {
+      text-decoration: underline;
+    }
 
-    .link:hover { text-decoration: underline; }
+    .alert-error-new {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      color: #ef4444;
+      margin-bottom: 16px;
+    }
+
+    .btn-signin-gradient {
+      width: 100%;
+      height: 52px;
+      border-radius: 26px;
+      border: none;
+      background: linear-gradient(90deg, #f97316 0%, #0f172a 100%);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 4px 15px rgba(249, 115, 22, 0.35);
+      transition: transform 0.2s, box-shadow 0.2s;
+      font-family: 'Poppins', sans-serif;
+    }
+    .btn-signin-gradient:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(249, 115, 22, 0.45);
+    }
+    .btn-signin-gradient:disabled {
+      background: #475569;
+      box-shadow: none;
+      transform: none;
+      cursor: not-allowed;
+    }
+
+    .footer-row-new {
+      margin-top: auto;
+      padding-top: 32px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 6px;
+    }
+    .footer-text {
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+    .signup-link {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #f97316;
+      text-decoration: none;
+    }
+    .signup-link:hover {
+      text-decoration: underline;
+    }
+
+    .animate-slide-up {
+      animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
   `]
 })
 export class LoginComponent {

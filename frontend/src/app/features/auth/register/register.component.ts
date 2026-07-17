@@ -12,76 +12,107 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
   imports: [CommonModule, ReactiveFormsModule, RouterLink, MatProgressSpinnerModule],
   template: `
     <div class="auth-page">
-      <div class="auth-bg">
-        <div class="bg-circle c1"></div>
-        <div class="bg-circle c2"></div>
+      <!-- Top Header Area with Gradient -->
+      <div class="auth-header">
+        <div class="header-top-row">
+          <a routerLink="/client/restaurants" class="back-btn-icon" title="Asosiy menyuga qaytish">←</a>
+          <span class="more-options">•••</span>
+        </div>
+        <h1 class="header-title">Mango<br>Food Register</h1>
       </div>
 
-      <div class="auth-card animate-in">
-        <div class="auth-logo">
-          <span>🍽️</span>
-          <h1 class="logo-text">Food<span>Delivery</span></h1>
-        </div>
-
-        <div style="margin-bottom: 16px; display: flex; justify-content: flex-start;">
-          <a routerLink="/client/restaurants" class="link" style="text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 4px;">
-            ⬅️ Asosiy menyuga qaytish
-          </a>
-        </div>
-
-        <h2 class="auth-title">Ro'yxatdan o'ting</h2>
-        <p class="auth-subtitle">Yangi hisob yarating</p>
-
+      <!-- Main Form Sheet -->
+      <div class="auth-sheet animate-slide-up">
         <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form">
-          <div class="form-group">
-            <label class="form-label">👤 To'liq ism</label>
-            <input formControlName="name" type="text" class="form-control" placeholder="Ismingiz" id="reg-name">
+          <!-- Name field -->
+          <div class="form-group-new">
+            <label class="form-label-new">To'liq ism</label>
+            <div class="input-container-new">
+              <input formControlName="name" type="text" class="form-control-new" placeholder="Ismingiz" id="reg-name">
+              @if (form.get('name')?.valid) {
+                <span class="field-icon success-check">✓</span>
+              }
+            </div>
+            @if (form.get('name')?.touched && form.get('name')?.invalid) {
+              <span class="error-msg-new">Ismingizni kiriting</span>
+            }
           </div>
 
-          <div class="form-group">
-            <label class="form-label">📧 Email <span class="optional-badge">(ixtiyoriy)</span></label>
-            <input formControlName="email" type="email" class="form-control" placeholder="email@manzil.uz" id="reg-email">
+          <!-- Email field -->
+          <div class="form-group-new">
+            <label class="form-label-new">Email <span class="optional-badge">(ixtiyoriy)</span></label>
+            <div class="input-container-new">
+              <input formControlName="email" type="email" class="form-control-new" placeholder="email@manzil.uz" id="reg-email">
+              @if (form.get('email')?.valid && form.get('email')?.value) {
+                <span class="field-icon success-check">✓</span>
+              }
+            </div>
             @if (form.get('email')?.touched && form.get('email')?.errors?.['email']) {
-              <span class="error">To'g'ri email kiriting</span>
+              <span class="error-msg-new">To'g'ri email kiriting</span>
             }
           </div>
 
-          <div class="form-group">
-            <label class="form-label">📱 Telefon (ixtiyoriy)</label>
-            <input formControlName="phone" type="tel" class="form-control" placeholder="+998 90 123 45 67" id="reg-phone">
+          <!-- Phone field -->
+          <div class="form-group-new">
+            <label class="form-label-new">Telefon <span class="optional-badge">(ixtiyoriy)</span></label>
+            <div class="input-container-new">
+              <input formControlName="phone" type="tel" class="form-control-new" placeholder="+998901234567" id="reg-phone">
+              @if (form.get('phone')?.valid && form.get('phone')?.value) {
+                <span class="field-icon success-check">✓</span>
+              }
+            </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">📍 Manzil (ixtiyoriy)</label>
-            <input formControlName="address" type="text" class="form-control" placeholder="Shahar, ko'cha, uy" id="reg-address">
+          <!-- Address field -->
+          <div class="form-group-new">
+            <label class="form-label-new">Manzil <span class="optional-badge">(ixtiyoriy)</span></label>
+            <div class="input-container-new">
+              <input formControlName="address" type="text" class="form-control-new" placeholder="Shahar, ko'cha, uy" id="reg-address">
+              @if (form.get('address')?.valid && form.get('address')?.value) {
+                <span class="field-icon success-check">✓</span>
+              }
+            </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">🔒 Parol</label>
-            <input formControlName="password" type="password" class="form-control" placeholder="Kamida 6 ta belgi" id="reg-password">
+          <!-- Password field -->
+          <div class="form-group-new">
+            <label class="form-label-new">Parol</label>
+            <div class="input-container-new">
+              <input
+                formControlName="password"
+                [type]="showPwd ? 'text' : 'password'"
+                class="form-control-new"
+                placeholder="Kamida 6 ta belgi"
+                id="reg-password">
+              <button type="button" class="field-icon eye-toggle" (click)="showPwd = !showPwd">
+                {{ showPwd ? '🙈' : '👁️' }}
+              </button>
+            </div>
             @if (form.get('password')?.touched && form.get('password')?.errors?.['minlength']) {
-              <span class="error">Parol kamida 6 ta belgi bo'lsin</span>
+              <span class="error-msg-new">Parol kamida 6 ta belgi bo'lsin</span>
             }
           </div>
-
-
 
           @if (errorMsg) {
-            <div class="alert-error">⚠️ {{ errorMsg }}</div>
+            <div class="alert-error-new">⚠️ {{ errorMsg }}</div>
           }
 
-          <button type="submit" class="btn btn-primary submit-btn" [disabled]="loading">
+          <!-- Submit Button -->
+          <button type="submit" class="btn-signin-gradient" [disabled]="loading">
             @if (loading) {
               <mat-spinner diameter="20" color="accent"></mat-spinner>
+              YUKLANMOQDA...
+            } @else {
+              RO'YXATDAN O'TISH
             }
-            Ro'yxatdan o'tish
           </button>
         </form>
 
-        <p class="auth-footer">
-          Hisobingiz bormi?
-          <a routerLink="/auth/login" class="link">Kiring</a>
-        </p>
+        <!-- Footer -->
+        <div class="footer-row-new">
+          <span class="footer-text">Hisobingiz bormi ?</span>
+          <a routerLink="/auth/login" class="signup-link">KIRISH</a>
+        </div>
       </div>
     </div>
   `,
@@ -89,80 +120,230 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
     .auth-page {
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
+      background: #0f172a;
+      font-family: 'Poppins', sans-serif;
+      position: relative;
+    }
+
+    .auth-header {
+      padding: 40px 24px 70px 24px;
+      background: linear-gradient(135deg, #f97316 0%, #0f172a 100%);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .header-top-row {
+      display: flex;
+      justify-content: space-between;
       align-items: center;
-      justify-content: center;
-      background: var(--bg);
-      padding: 20px;
-      position: relative;
-      overflow: hidden;
+      margin-bottom: 28px;
     }
-    .auth-bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-    .bg-circle { position: absolute; border-radius: 50%; opacity: 0.08; }
-    .c1 { width: 400px; height: 400px; background: #8b5cf6; top: -100px; left: -100px; }
-    .c2 { width: 300px; height: 300px; background: var(--primary); bottom: -80px; right: -80px; }
-
-    .auth-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 36px;
-      width: 100%;
-      max-width: 440px;
-      box-shadow: var(--shadow-lg);
-      position: relative;
-      z-index: 1;
+    .back-btn-icon {
+      color: #fff;
+      font-size: 1.5rem;
+      text-decoration: none;
+      font-weight: bold;
+      transition: transform 0.2s;
+    }
+    .back-btn-icon:hover {
+      transform: translateX(-3px);
+    }
+    .more-options {
+      font-size: 1.2rem;
+      cursor: pointer;
+      opacity: 0.8;
+      letter-spacing: 2px;
+    }
+    .header-title {
+      font-size: 2.2rem;
+      font-weight: 700;
+      line-height: 1.25;
+      margin: 0;
+      letter-spacing: 0.5px;
     }
 
-    .auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; font-size: 1.8rem; }
-    .logo-text { font-size: 1.4rem; font-weight: 800; }
-    .logo-text span { color: var(--primary); }
-    .auth-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
-    .auth-subtitle { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 20px; }
+    .auth-sheet {
+      flex: 1;
+      background: #0f172a;
+      border-radius: 40px 40px 0 0;
+      margin-top: -30px;
+      padding: 36px 28px;
+      box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+    }
 
-    .auth-form { display: flex; flex-direction: column; }
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+    }
 
-    .role-select { margin-bottom: 16px; }
-    .role-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-    .role-btn {
-      padding: 8px 16px;
-      border-radius: 20px;
+    .form-group-new {
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .form-label-new {
       font-size: 0.85rem;
       font-weight: 600;
-      cursor: pointer;
-      border: 2px solid var(--border);
-      background: var(--bg-card2);
-      color: var(--text-muted);
-      transition: var(--transition);
+      color: #94a3b8;
+      letter-spacing: 0.5px;
+      transition: color 0.2s ease;
+    }
+    .form-group-new:focus-within .form-label-new {
+      color: #f97316;
+    }
+    .input-container-new {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 0 16px;
+      transition: all 0.25s ease;
+    }
+    .input-container-new:focus-within {
+      border-color: #f97316;
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+    }
+    .form-control-new {
+      width: 100%;
+      background: transparent;
+      border: none;
+      padding: 14px 0;
+      font-size: 0.95rem;
+      color: #f1f5f9;
+      outline: none;
       font-family: 'Poppins', sans-serif;
     }
-    .role-btn.active, .role-btn:hover {
-      border-color: var(--primary);
-      background: rgba(249,115,22,0.1);
-      color: var(--primary);
+    .form-control-new::placeholder {
+      color: #475569;
+    }
+    .form-control-new:-webkit-autofill,
+    .form-control-new:-webkit-autofill:hover, 
+    .form-control-new:-webkit-autofill:focus, 
+    .form-control-new:-webkit-autofill:active {
+      -webkit-box-shadow: 0 0 0 30px #1e293b inset !important;
+      -webkit-text-fill-color: #f1f5f9 !important;
+      transition: background-color 5000s ease-in-out 0s;
+    }
+    .field-icon {
+      position: absolute;
+      right: 16px;
+      font-size: 1.1rem;
+      color: #64748b;
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .success-check {
+      color: #10b981;
+      font-weight: bold;
+    }
+    .eye-toggle {
+      color: #94a3b8;
+      transition: color 0.2s;
+    }
+    .eye-toggle:hover {
+      color: #f97316;
+    }
+    .error-msg-new {
+      font-size: 0.78rem;
+      color: #ef4444;
+      margin-top: 4px;
+      padding-left: 4px;
+    }
+    .optional-badge {
+      font-size: 0.72rem;
+      color: #64748b;
+      font-weight: 400;
+      margin-left: 4px;
     }
 
-    .error { font-size: 0.78rem; color: var(--danger); margin-top: 2px; }
-    .optional-badge { font-size: 0.72rem; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
-    .alert-error {
-      background: rgba(239,68,68,0.1);
-      border: 1px solid rgba(239,68,68,0.3);
-      border-radius: var(--radius);
+    .alert-error-new {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      border-radius: 12px;
       padding: 10px 14px;
-      font-size: 0.875rem;
+      font-size: 0.85rem;
       color: #ef4444;
-      margin-bottom: 8px;
+      margin-bottom: 16px;
     }
-    .submit-btn { width: 100%; justify-content: center; padding: 14px; font-size: 1rem; gap: 8px; }
-    .submit-btn:disabled { opacity: 0.7; cursor: not-allowed; }
-    .auth-footer { text-align: center; margin-top: 20px; font-size: 0.875rem; color: var(--text-muted); }
-    .link { color: var(--primary); font-weight: 600; }
-    .link:hover { text-decoration: underline; }
+
+    .btn-signin-gradient {
+      width: 100%;
+      height: 52px;
+      border-radius: 26px;
+      border: none;
+      background: linear-gradient(90deg, #f97316 0%, #0f172a 100%);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 4px 15px rgba(249, 115, 22, 0.35);
+      transition: transform 0.2s, box-shadow 0.2s;
+      font-family: 'Poppins', sans-serif;
+    }
+    .btn-signin-gradient:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(249, 115, 22, 0.45);
+    }
+    .btn-signin-gradient:disabled {
+      background: #475569;
+      box-shadow: none;
+      transform: none;
+      cursor: not-allowed;
+    }
+
+    .footer-row-new {
+      margin-top: auto;
+      padding-top: 32px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 6px;
+    }
+    .footer-text {
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+    .signup-link {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #f97316;
+      text-decoration: none;
+    }
+    .signup-link:hover {
+      text-decoration: underline;
+    }
+
+    .animate-slide-up {
+      animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
   `]
 })
 export class RegisterComponent {
   form;
   loading = false;
   errorMsg = '';
+  showPwd = false;
   selectedRole = 'CLIENT';
 
   constructor(
