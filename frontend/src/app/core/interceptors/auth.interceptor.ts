@@ -8,6 +8,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
+  authService.resetIdleTimerExternally();
+
   const token = authService.getToken();
   const headers: { [key: string]: string } = {};
   

@@ -63,7 +63,10 @@ public class SupportController {
         }
 
         SupportTicket ticket = supportTicketRepository.findById(ticketId)
-                .orElseThrow(() -> new RuntimeException("Ticket topilmadi"));
+                .orElse(null);
+        if (ticket == null) {
+            return ResponseEntity.status(404).build();
+        }
 
         // Security check: Only the owner or Admin can view messages
         boolean isAdmin = userDetails.getAuthorities().stream()
@@ -86,7 +89,10 @@ public class SupportController {
         }
 
         SupportTicket ticket = supportTicketRepository.findById(ticketId)
-                .orElseThrow(() -> new RuntimeException("Ticket topilmadi"));
+                .orElse(null);
+        if (ticket == null) {
+            return ResponseEntity.status(404).build();
+        }
 
         boolean isAdmin = userDetails.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
@@ -131,7 +137,10 @@ public class SupportController {
         }
 
         SupportTicket ticket = supportTicketRepository.findById(ticketId)
-                .orElseThrow(() -> new RuntimeException("Ticket topilmadi"));
+                .orElse(null);
+        if (ticket == null) {
+            return ResponseEntity.status(404).build();
+        }
 
         boolean isAdmin = userDetails.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
@@ -184,6 +193,11 @@ public class SupportController {
                     .toList();
         }
 
+        // Filter out empty tickets (tickets with no messages)
+        tickets = tickets.stream()
+                .filter(t -> supportMessageRepository.existsByTicketId(t.getId()))
+                .toList();
+
         if (search != null && !search.trim().isEmpty()) {
             String lowerSearch = search.toLowerCase();
             tickets = tickets.stream()
@@ -203,7 +217,10 @@ public class SupportController {
             @PathVariable Long ticketId,
             @RequestParam String status) {
         SupportTicket ticket = supportTicketRepository.findById(ticketId)
-                .orElseThrow(() -> new RuntimeException("Ticket topilmadi"));
+                .orElse(null);
+        if (ticket == null) {
+            return ResponseEntity.status(404).build();
+        }
         ticket.setStatus(status);
         ticket.setUpdatedAt(java.time.LocalDateTime.now());
         return ResponseEntity.ok(supportTicketRepository.save(ticket));
@@ -216,7 +233,10 @@ public class SupportController {
             @PathVariable Long ticketId,
             @RequestParam Long adminId) {
         SupportTicket ticket = supportTicketRepository.findById(ticketId)
-                .orElseThrow(() -> new RuntimeException("Ticket topilmadi"));
+                .orElse(null);
+        if (ticket == null) {
+            return ResponseEntity.status(404).build();
+        }
         User admin = userRepository.findById(adminId)
                 .orElseThrow(() -> new RuntimeException("Admin topilmadi"));
         ticket.setAdmin(admin);

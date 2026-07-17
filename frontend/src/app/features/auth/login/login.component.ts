@@ -76,6 +76,13 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
             }
           </div>
 
+          <div class="remember-me-group">
+            <label class="remember-label">
+              <input type="checkbox" formControlName="rememberMe" id="remember-me-chk">
+              Eslab qolish (Remember Me)
+            </label>
+          </div>
+
           @if (errorMsg) {
             <div class="alert-error">⚠️ {{ errorMsg }}</div>
           }
@@ -302,6 +309,28 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
       cursor: pointer;
     }
 
+    .remember-me-group {
+      display: flex;
+      align-items: center;
+      margin-top: 10px;
+      margin-bottom: 12px;
+    }
+    .remember-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+    .remember-label input {
+      accent-color: var(--primary);
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
     .link:hover { text-decoration: underline; }
   `]
 })
@@ -318,7 +347,8 @@ export class LoginComponent {
   ) {
     this.form = this.fb.group({
       phone: ['', Validators.required],
-      password: ['', Validators.required]
+      password: ['', Validators.required],
+      rememberMe: [false]
     });
   }
 
@@ -341,11 +371,11 @@ export class LoginComponent {
     this.loading = true;
     this.errorMsg = '';
 
-    const { phone, password } = this.form.value;
+    const { phone, password, rememberMe } = this.form.value;
     const tg = (window as any).Telegram?.WebApp;
     const initData = tg?.initData || undefined;
 
-    this.authService.login({ phone: phone!, password: password!, initData }).subscribe({
+    this.authService.login({ phone: phone!, password: password!, initData, rememberMe: !!rememberMe }).subscribe({
       next: (res) => {
         this.loading = false;
         redirectByRole(this.authService, this.router);

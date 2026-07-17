@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { AuthResponse, LoginRequest, RegisterRequest, User } from '../models/user.model';
 import { API_BASE } from '../config';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 const API = `${API_BASE}/api/auth`;
 const TOKEN_KEY = 'food_token';
@@ -20,11 +21,21 @@ export class AuthService {
   readonly role = computed(() => this._user()?.role ?? null);
   readonly userId = computed(() => this._user()?.id ?? null);
 
-  constructor(private http: HttpClient, private router: Router) {}
+  private idleTimer: any;
+  private readonly IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+  private activityEvents = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+
+  constructor(
+    private http: HttpClient,
+    private router: Router,
+    private snack: MatSnackBar
+  ) {
+    this.startIdleTracking();
+  }
 
   login(request: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${API}/login`, request).pipe(
-      tap(res => this.saveUser(res))
+      tap(res => this.saveUser(res, request.rememberMe))
     );
   }
 
@@ -69,14 +80,17 @@ export class AuthService {
   }
 
   logout(): void {
+    this.stopIdleTracking();
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(USER_KEY);
     this._user.set(null);
     this.router.navigate(['/auth/login']);
   }
 
   getToken(): string | null {
-    return localStorage.getItem(TOKEN_KEY);
+    return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
   }
 
   isClient(): boolean {
@@ -92,41 +106,102 @@ export class AuthService {
     return role === 'ADMIN' || role === 'MANAGER';
   }
 
-  private saveUser(res: AuthResponse): void {
-    localStorage.setItem(TOKEN_KEY, res.token);
-    localStorage.setItem(USER_KEY, JSON.stringify(res));
+  private saveUser(res: AuthResponse, rememberMe?: boolean): void {
+    let storage: Storage = localStorage;
+    if (rememberMe !== undefined) {
+      storage = rememberMe ? localStorage : sessionStorage;
+      const otherStorage = rememberMe ? sessionStorage : localStorage;
+      otherStorage.removeItem(TOKEN_KEY);
+      otherStorage.removeItem(USER_KEY);
+    } else {
+      if (sessionStorage.getItem(TOKEN_KEY)) {
+        storage = sessionStorage;
+      }
+    }
+
+    res.rememberMe = rememberMe !== undefined ? rememberMe : (storage === localStorage);
+
+    storage.setItem(TOKEN_KEY, res.token);
+    storage.setItem(USER_KEY, JSON.stringify(res));
     this._user.set(res);
   }
 
   private loadUser(): AuthResponse | null {
-    const data = localStorage.getItem(USER_KEY);
-    if (!data) return null;
-
-    const user: AuthResponse = JSON.parse(data);
-
-    // Token'ning amal muddatini tekshirish
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) {
+    const token = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
+    const data = localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY);
+    if (!data || !token) {
+      localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(USER_KEY);
       return null;
     }
 
+    const user: AuthResponse = JSON.parse(data);
+
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
-      const exp = payload.exp * 1000; // milliseconds
+      const exp = payload.exp * 1000;
       if (Date.now() >= exp) {
-        // Token muddati tugagan — session tozalash
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
+        sessionStorage.removeItem(TOKEN_KEY);
+        sessionStorage.removeItem(USER_KEY);
         return null;
       }
     } catch (e) {
-      // Token formati noto'g'ri — session tozalash
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(USER_KEY);
       return null;
     }
 
     return user;
+  }
+
+  resetIdleTimerExternally(): void {
+    this.resetIdleTimer();
+  }
+
+  private resetIdleTimer = () => {
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer);
+    }
+
+    const currentUser = this._user();
+    if (currentUser && !currentUser.rememberMe) {
+      this.idleTimer = setTimeout(() => {
+        this.handleIdleTimeout();
+      }, this.IDLE_TIMEOUT_MS);
+    }
+  };
+
+  private handleIdleTimeout(): void {
+    this.logout();
+    this.snack.open("Sessiya muddati tugadi, qayta tizimga kiring.", "OK", {
+      duration: 5000
+    });
+  }
+
+  private startIdleTracking(): void {
+    this.stopIdleTracking();
+    const currentUser = this._user();
+    if (currentUser && !currentUser.rememberMe) {
+      this.activityEvents.forEach(event => {
+        window.addEventListener(event, this.resetIdleTimer, { passive: true });
+      });
+      this.resetIdleTimer();
+    }
+  }
+
+  private stopIdleTracking(): void {
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer);
+      this.idleTimer = null;
+    }
+    this.activityEvents.forEach(event => {
+      window.removeEventListener(event, this.resetIdleTimer);
+    });
   }
 }

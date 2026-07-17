@@ -10,6 +10,7 @@ import java.util.List;
 @Repository
 public interface SupportMessageRepository extends JpaRepository<SupportMessage, Long> {
     List<SupportMessage> findByTicketIdOrderByCreatedAtAsc(Long ticketId);
+    boolean existsByTicketId(Long ticketId);
     
     @Query("SELECT COUNT(m) FROM SupportMessage m WHERE m.ticket.type = :type AND m.isSeen = false AND m.senderType <> 'admin'")
     long countUnreadMessagesForAdmin(@Param("type") String type);

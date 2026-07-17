@@ -19,4 +19,6 @@ public class LoginRequest {
 
     // Eski email fieldni saqlaymiz (Telegram login uchun)
     private String email;
+
+    private Boolean rememberMe = false;
 }

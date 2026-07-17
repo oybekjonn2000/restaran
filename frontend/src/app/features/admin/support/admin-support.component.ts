@@ -11,7 +11,7 @@ import { API_BASE } from '../../../core/config';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="admin-support-container">
+    <div class="admin-support-container" [class.chat-open]="activeTicket() !== null">
       <!-- Sidebar / Ticket list -->
       <div class="support-sidebar">
         <div class="sidebar-header">
@@ -105,9 +105,14 @@ import { API_BASE } from '../../../core/config';
         } @else {
           <!-- Chat panel header -->
           <div class="chat-panel-header">
-            <div class="chat-user-details">
-              <h3>{{ activeTicket()?.user?.name }}</h3>
-              <p>📞 {{ activeTicket()?.user?.phone || activeTicket()?.user?.email }} | Rol: <b>{{ activeTicket()?.type | uppercase }}</b></p>
+            <div class="chat-header-user-wrapper">
+              <button class="btn-back-to-list" (click)="closeActiveTicket()" title="Orqaga">
+                <span class="back-icon">←</span>
+              </button>
+              <div class="chat-user-details">
+                <h3>{{ activeTicket()?.user?.name }}</h3>
+                <p>📞 {{ activeTicket()?.user?.phone || activeTicket()?.user?.email }} | Rol: <b>{{ activeTicket()?.type | uppercase }}</b></p>
+              </div>
             </div>
 
             <div class="chat-controls">
@@ -424,6 +429,13 @@ import { API_BASE } from '../../../core/config';
       justify-content: space-between;
       align-items: center;
     }
+    .chat-header-user-wrapper {
+      display: flex;
+      align-items: center;
+    }
+    .btn-back-to-list {
+      display: none;
+    }
     .chat-user-details h3 {
       margin: 0 0 4px 0;
       color: #fff;
@@ -668,6 +680,60 @@ import { API_BASE } from '../../../core/config';
       from { opacity: 0; transform: translateY(4px); }
       to { opacity: 1; transform: translateY(0); }
     }
+
+    @media (max-width: 768px) {
+      .admin-support-container {
+        height: calc(100vh - 100px);
+        border-radius: 12px;
+      }
+      .support-sidebar {
+        width: 100%;
+      }
+      .support-chat-panel {
+        display: none;
+      }
+      .admin-support-container.chat-open .support-sidebar {
+        display: none;
+      }
+      .admin-support-container.chat-open .support-chat-panel {
+        display: flex;
+        width: 100%;
+      }
+      .btn-back-to-list {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #334155;
+        border: 1px solid #475569;
+        color: #fff;
+        font-size: 1rem;
+        cursor: pointer;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        margin-right: 12px;
+        transition: background 0.2s;
+      }
+      .btn-back-to-list:hover {
+        background: #475569;
+      }
+      .chat-panel-header {
+        padding: 12px 16px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .chat-header-user-wrapper {
+        width: 100%;
+      }
+      .chat-controls {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .chat-msg-row .message-bubble {
+        max-width: 85%;
+      }
+    }
   `]
 })
 export class AdminSupportComponent implements OnInit, OnDestroy {
@@ -737,6 +803,11 @@ export class AdminSupportComponent implements OnInit, OnDestroy {
     
     this.loadMessages(ticket.id);
     this.startMessagePolling(ticket.id);
+  }
+
+  closeActiveTicket(): void {
+    this.activeTicket.set(null);
+    this.stopMessagePolling();
   }
 
   loadMessages(ticketId: number): void {

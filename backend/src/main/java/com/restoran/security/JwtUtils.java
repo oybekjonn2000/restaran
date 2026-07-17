@@ -15,23 +15,30 @@ public class JwtUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtUtils.class);
 
-    @Value("${app.jwt.secret}")
-    private String jwtSecret;
+    private final SecretKey jwtSecretKey = Keys.hmacShaKeyFor(generateRandomSecretBytes());
 
-    @Value("${app.jwt.expiration}")
-    private int jwtExpirationMs;
+    private static byte[] generateRandomSecretBytes() {
+        byte[] bytes = new byte[64];
+        new java.security.SecureRandom().nextBytes(bytes);
+        return bytes;
+    }
 
-    public String generateToken(String email) {
+    public String generateToken(String email, boolean rememberMe) {
+        long expirationMs = rememberMe ? (7L * 24 * 60 * 60 * 1000) : (1L * 60 * 60 * 1000); // 7 days vs 1 hour
         return Jwts.builder()
                 .subject(email)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
+                .expiration(new Date(System.currentTimeMillis() + expirationMs))
                 .signWith(key())
                 .compact();
     }
 
+    public String generateToken(String email) {
+        return generateToken(email, false);
+    }
+
     private SecretKey key() {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return jwtSecretKey;
     }
 
     public String getEmailFromToken(String token) {

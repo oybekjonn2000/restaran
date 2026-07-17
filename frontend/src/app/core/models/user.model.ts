@@ -18,6 +18,7 @@ export interface AuthResponse {
   phone?: string;
   address?: string;
   balance?: number;
+  rememberMe?: boolean;
 }
 
 export interface LoginRequest {
@@ -25,6 +26,7 @@ export interface LoginRequest {
   email?: string;
   password: string;
   initData?: string;
+  rememberMe?: boolean;
 }
 
 export interface RegisterRequest {

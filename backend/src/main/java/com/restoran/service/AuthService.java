@@ -41,7 +41,8 @@ public class AuthService {
         SecurityContextHolder.getContext().setAuthentication(auth);
 
         UserDetailsImpl userDetails = (UserDetailsImpl) auth.getPrincipal();
-        String token = jwtUtils.generateToken(userDetails.getUsername());
+        boolean rememberMe = request.getRememberMe() != null && request.getRememberMe();
+        String token = jwtUtils.generateToken(userDetails.getUsername(), rememberMe);
 
         // Phone yoki email bo'yicha foydalanuvchini topamiz
         User user = userRepository.findByPhone(identifier)
