@@ -95,6 +95,10 @@ a { color: inherit; text-decoration: none; }
 .badge-delivering { background: rgba(249,115,22,0.15); color: #f97316; border: 1px solid rgba(249,115,22,0.3); }
 .badge-delivered  { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
 .badge-canceled   { background: rgba(239,68,68,0.15);  color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+.badge-transferred_to_yandex { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+.badge-yandex_courier_called { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
+.badge-yandex_courier_picked_up { background: rgba(6, 182, 212, 0.15); color: #06b6d4; border: 1px solid rgba(6, 182, 212, 0.3); }
+.badge-cancellation_requested { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
 
 /* ===== Buttons ===== */
 .btn {
@@ -110,6 +114,15 @@ a { color: inherit; text-decoration: none; }
   border: none;
   transition: var(--transition);
   white-space: nowrap;
+}
+.btn:disabled, .btn[disabled] {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  background: #475569 !important;
+  color: #94a3b8 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  pointer-events: none !important;
 }
 
 .btn-primary {

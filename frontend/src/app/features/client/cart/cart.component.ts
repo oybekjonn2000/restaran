@@ -157,9 +157,42 @@ import { AuthService } from '../../../core/services/auth.service';
               }
             </div>
 
+             <!-- Payment Method Card -->
+            <div class="card payment-card" style="margin-top: 16px;">
+              <h3 class="form-section-title">💳 To'lov turi</h3>
+              <div class="payment-options">
+                <div class="payment-option-card" 
+                     [class.selected]="paymentMethod === 'CARD'"
+                     (click)="paymentMethod = 'CARD'"
+                     id="pay-card-option">
+                  <div class="option-header">
+                    <span class="option-icon">💳</span>
+                    <span class="option-title">Karta orqali</span>
+                  </div>
+                  <span class="option-desc">Visa • Uzcard • Humo</span>
+                </div>
+
+                <div class="payment-option-card" 
+                     [class.selected]="paymentMethod === 'CASH'"
+                     (click)="paymentMethod = 'CASH'"
+                     id="pay-cash-option">
+                  <div class="option-header">
+                    <span class="option-icon">💵</span>
+                    <span class="option-title">Naqd pul</span>
+                  </div>
+                  <span class="option-desc">Kuryerga to'lanadi</span>
+                </div>
+              </div>
+              @if (!paymentMethod) {
+                <p style="color: var(--danger); font-size: 0.85rem; margin-top: 8px; font-weight: 500; text-align: center;">
+                  ⚠️ Iltimos, to'lov turini tanlang!
+                </p>
+              }
+            </div>
+
             <!-- Summary Card -->
             <div class="card summary-card" style="margin-top: 16px;">
-              <h3 class="form-section-title">💳 To'lov tafsilotlari</h3>
+              <h3 class="form-section-title">To'lov tafsilotlari</h3>
               <div class="summary-details">
                 <div class="summary-row">
                   <span class="s-label">Taomlar summasi:</span>
@@ -194,7 +227,7 @@ import { AuthService } from '../../../core/services/auth.service';
                 <button
                   class="btn btn-primary"
                   (click)="placeOrder()"
-                  [disabled]="ordering() || !deliveryAddress"
+                  [disabled]="ordering() || !deliveryAddress || !paymentMethod || cart.totalPrice() < minOrderAmount"
                   id="place-order-btn">
                   @if (ordering()) {
                     <mat-spinner diameter="18" color="accent"></mat-spinner>
@@ -204,6 +237,12 @@ import { AuthService } from '../../../core/services/auth.service';
               </div>
               @if (!deliveryAddress) {
                 <p class="address-hint">⚠️ Iltimos, yetkazib berish manzilini kiriting yoki xaritadan tanlang!</p>
+              }
+              @if (cart.totalPrice() < minOrderAmount) {
+                <p class="min-amount-warning" style="color: #f59e0b; font-size: 0.85rem; margin-top: 12px; font-weight: 600; text-align: center; border: 1px dashed rgba(245,158,11,0.25); padding: 10px; border-radius: 8px; background: rgba(245,158,11,0.05); line-height: 1.4;">
+                  ⚠️ Minimal buyurtma summasi {{ minOrderAmount | number:'1.0-0' }} so'm. <br>
+                  Buyurtma berish uchun yana <strong>{{ minOrderAmount - cart.totalPrice() | number:'1.0-0' }} so'mlik</strong> mahsulot qo'shing.
+                </p>
               }
             </div>
           </div>
@@ -813,12 +852,61 @@ import { AuthService } from '../../../core/services/auth.service';
         right: 6px;
       }
     }
+
+    .payment-options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .payment-option-card {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .payment-option-card:hover {
+      border-color: rgba(249, 115, 22, 0.4);
+      background: rgba(249, 115, 22, 0.02);
+    }
+    .payment-option-card.selected {
+      border-color: var(--primary);
+      background: rgba(249, 115, 22, 0.06);
+      box-shadow: 0 0 12px rgba(249, 115, 22, 0.15);
+    }
+    .option-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .option-icon {
+      font-size: 1.25rem;
+    }
+    .option-title {
+      font-weight: 700;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+    .option-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-left: 28px;
+    }
   `]
 })
 export class CartComponent implements OnInit, AfterViewInit {
   deliveryAddress = '';
   note = '';
   ordering = signal(false);
+
+  minOrderAmount = 40000;
+  allowedPaymentMethods: string[] = ['CARD', 'CASH'];
+  paymentMethod = '';
 
   hasSavedAddress = false;
   isEditingAddress = false;
@@ -866,6 +954,19 @@ export class CartComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     this.checkCourierActive();
+    this.loadSettings();
+  }
+
+  loadSettings(): void {
+    this.orderService.getSettings().subscribe({
+      next: (data) => {
+        this.minOrderAmount = data.min_order_amount ?? 40000;
+        this.allowedPaymentMethods = data.payment_methods ?? ['CARD', 'CASH'];
+      },
+      error: (err) => {
+        console.warn('Failed to load system settings', err);
+      }
+    });
   }
 
   ngAfterViewInit(): void {
@@ -1207,7 +1308,7 @@ export class CartComponent implements OnInit, AfterViewInit {
   }
 
   placeOrder(): void {
-    if (!this.deliveryAddress || this.cart.isEmpty()) return;
+    if (!this.deliveryAddress || this.cart.isEmpty() || !this.paymentMethod) return;
 
     if (!this.auth.isLoggedIn()) {
       this.snack.open('⚠️ Buyurtma berish uchun avval tizimga kiring!', 'Yopish', { duration: 4000 });
@@ -1226,7 +1327,8 @@ export class CartComponent implements OnInit, AfterViewInit {
       deliveryFee: this.deliveryFee,
       restaurantId: restId || undefined,
       note: this.note || undefined,
-      items: this.cart.getOrderItems()
+      items: this.cart.getOrderItems(),
+      paymentMethod: this.paymentMethod
     }).subscribe({
       next: (order) => {
         this.auth.fetchMe().subscribe();

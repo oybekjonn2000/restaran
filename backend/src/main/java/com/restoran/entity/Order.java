@@ -34,6 +34,15 @@ public class Order {
     @Column(nullable = false)
     private OrderStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method")
+    private PaymentMethod paymentMethod;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "delivery_provider")
+    @Builder.Default
+    private DeliveryProvider deliveryProvider = DeliveryProvider.INTERNAL;
+
     private String deliveryAddress;
     private Double latitude;
     private Double longitude;
@@ -143,6 +152,18 @@ public class Order {
 
     @Transient
     private boolean courierActiveOnShift;
+
+    public Double getCustomerLatitude() {
+        return this.latitude;
+    }
+
+    public Double getCustomerLongitude() {
+        return this.longitude;
+    }
+
+    public String getCustomerAddress() {
+        return this.deliveryAddress;
+    }
 
     @PrePersist
     protected void onCreate() {

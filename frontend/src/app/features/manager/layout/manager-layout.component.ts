@@ -56,6 +56,11 @@ import { Restaurant } from '../../../core/models/restaurant.model';
             <span class="nav-icon">📊</span>
             <span>Dashboard</span>
           </a>
+          <a routerLink="/manager/orders" routerLinkActive="active" (click)="menuOpen.set(false)"
+             class="nav-item" id="manager-nav-orders">
+            <span class="nav-icon">📋</span>
+            <span>Buyurtmalar boshqaruvi</span>
+          </a>
           <a routerLink="/manager/menu" routerLinkActive="active" (click)="menuOpen.set(false)"
              class="nav-item" id="manager-nav-menu">
             <span class="nav-icon">🍕</span>

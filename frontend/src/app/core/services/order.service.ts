@@ -14,6 +14,10 @@ const BASE = `${API_BASE}/api`;
 export class OrderService {
   constructor(private http: HttpClient) {}
 
+  getSettings(): Observable<any> {
+    return this.http.get<any>(`${BASE}/settings`);
+  }
+
   // ===== MIJOZ =====
   createOrder(request: OrderRequest): Observable<Order> {
     return this.http.post<Order>(`${BASE}/orders`, request);

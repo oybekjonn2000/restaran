@@ -20,6 +20,9 @@ export interface Order {
   cancelReason?: string;
   yandexDelivery?: boolean;
   isReady?: boolean;
+  customerLatitude?: number;
+  customerLongitude?: number;
+  customerAddress?: string;
   courierActiveOnShift?: boolean;
   courierAcceptedAt?: string;
   courierStartLatitude?: number;
@@ -43,6 +46,8 @@ export interface Order {
   items: OrderItem[];
   dispatchAttempt?: number;
   previousStatus?: string;
+  paymentMethod?: 'CARD' | 'CASH';
+  deliveryProvider?: 'INTERNAL' | 'YANDEX';
 }
 
 export interface OrderItem {
@@ -62,7 +67,10 @@ export type OrderStatus =
   | 'DELIVERED'
   | 'CANCELED'
   | 'CANCELLATION_REQUESTED'
-  | 'TRANSFERRED_TO_YANDEX';
+  | 'TRANSFERRED_TO_YANDEX'
+  | 'YANDEX_COURIER_CALLED'
+  | 'READY'
+  | 'YANDEX_COURIER_PICKED_UP';
 
 export interface OrderRequest {
   deliveryAddress: string;
@@ -73,6 +81,7 @@ export interface OrderRequest {
   note?: string;
   restaurantId?: number;
   items: { foodId: number; quantity: number }[];
+  paymentMethod?: string;
 }
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
@@ -85,7 +94,10 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   DELIVERED:             "🎉 Yetkazildi",
   CANCELED:              "❌ Bekor qilindi",
   CANCELLATION_REQUESTED: "⚠️ Bekor qilish so'raldi",
-  TRANSFERRED_TO_YANDEX: "🚕 Yandexga o'tkazildi",
+  TRANSFERRED_TO_YANDEX: "🟨 Yandex Delivery kutmoqda",
+  YANDEX_COURIER_CALLED: "🚕 Yandex kuryer chaqirildi",
+  READY:                 "🍳 Ovqat tayyor",
+  YANDEX_COURIER_PICKED_UP: "🚴 Yandex kuryer olib ketdi",
 };
 
 export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
@@ -98,5 +110,8 @@ export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   DELIVERED:             "#10b981",
   CANCELED:              "#ef4444",
   CANCELLATION_REQUESTED: "#eab308",
-  TRANSFERRED_TO_YANDEX: "#e11d48",
+  TRANSFERRED_TO_YANDEX: "#eab308",
+  YANDEX_COURIER_CALLED: "#3b82f6",
+  READY:                 "#10b981",
+  YANDEX_COURIER_PICKED_UP: "#06b6d4",
 };

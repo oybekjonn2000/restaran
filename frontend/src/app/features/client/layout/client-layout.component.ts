@@ -53,13 +53,21 @@ export interface NotificationItem {
               <div class="notifications-dropdown animate-pop" (click)="$event.stopPropagation()">
                 <div class="dropdown-header">
                   <span>Bildirishnomalar</span>
-                  @if (unreadCount() > 0) {
-                    <button class="mark-read-btn" (click)="markAllAsRead()">Hammasini o'qish</button>
-                  }
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    @if (unreadCount() > 0) {
+                      <button class="mark-read-btn" (click)="markAllAsRead()">O'qish</button>
+                    }
+                    @if (notifications().length > 0) {
+                      <button class="mark-read-btn" style="border: 1px solid rgba(249, 115, 22, 0.3);" (click)="clearNotifications($event)">Tozalash</button>
+                    }
+                  </div>
                 </div>
                 <div class="dropdown-list">
                   @if (notifications().length === 0) {
-                    <div class="empty-notifications">Bildirishnomalar yo'q</div>
+                    <div class="empty-notifications" style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px 16px;">
+                      <span style="font-size: 1.5rem;">📭</span>
+                      <span>Bildirishnomalar mavjud emas</span>
+                    </div>
                   } @else {
                     @for (n of notifications(); track n.id) {
                       <div class="notification-item" [class.unread]="!n.seen" (click)="markAsRead(n)">
@@ -901,13 +909,18 @@ export class ClientLayoutComponent implements OnInit, OnDestroy {
   getStatusChangeText(orderId: number, status: string): string {
     switch (status) {
       case 'PENDING': return `Buyurtmangiz qabul qilindi. Tasdiqlash kutilmoqda 🍔 (Buyurtma #${orderId})`;
-      case 'PREPARING': return `Restoran buyurtmangizni tayyorlashni boshladi 🍳 (Buyurtma #${orderId})`;
+      case 'PREPARING': return `Buyurtmangiz tayyorlanmoqda 🍳 (Buyurtma #${orderId})`;
       case 'COURIER_ACCEPTED': return `Kuryer buyurtmangizni qabul qildi 🏍️ (Buyurtma #${orderId})`;
       case 'COURIER_AT_RESTAURANT': return `Kuryer restoranga yetib keldi 🏪 (Buyurtma #${orderId})`;
       case 'DELIVERING': return `Kuryer buyurtmangizni olib, yo'lga chiqdi 🚴 (Buyurtma #${orderId})`;
       case 'COURIER_AT_CLIENT': return `Kuryer buyurtmangizni yetkazish uchun yaqinlashmoqda! 📍 (Buyurtma #${orderId})`;
       case 'DELIVERED': return `Buyurtmangiz muvaffaqiyatli yetkazildi! Yoqimli ishtaha 🎉 (Buyurtma #${orderId})`;
       case 'CANCELED': return `Buyurtmangiz bekor qilindi 🚫 (Buyurtma #${orderId})`;
+      case 'CANCELLATION_REQUESTED': return `Kuryer buyurtmani bekor qilishni so'radi ⚠️ (Buyurtma #${orderId})`;
+      case 'TRANSFERRED_TO_YANDEX': return `Hozirda ichki kuryerlar mavjud emas. Buyurtmangiz Yandex Delivery orqali yetkazib beriladi. (Buyurtma #${orderId})`;
+      case 'YANDEX_COURIER_CALLED': return `Buyurtmangizga Yandex kuryeri chaqirildi 🚕 (Buyurtma #${orderId})`;
+      case 'READY': return `Buyurtmangiz tayyor bo'ldi! 📦 (Buyurtma #${orderId})`;
+      case 'YANDEX_COURIER_PICKED_UP': return `Buyurtmangiz Yandex kuryeri tomonidan olib ketildi. 🚴 (Buyurtma #${orderId})`;
       default: return `Buyurtmangiz holati: ${status} (Buyurtma #${orderId})`;
     }
   }
@@ -915,6 +928,12 @@ export class ClientLayoutComponent implements OnInit, OnDestroy {
   markAllAsRead(): void {
     const list = this.notifications().map(n => ({ ...n, seen: true }));
     this.saveNotifications(list);
+  }
+
+  clearNotifications(event: MouseEvent): void {
+    event.stopPropagation();
+    this.saveNotifications([]);
+    this.snack.open('🧹 Bildirishnomalar tozalandi', 'Yopish', { duration: 3000 });
   }
 
   markAsRead(item: NotificationItem): void {

@@ -56,6 +56,29 @@ import { Order } from '../../../core/models/order.model';
         </div>
       </div>
 
+      <!-- PAYMENT STATS GRID -->
+      <div class="metrics-grid" style="margin-top: 24px; margin-bottom: 24px;">
+        <!-- Card Stats -->
+        <div class="metric-card" style="border-left: 4px solid #10b981; background: var(--bg-card);">
+          <div class="metric-header">
+            <span class="metric-label" style="color: #10b981; font-weight: 700;">💳 KARTA ORQALI TO'LOVLAR</span>
+            <span class="metric-icon-wrap">💳</span>
+          </div>
+          <div class="metric-value">{{ cardRevenue() | number:'1.0-0' }} so'm</div>
+          <div class="metric-footer" style="color: var(--text-muted);">{{ cardCount() }} ta buyurtma</div>
+        </div>
+
+        <!-- Cash Stats -->
+        <div class="metric-card" style="border-left: 4px solid #f59e0b; background: var(--bg-card);">
+          <div class="metric-header">
+            <span class="metric-label" style="color: #f59e0b; font-weight: 700;">💵 NAQD PULDA TO'LOVLAR</span>
+            <span class="metric-icon-wrap">💵</span>
+          </div>
+          <div class="metric-value">{{ cashRevenue() | number:'1.0-0' }} so'm</div>
+          <div class="metric-footer" style="color: var(--text-muted);">{{ cashCount() }} ta buyurtma</div>
+        </div>
+      </div>
+
       <!-- ORDER STATUS STATS CONTAINER -->
       <div class="status-section">
         <div class="status-header">
@@ -617,6 +640,10 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   stats = signal<Record<string, number>>({});
   recentOrders = signal<Order[]>([]);
   totalRevenue = signal<number>(0);
+  cardRevenue = signal<number>(0);
+  cardCount = signal<number>(0);
+  cashRevenue = signal<number>(0);
+  cashCount = signal<number>(0);
   activeCouriersCount = signal<number>(0);
   restaurantStats = signal<{ name: string; count: number; revenue: number; percent: number }[]>([]);
   currentDate = new Date();
@@ -664,6 +691,18 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
           .filter(o => o.status === 'DELIVERED')
           .reduce((sum, o) => sum + (o.totalPrice + (o.deliveryFee || 0)), 0);
         this.totalRevenue.set(revenue);
+
+        // Calculate Card vs Cash statistics from DELIVERED orders
+        const cardOrders = orders.filter(o => o.status === 'DELIVERED' && o.paymentMethod === 'CARD');
+        const cardRev = cardOrders.reduce((sum, o) => sum + (o.totalPrice + (o.deliveryFee || 0)), 0);
+        this.cardRevenue.set(cardRev);
+        this.cardCount.set(cardOrders.length);
+
+        // Treating null paymentMethod as CASH for backward compatibility
+        const cashOrders = orders.filter(o => o.status === 'DELIVERED' && o.paymentMethod !== 'CARD');
+        const cashRev = cashOrders.reduce((sum, o) => sum + (o.totalPrice + (o.deliveryFee || 0)), 0);
+        this.cashRevenue.set(cashRev);
+        this.cashCount.set(cashOrders.length);
 
         // Group by restaurant and calculate stats
         const restaurantMap = new Map<string, { count: number; revenue: number }>();

@@ -194,6 +194,20 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
                         <div class="active-order-addr" style="font-size: 0.9rem; color: #a1a1aa; margin: 4px 0 12px;">📍 {{ order.deliveryAddress }}</div>
                       </div>
 
+                      <!-- Payment Method Banner -->
+                      <div class="active-order-payment-banner" style="margin-bottom: 12px; padding: 12px; border-radius: 10px; font-weight: 700; font-size: 0.95rem; line-height: 1.4;"
+                           [style.background]="order.paymentMethod === 'CARD' ? 'rgba(16,185,129,0.1)' : 'rgba(249,115,22,0.1)'"
+                           [style.border]="order.paymentMethod === 'CARD' ? '1px solid rgba(16,185,129,0.25)' : '1px solid rgba(249,115,22,0.25)'"
+                           [style.color]="order.paymentMethod === 'CARD' ? '#10b981' : '#f97316'">
+                        @if (order.paymentMethod === 'CARD') {
+                          <span style="font-size: 1.05rem; display: block; margin-bottom: 2px;">🟢 Karta orqali to'langan</span>
+                          <span style="font-size: 0.82rem; font-weight: 400; color: #a7f3d0;">To'lov oldindan amalga oshirilgan.</span>
+                        } @else {
+                          <span style="font-size: 1.05rem; display: block; margin-bottom: 2px;">🟠 Naqd to'lov</span>
+                          <span style="font-size: 0.85rem; font-weight: 600; color: #fed7aa;">Mijozdan {{ (order.totalPrice + (order.deliveryFee || 0)) | number:'1.0-0' }} so'm qabul qiling.</span>
+                        }
+                      </div>
+
                       <!-- Food Ready Status Alert Banner -->
                       @if (order.status === 'COURIER_ACCEPTED' || order.status === 'COURIER_AT_RESTAURANT') {
                         @if (order.isReady) {
@@ -249,6 +263,17 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
                                 <span class="verification-item-name">{{ item.food?.name }}</span>
                                 <span class="verification-item-price">{{ (item.price * item.quantity) | number:'1.0-0' }} so'm</span>
                               </div>
+                            }
+                          </div>
+                          
+                          <!-- Payment method reminder on completion screen -->
+                          <div class="delivery-completion-payment" style="margin-top: 14px; padding: 12px; border-radius: 8px; font-weight: 700; font-size: 0.9rem;"
+                               [style.background]="order.paymentMethod === 'CARD' ? 'rgba(16,185,129,0.15)' : 'rgba(249,115,22,0.15)'"
+                               [style.color]="order.paymentMethod === 'CARD' ? '#10b981' : '#f97316'">
+                            @if (order.paymentMethod === 'CARD') {
+                              🟢 To'lov oldindan Karta orqali qilingan. Mijozdan pul olmang!
+                            } @else {
+                              🟠 Naqd to'lov! Mijozdan {{ (order.totalPrice + (order.deliveryFee || 0)) | number:'1.0-0' }} so'm qabul qiling.
                             }
                           </div>
                         </div>
@@ -617,6 +642,15 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
               <div class="incoming-restaurant">🏪 {{ activeRequests()[0].restaurant?.name || "Noma'lum restoran" }}</div>
               <div class="incoming-address">📍 {{ activeRequests()[0].deliveryAddress }}</div>
               <div class="incoming-price">💰 {{ (activeRequests()[0].totalPrice + (activeRequests()[0].deliveryFee || 0)) | number:'1.0-0' }} so'm</div>
+              <div class="incoming-payment" style="margin-top: 12px; padding: 12px; border-radius: 8px; font-weight: 700; text-align: center; font-size: 0.9rem;"
+                   [style.background]="activeRequests()[0].paymentMethod === 'CARD' ? 'rgba(16,185,129,0.12)' : 'rgba(249,115,22,0.12)'"
+                   [style.color]="activeRequests()[0].paymentMethod === 'CARD' ? '#10b981' : '#f97316'">
+                @if (activeRequests()[0].paymentMethod === 'CARD') {
+                  🟢 Karta orqali to'langan
+                } @else {
+                  🟠 Naqd to'lov: Mijozdan {{ (activeRequests()[0].totalPrice + (activeRequests()[0].deliveryFee || 0)) | number:'1.0-0' }} so'm oling
+                }
+              </div>
             </div>
 
             <div class="incoming-footer">

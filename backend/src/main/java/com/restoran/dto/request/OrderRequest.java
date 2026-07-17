@@ -18,6 +18,7 @@ public class OrderRequest {
     private Double deliveryFee;
     private String note;
     private Long restaurantId;
+    private String paymentMethod;
 
     @NotNull
     private List<OrderItemRequest> items;

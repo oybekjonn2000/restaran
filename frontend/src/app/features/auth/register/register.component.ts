@@ -12,106 +12,108 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
   imports: [CommonModule, ReactiveFormsModule, RouterLink, MatProgressSpinnerModule],
   template: `
     <div class="auth-page">
-      <!-- Top Header Area with Gradient -->
-      <div class="auth-header">
-        <div class="header-top-row">
-          <a routerLink="/client/restaurants" class="back-btn-icon" title="Asosiy menyuga qaytish">←</a>
-          <span class="more-options">•••</span>
+      <div class="auth-card">
+        <!-- Top Header Area with Gradient -->
+        <div class="auth-header">
+          <div class="header-top-row">
+            <a routerLink="/client/restaurants" class="back-btn-icon" title="Asosiy menyuga qaytish">←</a>
+            <span class="more-options">•••</span>
+          </div>
+          <h1 class="header-title">Mango<br>Food Register</h1>
         </div>
-        <h1 class="header-title">Mango<br>Food Register</h1>
-      </div>
 
-      <!-- Main Form Sheet -->
-      <div class="auth-sheet animate-slide-up">
-        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form">
-          <!-- Name field -->
-          <div class="form-group-new">
-            <label class="form-label-new">To'liq ism</label>
-            <div class="input-container-new">
-              <input formControlName="name" type="text" class="form-control-new" placeholder="Ismingiz" id="reg-name">
-              @if (form.get('name')?.valid) {
-                <span class="field-icon success-check">✓</span>
+        <!-- Main Form Sheet -->
+        <div class="auth-sheet animate-slide-up">
+          <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form">
+            <!-- Name field -->
+            <div class="form-group-new">
+              <label class="form-label-new">To'liq ism</label>
+              <div class="input-container-new">
+                <input formControlName="name" type="text" class="form-control-new" placeholder="Ismingiz" id="reg-name">
+                @if (form.get('name')?.valid) {
+                  <span class="field-icon success-check">✓</span>
+                }
+              </div>
+              @if (form.get('name')?.touched && form.get('name')?.invalid) {
+                <span class="error-msg-new">Ismingizni kiriting</span>
               }
             </div>
-            @if (form.get('name')?.touched && form.get('name')?.invalid) {
-              <span class="error-msg-new">Ismingizni kiriting</span>
-            }
-          </div>
 
-          <!-- Email field -->
-          <div class="form-group-new">
-            <label class="form-label-new">Email <span class="optional-badge">(ixtiyoriy)</span></label>
-            <div class="input-container-new">
-              <input formControlName="email" type="email" class="form-control-new" placeholder="email@manzil.uz" id="reg-email">
-              @if (form.get('email')?.valid && form.get('email')?.value) {
-                <span class="field-icon success-check">✓</span>
+            <!-- Email field -->
+            <div class="form-group-new">
+              <label class="form-label-new">Email <span class="optional-badge">(ixtiyoriy)</span></label>
+              <div class="input-container-new">
+                <input formControlName="email" type="email" class="form-control-new" placeholder="email@manzil.uz" id="reg-email">
+                @if (form.get('email')?.valid && form.get('email')?.value) {
+                  <span class="field-icon success-check">✓</span>
+                }
+              </div>
+              @if (form.get('email')?.touched && form.get('email')?.errors?.['email']) {
+                <span class="error-msg-new">To'g'ri email kiriting</span>
               }
             </div>
-            @if (form.get('email')?.touched && form.get('email')?.errors?.['email']) {
-              <span class="error-msg-new">To'g'ri email kiriting</span>
-            }
-          </div>
 
-          <!-- Phone field -->
-          <div class="form-group-new">
-            <label class="form-label-new">Telefon <span class="optional-badge">(ixtiyoriy)</span></label>
-            <div class="input-container-new">
-              <input formControlName="phone" type="tel" class="form-control-new" placeholder="+998901234567" id="reg-phone">
-              @if (form.get('phone')?.valid && form.get('phone')?.value) {
-                <span class="field-icon success-check">✓</span>
+            <!-- Phone field -->
+            <div class="form-group-new">
+              <label class="form-label-new">Telefon <span class="optional-badge">(ixtiyoriy)</span></label>
+              <div class="input-container-new">
+                <input formControlName="phone" type="tel" class="form-control-new" placeholder="+998901234567" id="reg-phone">
+                @if (form.get('phone')?.valid && form.get('phone')?.value) {
+                  <span class="field-icon success-check">✓</span>
+                }
+              </div>
+            </div>
+
+            <!-- Address field -->
+            <div class="form-group-new">
+              <label class="form-label-new">Manzil <span class="optional-badge">(ixtiyoriy)</span></label>
+              <div class="input-container-new">
+                <input formControlName="address" type="text" class="form-control-new" placeholder="Shahar, ko'cha, uy" id="reg-address">
+                @if (form.get('address')?.valid && form.get('address')?.value) {
+                  <span class="field-icon success-check">✓</span>
+                }
+              </div>
+            </div>
+
+            <!-- Password field -->
+            <div class="form-group-new">
+              <label class="form-label-new">Parol</label>
+              <div class="input-container-new">
+                <input
+                  formControlName="password"
+                  [type]="showPwd ? 'text' : 'password'"
+                  class="form-control-new"
+                  placeholder="Kamida 6 ta belgi"
+                  id="reg-password">
+                <button type="button" class="field-icon eye-toggle" (click)="showPwd = !showPwd">
+                  {{ showPwd ? '🙈' : '👁️' }}
+                </button>
+              </div>
+              @if (form.get('password')?.touched && form.get('password')?.errors?.['minlength']) {
+                <span class="error-msg-new">Parol kamida 6 ta belgi bo'lsin</span>
               }
             </div>
-          </div>
 
-          <!-- Address field -->
-          <div class="form-group-new">
-            <label class="form-label-new">Manzil <span class="optional-badge">(ixtiyoriy)</span></label>
-            <div class="input-container-new">
-              <input formControlName="address" type="text" class="form-control-new" placeholder="Shahar, ko'cha, uy" id="reg-address">
-              @if (form.get('address')?.valid && form.get('address')?.value) {
-                <span class="field-icon success-check">✓</span>
+            @if (errorMsg) {
+              <div class="alert-error-new">⚠️ {{ errorMsg }}</div>
+            }
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn-signin-gradient" [disabled]="loading">
+              @if (loading) {
+                <mat-spinner diameter="20" color="accent"></mat-spinner>
+                YUKLANMOQDA...
+              } @else {
+                RO'YXATDAN O'TISH
               }
-            </div>
+            </button>
+          </form>
+
+          <!-- Footer -->
+          <div class="footer-row-new">
+            <span class="footer-text">Hisobingiz bormi ?</span>
+            <a routerLink="/auth/login" class="signup-link">KIRISH</a>
           </div>
-
-          <!-- Password field -->
-          <div class="form-group-new">
-            <label class="form-label-new">Parol</label>
-            <div class="input-container-new">
-              <input
-                formControlName="password"
-                [type]="showPwd ? 'text' : 'password'"
-                class="form-control-new"
-                placeholder="Kamida 6 ta belgi"
-                id="reg-password">
-              <button type="button" class="field-icon eye-toggle" (click)="showPwd = !showPwd">
-                {{ showPwd ? '🙈' : '👁️' }}
-              </button>
-            </div>
-            @if (form.get('password')?.touched && form.get('password')?.errors?.['minlength']) {
-              <span class="error-msg-new">Parol kamida 6 ta belgi bo'lsin</span>
-            }
-          </div>
-
-          @if (errorMsg) {
-            <div class="alert-error-new">⚠️ {{ errorMsg }}</div>
-          }
-
-          <!-- Submit Button -->
-          <button type="submit" class="btn-signin-gradient" [disabled]="loading">
-            @if (loading) {
-              <mat-spinner diameter="20" color="accent"></mat-spinner>
-              YUKLANMOQDA...
-            } @else {
-              RO'YXATDAN O'TISH
-            }
-          </button>
-        </form>
-
-        <!-- Footer -->
-        <div class="footer-row-new">
-          <span class="footer-text">Hisobingiz bormi ?</span>
-          <a routerLink="/auth/login" class="signup-link">KIRISH</a>
         </div>
       </div>
     </div>
@@ -124,6 +126,13 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
       background: #0f172a;
       font-family: 'Poppins', sans-serif;
       position: relative;
+    }
+
+    .auth-card {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      width: 100%;
     }
 
     .auth-header {
@@ -336,6 +345,28 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
     @keyframes slideUp {
       from { transform: translateY(30px); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
+    }
+
+    @media (min-width: 768px) {
+      .auth-page {
+        justify-content: center;
+        align-items: center;
+        background: radial-gradient(circle at top right, #3c2303 0%, #0f172a 100%);
+        padding: 40px 20px;
+      }
+      .auth-card {
+        flex: initial;
+        max-width: 480px;
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .auth-sheet {
+        margin-top: -30px;
+        border-radius: 24px 24px 0 0;
+        padding: 36px 36px;
+      }
     }
   `]
 })

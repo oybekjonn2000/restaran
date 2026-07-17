@@ -18,7 +18,10 @@ const ALL_STATUSES: OrderStatus[] = [
   'DELIVERED',
   'CANCELED',
   'CANCELLATION_REQUESTED',
-  'TRANSFERRED_TO_YANDEX'
+  'TRANSFERRED_TO_YANDEX',
+  'YANDEX_COURIER_CALLED',
+  'READY',
+  'YANDEX_COURIER_PICKED_UP'
 ];
 
 @Component({
@@ -49,6 +52,28 @@ const ALL_STATUSES: OrderStatus[] = [
             {{ statusLabel(s) }}
           </button>
         }
+      </div>
+
+      <!-- Payment Method Filter -->
+      <div class="filter-bar" style="margin-top: 8px;">
+        <span style="font-size: 0.85rem; color: var(--text-muted); align-self: center; margin-right: 8px;">💳 To'lov turi:</span>
+        <button class="filter-btn" [class.active]="filterPaymentMethod === null"
+                (click)="filterPaymentMethod = null" id="filter-pay-all">Barchasi</button>
+        <button class="filter-btn" [class.active]="filterPaymentMethod === 'CARD'"
+                (click)="filterPaymentMethod = 'CARD'" id="filter-pay-card">Karta orqali</button>
+        <button class="filter-btn" [class.active]="filterPaymentMethod === 'CASH'"
+                (click)="filterPaymentMethod = 'CASH'" id="filter-pay-cash">Naqd pul</button>
+      </div>
+
+      <!-- Delivery Provider Filter -->
+      <div class="filter-bar" style="margin-top: 8px;">
+        <span style="font-size: 0.85rem; color: var(--text-muted); align-self: center; margin-right: 8px;">🚕 Yetkazish turi:</span>
+        <button class="filter-btn" [class.active]="filterDeliveryProvider === null"
+                (click)="filterDeliveryProvider = null" id="filter-provider-all">Barchasi</button>
+        <button class="filter-btn" [class.active]="filterDeliveryProvider === 'INTERNAL'"
+                (click)="filterDeliveryProvider = 'INTERNAL'" id="filter-provider-internal">Ichki kuryer</button>
+        <button class="filter-btn" [class.active]="filterDeliveryProvider === 'YANDEX'"
+                (click)="filterDeliveryProvider = 'YANDEX'" id="filter-provider-yandex">Yandex Delivery</button>
       </div>
 
       @if (loading()) {
@@ -83,7 +108,12 @@ const ALL_STATUSES: OrderStatus[] = [
                       <div class="cell-sub">📍 {{ order.deliveryAddress | slice:0:30 }}...</div>
                     }
                   </td>
-                  <td class="price-cell">{{ order.totalPrice | number:'1.0-0' }} so'm</td>
+                  <td class="price-cell">
+                    {{ order.totalPrice | number:'1.0-0' }} so'm
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+                      {{ order.paymentMethod === 'CARD' ? '💳 Karta' : '💵 Naqd' }}
+                    </div>
+                  </td>
                   <td>
                     @if (order.status === 'CANCELED') {
                       <span class="canceled-badge">❌ Bekor qilindi</span>
@@ -92,10 +122,8 @@ const ALL_STATUSES: OrderStatus[] = [
                           💬 {{ order.cancelReason | slice:0:25 }}{{ order.cancelReason!.length > 25 ? '...' : '' }}
                         </div>
                       }
-                    } @else if (order.status === 'CANCELLATION_REQUESTED') {
-                      <span class="canceled-badge" style="background: rgba(245,158,11,0.15); color: #f59e0b; border-color: rgba(245,158,11,0.25);">⚠️ Bekor so'raldi</span>
-                    } @else if (order.status === 'TRANSFERRED_TO_YANDEX') {
-                      <span class="canceled-badge" style="background: rgba(225,29,72,0.15); color: #e11d48; border-color: rgba(225,29,72,0.25);">🚕 Yandex Delivery</span>
+                    } @else if (order.status === 'DELIVERED') {
+                      <span class="canceled-badge" style="background: rgba(16,185,129,0.15); color: #10b981; border-color: rgba(16,185,129,0.25);">🎉 Yetkazildi</span>
                     } @else {
                       <select class="status-select" [ngModel]="order.status"
                               (change)="changeStatus(order.id, $any($event.target).value)"
@@ -164,6 +192,8 @@ const ALL_STATUSES: OrderStatus[] = [
             </div>
             <div class="modal-body">
               <p><strong>Mijoz:</strong> {{ selectedOrder()!.user?.name }}</p>
+              <p><strong>To'lov turi:</strong> {{ selectedOrder()!.paymentMethod === 'CARD' ? '💳 Karta orqali' : '💵 Naqd pul' }}</p>
+              <p><strong>Yetkazish turi:</strong> {{ (selectedOrder()!.deliveryProvider === 'YANDEX' || selectedOrder()!.yandexDelivery) ? '🚕 Yandex Delivery' : '🏍️ Ichki kuryer' }}</p>
               <p><strong>Manzil:</strong> {{ selectedOrder()!.deliveryAddress || '—' }}</p>
               <p><strong>Izoh:</strong> {{ selectedOrder()!.note || '—' }}</p>
               <p><strong>Holat:</strong> {{ statusLabel(selectedOrder()!.status) }}</p>
@@ -629,6 +659,8 @@ export class AdminOrdersComponent implements OnInit, OnDestroy {
   couriers = signal<User[]>([]);
   loading = signal(true);
   filterStatus: OrderStatus | null = null;
+  filterPaymentMethod: string | null = null;
+  filterDeliveryProvider: string | null = null;
   selectedOrder = signal<Order | null>(null);
   cancelModalOrder = signal<Order | null>(null);
   canceling = signal(false);
@@ -651,8 +683,20 @@ export class AdminOrdersComponent implements OnInit, OnDestroy {
   ];
 
   get filteredOrders(): Order[] {
-    if (!this.filterStatus) return this.orders();
-    return this.orders().filter(o => o.status === this.filterStatus);
+    let list = this.orders();
+    if (this.filterStatus) {
+      list = list.filter(o => o.status === this.filterStatus);
+    }
+    if (this.filterPaymentMethod) {
+      list = list.filter(o => o.paymentMethod === this.filterPaymentMethod);
+    }
+    if (this.filterDeliveryProvider) {
+      list = list.filter(o => {
+        const isYandex = o.deliveryProvider === 'YANDEX' || o.yandexDelivery;
+        return this.filterDeliveryProvider === 'YANDEX' ? isYandex : !isYandex;
+      });
+    }
+    return list;
   }
 
   constructor(

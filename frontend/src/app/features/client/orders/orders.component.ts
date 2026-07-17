@@ -12,13 +12,23 @@ import { AuthService } from '../../../core/services/auth.service';
   imports: [CommonModule, MatProgressSpinnerModule],
   template: `
     <div class="orders-page animate-in">
-      <div class="page-header">
+      <div class="page-header" style="margin-bottom: 12px;">
         <div>
           <h1 class="page-title">📋 Buyurtmalarim</h1>
           <p style="color: var(--text-muted); font-size: 0.9rem;">Barcha buyurtmalar tarixi</p>
         </div>
         <button class="btn btn-outline" (click)="load()" id="refresh-orders-btn">
           🔄 Yangilash
+        </button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="orders-tabs" style="display: flex; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+        <button class="tab-btn" [class.active]="activeTab === 'active'" (click)="activeTab = 'active'" style="background: none; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; cursor: pointer; color: var(--text-muted); transition: var(--transition);" [style.color]="activeTab === 'active' ? 'var(--primary)' : 'var(--text-muted)'" [style.background]="activeTab === 'active' ? 'rgba(249,115,22,0.1)' : 'transparent'">
+          Aktiv buyurtmalar ({{ activeOrdersCount() }})
+        </button>
+        <button class="tab-btn" [class.active]="activeTab === 'history'" (click)="activeTab = 'history'" style="background: none; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; cursor: pointer; color: var(--text-muted); transition: var(--transition);" [style.color]="activeTab === 'history' ? 'var(--primary)' : 'var(--text-muted)'" [style.background]="activeTab === 'history' ? 'rgba(249,115,22,0.1)' : 'transparent'">
+          Buyurtmalar tarixi ({{ historyOrdersCount() }})
         </button>
       </div>
 
@@ -29,15 +39,15 @@ import { AuthService } from '../../../core/services/auth.service';
       }
 
       @if (!loading()) {
-        @if (orders().length === 0) {
+        @if (filteredOrdersList.length === 0) {
           <div class="empty-state">
             <div class="icon">📋</div>
             <h3>Buyurtmalar yo'q</h3>
-            <p>Hali hech qanday buyurtma bermagansiz</p>
+            <p>{{ activeTab === 'active' ? "Hozircha faol buyurtmalaringiz yo'q" : "Buyurtmalar tarixi bo'sh" }}</p>
           </div>
         } @else {
           <div class="orders-list">
-            @for (order of orders(); track order.id; let i = $index) {
+            @for (order of filteredOrdersList; track order.id; let i = $index) {
               <div class="order-card animate-in" [style.animation-delay]="(i * 0.07) + 's'"
                    [id]="'order-' + order.id">
                 <!-- Order Header -->
@@ -73,6 +83,14 @@ import { AuthService } from '../../../core/services/auth.service';
                     @if (order.courier) {
                       <span class="meta-item">🏍️ Kuryer: {{ order.courier.name }}</span>
                     }
+                    <span class="meta-item">
+                      To'lov turi: 
+                      <strong>{{ order.paymentMethod === 'CARD' ? '💳 Karta orqali' : '💵 Naqd pul' }}</strong>
+                    </span>
+                    <span class="meta-item">
+                      Yetkazish turi: 
+                      <strong>{{ (order.deliveryProvider === 'YANDEX' || order.yandexDelivery) ? '🚕 Yandex Delivery' : '🏍️ Ichki kuryer' }}</strong>
+                    </span>
                   </div>
                   <div class="order-total" style="font-size: 0.85rem;">
                     @if (order.deliveryFee || order.totalEarning) {
@@ -94,12 +112,12 @@ import { AuthService } from '../../../core/services/auth.service';
                 }
 
                 <!-- Yandex yetkazib berish xabari -->
-                @if (order.yandexDelivery && order.status !== 'CANCELED' && order.status !== 'DELIVERED') {
+                @if ((order.yandexDelivery || order.deliveryProvider === 'YANDEX') && order.status !== 'CANCELED' && order.status !== 'DELIVERED') {
                   <div class="yandex-delivery-banner animate-in">
-                    <span class="yandex-icon">🚕</span>
+                    <span class="yandex-icon">✅</span>
                     <div class="yandex-content">
-                      <div class="yandex-title">Yandex Yetkazib berish</div>
-                      <div class="yandex-text">Kuryer topilmadi, buyurtmangiz Yandex orqali yetkaziladi. To'lov summasi haydovchining telefonida ko'rsatiladi.</div>
+                      <div class="yandex-title">Yandex Delivery</div>
+                      <div class="yandex-text">Hozirda ichki kuryerlar mavjud emas. Buyurtmangiz Yandex Delivery orqali yetkazib beriladi.</div>
                     </div>
                   </div>
                 }
@@ -322,6 +340,23 @@ import { AuthService } from '../../../core/services/auth.service';
 export class ClientOrdersComponent implements OnInit, OnDestroy {
   orders = signal<Order[]>([]);
   loading = signal(true);
+  activeTab: 'active' | 'history' = 'active';
+
+  activeOrdersCount(): number {
+    return this.orders().filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELED').length;
+  }
+
+  historyOrdersCount(): number {
+    return this.orders().filter(o => o.status === 'DELIVERED' || o.status === 'CANCELED').length;
+  }
+
+  get filteredOrdersList(): Order[] {
+    if (this.activeTab === 'active') {
+      return this.orders().filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELED');
+    } else {
+      return this.orders().filter(o => o.status === 'DELIVERED' || o.status === 'CANCELED');
+    }
+  }
   private pollInterval: any;
 
   // Tracking properties
@@ -597,6 +632,9 @@ export class ClientOrdersComponent implements OnInit, OnDestroy {
       CANCELED:              '0%',
       CANCELLATION_REQUESTED: '50%',
       TRANSFERRED_TO_YANDEX: '30%',
+      YANDEX_COURIER_CALLED: '40%',
+      READY:                 '60%',
+      YANDEX_COURIER_PICKED_UP: '80%',
     };
     return map[status] ?? '0%';
   }

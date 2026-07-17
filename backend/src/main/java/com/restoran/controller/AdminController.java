@@ -12,6 +12,7 @@ import com.restoran.service.CategoryService;
 import com.restoran.service.FoodService;
 import com.restoran.service.OrderService;
 import com.restoran.service.SlotService;
+import com.restoran.service.SystemSettingService;
 import lombok.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -39,6 +40,13 @@ public class AdminController {
     private final RestaurantRepository restaurantRepository;
     private final OrderRepository orderRepository;
     private final SlotService slotService;
+    private final SystemSettingService systemSettingService;
+
+    @PutMapping("/settings")
+    public ResponseEntity<Void> updateSetting(@RequestParam String key, @RequestParam String value) {
+        systemSettingService.updateSetting(key, value);
+        return ResponseEntity.ok().build();
+    }
 
     // =================== BUYURTMALAR ===================
 

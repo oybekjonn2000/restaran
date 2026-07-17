@@ -25,6 +25,7 @@ public class OrderService {
     private final RestaurantRepository restaurantRepository;
     private final TelegramBotService telegramBotService;
     private final com.restoran.repository.OrderDispatchLogRepository orderDispatchLogRepository;
+    private final SystemSettingService systemSettingService;
 
     @org.springframework.beans.factory.annotation.Value("${courier.pay.base-fee:9000.0}")
     private double payBaseFee;
@@ -69,6 +70,22 @@ public class OrderService {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new RuntimeException("Foydalanuvchi topilmadi: " + userId));
 
+        // 1. Payment method validation
+        String pmStr = request.getPaymentMethod();
+        if (pmStr == null || pmStr.isBlank()) {
+            throw new RuntimeException("To'lov turini tanlash majburiy!");
+        }
+        PaymentMethod pm;
+        try {
+            pm = PaymentMethod.valueOf(pmStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Noto'g'ri to'lov turi!");
+        }
+        List<String> allowedMethods = systemSettingService.getPaymentMethods();
+        if (!allowedMethods.contains(pm.name())) {
+            throw new RuntimeException("Ushbu to'lov turi vaqtincha faol emas!");
+        }
+
         Long restId = request.getRestaurantId();
         if (restId == null && request.getItems() != null && !request.getItems().isEmpty()) {
             Food firstFood = foodRepository.findById(request.getItems().get(0).getFoodId())
@@ -109,14 +126,16 @@ public class OrderService {
         Order order = Order.builder()
             .user(user)
             .restaurant(restaurant)
-            .status(OrderStatus.PENDING)
+            .status(anyCourierOnShift ? OrderStatus.PENDING : OrderStatus.TRANSFERRED_TO_YANDEX)
             .deliveryAddress(request.getDeliveryAddress())
             .latitude(request.getLatitude())
             .longitude(request.getLongitude())
             .distance(distance)
             .deliveryFee(anyCourierOnShift ? deliveryFee : 0.0)
             .yandexDelivery(!anyCourierOnShift)
+            .deliveryProvider(anyCourierOnShift ? DeliveryProvider.INTERNAL : DeliveryProvider.YANDEX)
             .note(request.getNote())
+            .paymentMethod(pm)
             .build();
 
         if (request.getDeliveryAddress() != null && !request.getDeliveryAddress().isBlank()) {
@@ -140,6 +159,12 @@ public class OrderService {
             total += food.getPrice() * itemReq.getQuantity();
         }
 
+        // 2. Minimum amount validation
+        double minAmount = systemSettingService.getMinOrderAmount();
+        if (total < minAmount) {
+            throw new RuntimeException("Minimal buyurtma summasi " + String.format("%,.0f", minAmount) + " so'm.");
+        }
+
         order.setTotalPrice(total);
         return orderRepository.save(order);
     }
@@ -148,6 +173,39 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
             .orElseThrow(() -> new RuntimeException("Buyurtma topilmadi: " + orderId));
 
+        if (order.getDeliveryProvider() == DeliveryProvider.YANDEX) {
+            OrderStatus current = order.getStatus();
+            boolean isValidTransition = false;
+            
+            if (status == OrderStatus.CANCELED) {
+                isValidTransition = (current != OrderStatus.DELIVERED && current != OrderStatus.CANCELED);
+            } else {
+                switch (current) {
+                    case TRANSFERRED_TO_YANDEX:
+                        isValidTransition = (status == OrderStatus.YANDEX_COURIER_CALLED);
+                        break;
+                    case YANDEX_COURIER_CALLED:
+                        isValidTransition = (status == OrderStatus.PREPARING);
+                        break;
+                    case PREPARING:
+                        isValidTransition = (status == OrderStatus.READY);
+                        break;
+                    case READY:
+                        isValidTransition = (status == OrderStatus.YANDEX_COURIER_PICKED_UP);
+                        break;
+                    case YANDEX_COURIER_PICKED_UP:
+                        isValidTransition = (status == OrderStatus.DELIVERED);
+                        break;
+                    default:
+                        isValidTransition = false;
+                }
+            }
+            
+            if (!isValidTransition) {
+                throw new RuntimeException("Yandex Delivery buyurtmasi uchun noto'g'ri status o'tishi: " + current + " -> " + status);
+            }
+        }
+
         if (status == OrderStatus.DELIVERING) {
             if (order.getCourier() != null && (order.getIsReady() == null || !order.getIsReady())) {
                 throw new RuntimeException("Buyurtma hali tayyor emas! Restoran xodimi tayyor deb tasdiqlashini kuting.");
@@ -155,14 +213,15 @@ public class OrderService {
         }
 
         order.setStatus(status);
+        logDispatchEvent(order, order.getCourier(), "Status " + status.name() + " ga o'zgartirildi.", null, null, null, null, order.getDeliveryProvider() == DeliveryProvider.YANDEX);
 
         if (status == OrderStatus.COURIER_AT_RESTAURANT) {
             order.setCourierArrivedAtRestaurantAt(java.time.LocalDateTime.now());
         }
 
         if (status == OrderStatus.PREPARING) {
-            // Auto-assign courier when restaurant accepts
-            if (order.getCourier() == null) {
+            // Auto-assign courier when restaurant accepts only if INTERNAL
+            if (order.getDeliveryProvider() != DeliveryProvider.YANDEX && order.getCourier() == null) {
                 autoAssignCourier(order);
             }
         } else if (status == OrderStatus.DELIVERED) {
@@ -271,6 +330,7 @@ public class OrderService {
 
         if (activeCouriers.isEmpty()) {
             order.setYandexDelivery(true);
+            order.setDeliveryProvider(DeliveryProvider.YANDEX);
             order.setStatus(OrderStatus.TRANSFERRED_TO_YANDEX);
             order.setCourier(null);
             order.setAssignedAt(null);
@@ -307,6 +367,7 @@ public class OrderService {
 
             // Aks holda (yoki yagona kuryerda 2-urinish ham tugagan bo'lsa) Yandexga o'tadi
             order.setYandexDelivery(true);
+            order.setDeliveryProvider(DeliveryProvider.YANDEX);
             order.setStatus(OrderStatus.TRANSFERRED_TO_YANDEX);
             order.setCourier(null);
             order.setAssignedAt(null);
@@ -531,17 +592,29 @@ public class OrderService {
             .orElseThrow(() -> new RuntimeException("Buyurtma topilmadi: " + orderId));
         order.setIsReady(true);
 
-        boolean hasActiveCourier = false;
-        if (order.getCourier() != null) {
-            hasActiveCourier = slotRepository.findActiveSlotForCourier(order.getCourier().getId()).isPresent();
-        }
-
-        if (!hasActiveCourier) {
-            order.setYandexDelivery(true);
-            order.setStatus(OrderStatus.DELIVERING);
+        if (order.getDeliveryProvider() == DeliveryProvider.YANDEX) {
+            if (order.getStatus() != OrderStatus.PREPARING) {
+                throw new RuntimeException("Yandex Delivery buyurtmasi uchun noto'g'ri status o'tishi: " + order.getStatus() + " -> READY");
+            }
+            order.setStatus(OrderStatus.READY);
+            logDispatchEvent(order, null, "Menejer taomni tayyor holatga keltirdi.", null, null, null, null, true);
+        } else {
+            boolean hasActiveCourier = false;
             if (order.getCourier() != null) {
-                backfillCourier(order.getCourier());
-                order.setCourier(null);
+                hasActiveCourier = slotRepository.findActiveSlotForCourier(order.getCourier().getId()).isPresent();
+            }
+
+            if (!hasActiveCourier) {
+                order.setYandexDelivery(true);
+                order.setDeliveryProvider(DeliveryProvider.YANDEX);
+                order.setStatus(OrderStatus.TRANSFERRED_TO_YANDEX);
+                if (order.getCourier() != null) {
+                    backfillCourier(order.getCourier());
+                    order.setCourier(null);
+                }
+                logDispatchEvent(order, null, "Kuryer topilmadi, Yandexga o'tkazildi (Yandex Delivery kutmoqda).", null, null, null, null, true);
+            } else {
+                logDispatchEvent(order, order.getCourier(), "Taom tayyor bo'ldi, kuryer kutilmoqda.", null, null, null, null, false);
             }
         }
 
@@ -667,6 +740,7 @@ public class OrderService {
         order.setAssignedAt(null);
         order.setStatus(OrderStatus.TRANSFERRED_TO_YANDEX);
         order.setYandexDelivery(true);
+        order.setDeliveryProvider(DeliveryProvider.YANDEX);
 
         logDispatchEvent(order, null, "Admin qarori: Yandex Delivery ga yuborildi (Eski kuryer: " + oldCourierName + ")", false, null, null, "TRANSFERRED_TO_YANDEX", true);
         return orderRepository.save(order);

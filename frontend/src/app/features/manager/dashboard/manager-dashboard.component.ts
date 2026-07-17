@@ -54,10 +54,24 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
             </button>
             @if (showNotifications()) {
               <div class="notifications-dropdown animate-pop">
-                <div class="dropdown-header">Bildirishnomalar</div>
+                <div class="dropdown-header" style="display: flex; justify-content: space-between; align-items: center;">
+                  <span>Bildirishnomalar</span>
+                  @if (notifications().length > 0) {
+                    <button (click)="clearNotifications($event)" style="background: transparent; border: none; color: #f97316; font-size: 0.72rem; font-weight: 700; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: all 0.2s;" onmouseover="this.style.color='#ea580c'; this.style.background='rgba(249,115,22,0.1)'" onmouseout="this.style.color='#f97316'; this.style.background='transparent'">
+                      Tozalash
+                    </button>
+                  }
+                </div>
                 <div class="dropdown-list">
-                  @for (n of notifications(); track n) {
-                    <div class="notification-item">🔔 {{ n }}</div>
+                  @if (notifications().length === 0) {
+                    <div style="padding: 24px 16px; text-align: center; color: #64748b; font-size: 0.8rem; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                      <span style="font-size: 1.5rem;">📭</span>
+                      <span>Bildirishnomalar mavjud emas</span>
+                    </div>
+                  } @else {
+                    @for (n of notifications(); track n) {
+                      <div class="notification-item">🔔 {{ n }}</div>
+                    }
                   }
                 </div>
               </div>
@@ -310,6 +324,52 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
                       <div class="client-info-cell">
                         <span class="client-name">{{ order.user.name }}</span>
                         <span class="client-phone">📞 {{ order.user.phone || 'Tel kiritilmagan' }}</span>
+                        @if (order.deliveryProvider === 'YANDEX' || order.yandexDelivery) {
+                          <div style="margin-top: 6px; padding: 6px 10px; background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); border-radius: 8px; color: #fde68a; font-size: 0.72rem; font-weight: 600; line-height: 1.3; text-align: left;">
+                            ⚠️ Ushbu buyurtma Yandex Delivery orqali yetkaziladi. Iltimos, Yandex Delivery xizmatini chaqiring.
+                          </div>
+                        }
+
+                        <!-- Client Address & GPS Block -->
+                        <div class="location-details-block" style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; text-align: left;">
+                          <div style="font-weight: 600; font-size: 0.8rem; color: #94a3b8; margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">
+                            <span>📍</span> Mijoz manzili
+                          </div>
+                          <div style="font-size: 0.8rem; color: #fff; margin-bottom: 6px; line-height: 1.4;">
+                            <strong>Manzil:</strong> {{ order.customerAddress || order.deliveryAddress || 'Kiritilmagan' }}
+                          </div>
+                          @if (order.customerLatitude && order.customerLongitude) {
+                            <div style="font-size: 0.76rem; color: #94a3b8; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 6px;">
+                              <span><strong>Koordinatalar:</strong> {{ order.customerLatitude }}, {{ order.customerLongitude }}</span>
+                              <button (click)="copyToClipboard(order.customerLatitude + ', ' + order.customerLongitude)" 
+                                      style="background: transparent; border: none; color: #f97316; font-size: 0.72rem; cursor: pointer; font-weight: 600; padding: 2px 6px; border-radius: 4px; transition: all 0.2s;"
+                                      onmouseover="this.style.background='rgba(249,115,22,0.1)'"
+                                      onmouseout="this.style.background='transparent'">
+                                📋 Nusxalash
+                              </button>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                              <a [href]="'https://yandex.uz/maps/?pt=' + order.customerLongitude + ',' + order.customerLatitude + '&z=17&l=map'" 
+                                 target="_blank" 
+                                 style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px; background: #f59e0b; color: #000; font-size: 0.72rem; font-weight: 700; text-decoration: none; border-radius: 6px; text-align: center; transition: background 0.2s;"
+                                 onmouseover="this.style.background='#d97706'"
+                                 onmouseout="this.style.background='#f59e0b'">
+                                🔗 Yandex Maps
+                              </a>
+                              <a [href]="'https://www.google.com/maps/search/?api=1&query=' + order.customerLatitude + ',' + order.customerLongitude" 
+                                 target="_blank" 
+                                 style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px; background: rgba(255,255,255,0.1); color: #fff; font-size: 0.72rem; font-weight: 600; text-decoration: none; border-radius: 6px; text-align: center; transition: background 0.2s;"
+                                 onmouseover="this.style.background='rgba(255,255,255,0.15)'"
+                                 onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                                🔗 Google Maps
+                              </a>
+                            </div>
+                          } @else {
+                            <div style="font-size: 0.76rem; color: #ef4444; font-weight: 500;">
+                              Joylashuv mavjud emas
+                            </div>
+                          }
+                        </div>
                       </div>
                     </td>
                     <td class="col-foods" data-label="Taomlar">
@@ -325,11 +385,18 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
                       <div class="price-info-cell">
                         <strong class="total-price">{{ (order.totalPrice + (order.deliveryFee || 0)) | number:'1.0-0' }} so'm</strong>
                         <span class="delivery-fee-sub">(Yetkazish: {{ order.deliveryFee | number:'1.0-0' }} so'm)</span>
+                        <div class="payment-method-badge" style="font-size: 0.72rem; margin-top: 4px; font-weight: 600; display: inline-block; padding: 2px 6px; border-radius: 4px;"
+                              [style.background]="order.paymentMethod === 'CARD' ? 'rgba(16,185,129,0.15)' : 'rgba(249,115,22,0.15)'"
+                              [style.color]="order.paymentMethod === 'CARD' ? '#10b981' : '#f97316'">
+                          {{ order.paymentMethod === 'CARD' ? '💳 Karta' : '💵 Naqd pul' }}
+                        </div>
                       </div>
                     </td>
                     <td class="col-distance" data-label="Masofa">{{ (order.deliveryDistanceKm || order.distance || 0) | number:'1.1-2' }} km</td>
                     <td class="col-courier" data-label="Kuryer to'lovi">
-                      @if (order.courier) {
+                      @if (order.deliveryProvider === 'YANDEX' || order.yandexDelivery) {
+                        <div class="courier-pill" style="background: rgba(245,158,11,0.12); color: #f59e0b; border: 1px solid rgba(245,158,11,0.25); padding: 4px 8px; border-radius: 8px; font-weight: 700; font-size: 0.72rem; text-transform: uppercase;">🟨 Yandex Delivery</div>
+                      } @else if (order.courier) {
                         <div class="courier-pill">🏍️ {{ order.courier.name }}</div>
                         <div class="courier-fees">
                           <div>Baza: {{ order.baseFee || 9000 | number:'1.0-0' }} so'm</div>
@@ -350,6 +417,34 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
                           <span class="status-done-new">✅ Topshirildi</span>
                         } @else if (order.status === 'CANCELED') {
                           <span class="status-canceled-new">🚫 Bekor qilindi</span>
+                        }
+
+                        <!-- YANDEX ACTION BUTTONS FLOW -->
+                        @else if (order.deliveryProvider === 'YANDEX' || order.status === 'TRANSFERRED_TO_YANDEX' || order.status === 'YANDEX_COURIER_CALLED' || order.status === 'READY' || order.status === 'YANDEX_COURIER_PICKED_UP') {
+                          @if (order.status === 'TRANSFERRED_TO_YANDEX') {
+                            <button class="act-btn-new act-courier" (click)="changeStatus(order.id, 'YANDEX_COURIER_CALLED')" [disabled]="updatingId() === order.id" style="background: #f59e0b; color: white;">
+                              🚕 Yandex Delivery chaqirildi
+                            </button>
+                          } @else if (order.status === 'YANDEX_COURIER_CALLED') {
+                            <button class="act-btn-new act-prepare" (click)="changeStatus(order.id, 'PREPARING')" [disabled]="updatingId() === order.id">
+                              🍳 Tayyorlashni boshlash
+                            </button>
+                          } @else if (order.status === 'PREPARING') {
+                            <button class="act-btn-new act-ready" (click)="markReady(order.id)" [disabled]="updatingId() === order.id">
+                              ✅ Tayyor
+                            </button>
+                          } @else if (order.status === 'READY') {
+                            <button class="act-btn-new act-courier" (click)="changeStatus(order.id, 'YANDEX_COURIER_PICKED_UP')" [disabled]="updatingId() === order.id" style="background: #3b82f6; color: white;">
+                              🚚 Yandex kuryerga topshirildi
+                            </button>
+                          } @else if (order.status === 'YANDEX_COURIER_PICKED_UP') {
+                            <button class="act-btn-new act-ready" (click)="changeStatus(order.id, 'DELIVERED')" [disabled]="updatingId() === order.id">
+                              🏁 Buyurtmani yakunlash
+                            </button>
+                          }
+                          <button class="act-btn-new act-cancel" (click)="confirmCancel(order)" [disabled]="updatingId() === order.id" style="margin-top: 4px; width: fit-content;">
+                            ✕ Bekor
+                          </button>
                         }
 
                         @else if (order.status === 'PENDING') {
@@ -605,32 +700,41 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
       cursor: pointer;
     }
     .bell-btn {
+      width: 40px;
+      height: 40px;
       background: #1e293b;
-      border: 1px solid #334155;
+      border: 2px solid #334155;
       color: #fff;
       font-size: 1.1rem;
-      padding: 10px;
       border-radius: 50%;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       position: relative;
       transition: all 0.2s;
-      border: none;
     }
     .bell-btn:hover {
       border-color: #f97316;
       background: rgba(249, 115, 22, 0.08);
+      box-shadow: 0 0 10px rgba(249, 115, 22, 0.3);
     }
     .bell-badge {
       position: absolute;
-      top: -4px;
-      right: -4px;
+      top: -2px;
+      right: -2px;
       background: #ef4444;
       color: #fff;
-      font-size: 0.68rem;
+      font-size: 0.65rem;
       font-weight: 800;
-      padding: 2px 6px;
-      border-radius: 50px;
+      min-width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
       border: 2px solid #0f172a;
+      padding: 0;
     }
     .notifications-dropdown {
       position: absolute;
@@ -1212,6 +1316,10 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
     .badge-courier_at_client { background: rgba(236, 72, 153, 0.12); color: #ec4899; border: 1px solid rgba(236,72,153,0.2); }
     .badge-delivered { background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.2); }
     .badge-canceled { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
+    .badge-transferred_to_yandex { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border: 1px solid rgba(245,158,11,0.2); }
+    .badge-yandex_courier_called { background: rgba(59, 130, 246, 0.12); color: #3b82f6; border: 1px solid rgba(59,130,246,0.2); }
+    .badge-ready { background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.2); }
+    .badge-yandex_courier_picked_up { background: rgba(6, 182, 212, 0.12); color: #06b6d4; border: 1px solid rgba(6,182,212,0.2); }
 
     .action-buttons-wrap {
       display: flex;
@@ -1397,13 +1505,35 @@ const ALL_STATUSES: OrderStatus[] = ['PENDING','PREPARING','COURIER_ACCEPTED','C
     /* RESPONSIVE DESIGN */
     @media (max-width: 768px) {
       .dashboard-header-premium {
-        flex-direction: column;
-        align-items: stretch;
+        display: grid;
+        grid-template-areas: 
+          "left right"
+          "search search";
+        gap: 12px;
+        align-items: center;
+      }
+      .header-left {
+        grid-area: left;
+      }
+      .header-right {
+        grid-area: right;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
         gap: 12px;
       }
       .header-search {
+        grid-area: search;
         margin: 0;
         max-width: 100%;
+      }
+      .notifications-dropdown {
+        right: -10px;
+        width: 260px;
+      }
+      .profile-dropdown {
+        right: -10px;
+        width: 180px;
       }
       .hero-content {
         flex-direction: column;
@@ -1460,8 +1590,8 @@ export class ManagerDashboardComponent implements OnInit, OnDestroy {
   private statusChart: any = null;
 
   // Computed metrics
-  pendingOrders    = computed(() => this.orders().filter(o => o.status === 'PENDING'));
-  activePrepOrders = computed(() => this.orders().filter(o => o.status === 'PREPARING'));
+  pendingOrders    = computed(() => this.orders().filter(o => o.status === 'PENDING' || o.status === 'TRANSFERRED_TO_YANDEX' || o.status === 'YANDEX_COURIER_CALLED'));
+  activePrepOrders = computed(() => this.orders().filter(o => o.status === 'PREPARING' || o.status === 'READY'));
   completedCount   = computed(() => this.orders().filter(o => o.status === 'DELIVERED').length);
   canceledCount    = computed(() => this.orders().filter(o => o.status === 'CANCELED').length);
   totalRevenue     = computed(() =>
@@ -1489,7 +1619,15 @@ export class ManagerDashboardComponent implements OnInit, OnDestroy {
     const filter = this.statusFilter();
 
     if (filter !== 'ALL') {
-      list = list.filter(o => o.status === filter);
+      if (filter === 'PENDING') {
+        list = list.filter(o => o.status === 'PENDING' || o.status === 'TRANSFERRED_TO_YANDEX' || o.status === 'YANDEX_COURIER_CALLED');
+      } else if (filter === 'PREPARING') {
+        list = list.filter(o => o.status === 'PREPARING' || o.status === 'READY');
+      } else if (filter === 'DELIVERING') {
+        list = list.filter(o => o.status === 'DELIVERING' || o.status === 'COURIER_AT_CLIENT' || o.status === 'YANDEX_COURIER_PICKED_UP' || o.status === 'COURIER_ACCEPTED' || o.status === 'COURIER_AT_RESTAURANT');
+      } else {
+        list = list.filter(o => o.status === filter);
+      }
     }
 
     if (query) {
@@ -1694,6 +1832,20 @@ export class ManagerDashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+  copyToClipboard(text: string): void {
+    navigator.clipboard.writeText(text).then(() => {
+      this.showToast('📋 Koordinatalar nusxalandi', 'success');
+    }).catch(() => {
+      this.showToast('❌ Nusxalab bo\'lmadi', 'error');
+    });
+  }
+
+  clearNotifications(event: MouseEvent): void {
+    event.stopPropagation();
+    this.saveNotifications([]);
+    this.showToast('🧹 Bildirishnomalar tozalandi', 'success');
+  }
+
   private showToast(message: string, type: 'success' | 'error'): void {
     if (this.toastTimer) clearTimeout(this.toastTimer);
     this.toast.set({ message, type });
@@ -1712,18 +1864,19 @@ export class ManagerDashboardComponent implements OnInit, OnDestroy {
   }
 
   getOnlyPreparingCount(): number {
-    return this.orders().filter(o => o.status === 'PREPARING' && !o.isReady).length;
+    return this.orders().filter(o => (o.status === 'PREPARING' || o.status === 'YANDEX_COURIER_CALLED') && !o.isReady).length;
   }
 
   getReadyButNotPickedCount(): number {
     return this.orders().filter(o => 
       (o.status === 'PREPARING' && o.isReady) || 
+      (o.status === 'READY') ||
       (['COURIER_ACCEPTED', 'COURIER_AT_RESTAURANT'].includes(o.status) && o.isReady)
     ).length;
   }
 
   getDeliveringCount(): number {
-    return this.orders().filter(o => ['DELIVERING', 'COURIER_AT_CLIENT'].includes(o.status)).length;
+    return this.orders().filter(o => ['DELIVERING', 'COURIER_AT_CLIENT', 'YANDEX_COURIER_PICKED_UP'].includes(o.status)).length;
   }
 
   getReadyPercent(): number {

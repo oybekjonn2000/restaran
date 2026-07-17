@@ -12,6 +12,10 @@ export const MANAGER_ROUTES: Routes = [
         loadComponent: () => import('./dashboard/manager-dashboard.component').then(m => m.ManagerDashboardComponent)
       },
       {
+        path: 'orders',
+        loadComponent: () => import('./orders/manager-orders.component').then(m => m.ManagerOrdersComponent)
+      },
+      {
         path: 'menu',
         loadComponent: () => import('./menu/manager-menu.component').then(m => m.ManagerMenuComponent)
       },

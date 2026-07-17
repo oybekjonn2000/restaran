@@ -12,95 +12,97 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
   imports: [CommonModule, ReactiveFormsModule, RouterLink, MatProgressSpinnerModule],
   template: `
     <div class="auth-page">
-      <!-- Top Header Area with Gradient -->
-      <div class="auth-header">
-        <div class="header-top-row">
-          <a routerLink="/client/restaurants" class="back-btn-icon" title="Asosiy menyuga qaytish">←</a>
-          <span class="more-options">•••</span>
-        </div>
-        <h1 class="header-title">Mango<br>Food Login</h1>
-      </div>
-
-      <!-- Main Form Sheet -->
-      <div class="auth-sheet animate-slide-up">
-        <!-- Demo Accounts (Subtle) -->
-        <div class="demo-section">
-          <span class="demo-label">⚡ Tezkor kirish:</span>
-          <div class="demo-chips">
-            <button type="button" (click)="fillDemo('client')" class="demo-chip client">Mijoz</button>
-            <button type="button" (click)="fillDemo('courier')" class="demo-chip courier">Kuryer</button>
-            <button type="button" (click)="fillDemo('admin')" class="demo-chip admin">Admin</button>
-            <button type="button" (click)="fillDemo('manager10')" class="demo-chip manager">Manager</button>
+      <div class="auth-card">
+        <!-- Top Header Area with Gradient -->
+        <div class="auth-header">
+          <div class="header-top-row">
+            <a routerLink="/client/restaurants" class="back-btn-icon" title="Asosiy menyuga qaytish">←</a>
+            <span class="more-options">•••</span>
           </div>
+          <h1 class="header-title">Mango<br>Food Login</h1>
         </div>
 
-        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form">
-          <!-- Phone field -->
-          <div class="form-group-new">
-            <label class="form-label-new">Telefon raqam</label>
-            <div class="input-container-new">
-              <input
-                formControlName="phone"
-                type="tel"
-                class="form-control-new"
-                placeholder="+998901234567"
-                id="login-phone">
-              @if (form.get('phone')?.valid) {
-                <span class="field-icon success-check">✓</span>
+        <!-- Main Form Sheet -->
+        <div class="auth-sheet animate-slide-up">
+          <!-- Demo Accounts (Subtle) -->
+          <div class="demo-section">
+            <span class="demo-label">⚡ Tezkor kirish:</span>
+            <div class="demo-chips">
+              <button type="button" (click)="fillDemo('client')" class="demo-chip client">Mijoz</button>
+              <button type="button" (click)="fillDemo('courier')" class="demo-chip courier">Kuryer</button>
+              <button type="button" (click)="fillDemo('admin')" class="demo-chip admin">Admin</button>
+              <button type="button" (click)="fillDemo('manager10')" class="demo-chip manager">Manager</button>
+            </div>
+          </div>
+
+          <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form">
+            <!-- Phone field -->
+            <div class="form-group-new">
+              <label class="form-label-new">Telefon raqam</label>
+              <div class="input-container-new">
+                <input
+                  formControlName="phone"
+                  type="tel"
+                  class="form-control-new"
+                  placeholder="+998901234567"
+                  id="login-phone">
+                @if (form.get('phone')?.valid) {
+                  <span class="field-icon success-check">✓</span>
+                }
+              </div>
+              @if (form.get('phone')?.touched && form.get('phone')?.invalid) {
+                <span class="error-msg-new">Telefon raqamni kiriting</span>
               }
             </div>
-            @if (form.get('phone')?.touched && form.get('phone')?.invalid) {
-              <span class="error-msg-new">Telefon raqamni kiriting</span>
-            }
-          </div>
 
-          <!-- Password field -->
-          <div class="form-group-new">
-            <label class="form-label-new">Parol</label>
-            <div class="input-container-new">
-              <input
-                formControlName="password"
-                [type]="showPwd ? 'text' : 'password'"
-                class="form-control-new"
-                placeholder="••••••••"
-                id="login-password">
-              <button type="button" class="field-icon eye-toggle" (click)="showPwd = !showPwd">
-                {{ showPwd ? '🙈' : '👁️' }}
-              </button>
+            <!-- Password field -->
+            <div class="form-group-new">
+              <label class="form-label-new">Parol</label>
+              <div class="input-container-new">
+                <input
+                  formControlName="password"
+                  [type]="showPwd ? 'text' : 'password'"
+                  class="form-control-new"
+                  placeholder="••••••••"
+                  id="login-password">
+                <button type="button" class="field-icon eye-toggle" (click)="showPwd = !showPwd">
+                  {{ showPwd ? '🙈' : '👁️' }}
+                </button>
+              </div>
+              @if (form.get('password')?.touched && form.get('password')?.invalid) {
+                <span class="error-msg-new">Parol kiriting</span>
+              }
             </div>
-            @if (form.get('password')?.touched && form.get('password')?.invalid) {
-              <span class="error-msg-new">Parol kiriting</span>
+
+            <!-- Remember me & Forgot Password -->
+            <div class="options-row-new">
+              <label class="remember-label-new">
+                <input type="checkbox" formControlName="rememberMe">
+                <span>Eslab qolish</span>
+              </label>
+              <a class="forgot-link">Parol esdan chiqdimi ?</a>
+            </div>
+
+            @if (errorMsg) {
+              <div class="alert-error-new">⚠️ {{ errorMsg }}</div>
             }
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn-signin-gradient" [disabled]="loading">
+              @if (loading) {
+                <mat-spinner diameter="20" color="accent"></mat-spinner>
+                KIRILMOQDA...
+              } @else {
+                KIRISH
+              }
+            </button>
+          </form>
+
+          <!-- Footer -->
+          <div class="footer-row-new">
+            <span class="footer-text">Hisobingiz yo'qmi ?</span>
+            <a routerLink="/auth/register" class="signup-link">RO'YXATDAN O'TISH</a>
           </div>
-
-          <!-- Remember me & Forgot Password -->
-          <div class="options-row-new">
-            <label class="remember-label-new">
-              <input type="checkbox" formControlName="rememberMe">
-              <span>Eslab qolish</span>
-            </label>
-            <a class="forgot-link">Parol esdan chiqdimi ?</a>
-          </div>
-
-          @if (errorMsg) {
-            <div class="alert-error-new">⚠️ {{ errorMsg }}</div>
-          }
-
-          <!-- Submit Button -->
-          <button type="submit" class="btn-signin-gradient" [disabled]="loading">
-            @if (loading) {
-              <mat-spinner diameter="20" color="accent"></mat-spinner>
-              KIRILMOQDA...
-            } @else {
-              KIRISH
-            }
-          </button>
-        </form>
-
-        <!-- Footer -->
-        <div class="footer-row-new">
-          <span class="footer-text">Hisobingiz yo'qmi ?</span>
-          <a routerLink="/auth/register" class="signup-link">RO'YXATDAN O'TISH</a>
         </div>
       </div>
     </div>
@@ -113,6 +115,13 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
       background: #0f172a;
       font-family: 'Poppins', sans-serif;
       position: relative;
+    }
+
+    .auth-card {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      width: 100%;
     }
 
     .auth-header {
@@ -388,6 +397,28 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
     @keyframes slideUp {
       from { transform: translateY(30px); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
+    }
+
+    @media (min-width: 768px) {
+      .auth-page {
+        justify-content: center;
+        align-items: center;
+        background: radial-gradient(circle at top right, #3c2303 0%, #0f172a 100%);
+        padding: 40px 20px;
+      }
+      .auth-card {
+        flex: initial;
+        max-width: 480px;
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .auth-sheet {
+        margin-top: -30px;
+        border-radius: 24px 24px 0 0;
+        padding: 36px 36px;
+      }
     }
   `]
 })
