@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -39,54 +39,31 @@ import { API_BASE } from '../../../core/config';
         </div>
       }
 
-      <!-- HERO BANNER -->
-      <section class="hero-banner-new">
-        <div class="hero-bg-effects">
-          <div class="blur-circle c1"></div>
-          <div class="blur-circle c2"></div>
-        </div>
-        <div class="hero-content">
-          <span class="hero-tag-new">Aksiya va chegirmalar</span>
-          <h1 class="hero-title-new">Karshi taomlarini tezkor yetkazib berish 🥭</h1>
-          <p class="hero-desc-new">Eng sara va lazzatli taomlar uyingizgacha 25 daqiqada yetkaziladi. Birinchi buyurtmada promo kod yordamida chegirmaga ega bo'ling!</p>
-          <div class="hero-badge-row">
-            <span class="hero-badge">🎫 Promo kod: MANGO2026</span>
-            <span class="hero-badge">🚚 Tekin yetkazish (50k+ so'm)</span>
-            <span class="hero-badge">⏱️ 20-35 daqiqa</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- SPECIAL OFFERS SECTION -->
-      <section class="special-offers-section">
-        <h2 class="section-title-new">🎁 Maxsus Takliflar</h2>
-        <div class="offers-carousel-wrap">
-          <div class="offer-card">
-            <span class="offer-badge">Chegirma</span>
-            <h4 class="offer-title">Pitsalarga 20% Chegirma!</h4>
-            <p class="offer-desc">Ushbu haftada barcha pitsalar va kalzonlar uchun narxlar 20% ga tushirildi.</p>
-            <div class="offer-footer">
-              <span class="offer-code-tag">PIZZA20</span>
-              <span class="offer-action-text">Buyurtma berish ➡️</span>
+      <!-- PROMO CAROUSEL SLIDER -->
+      <section class="promo-slider-section">
+        <div class="promo-slider-container">
+          @for (slide of promoSlides; track $index) {
+            <div class="promo-slide" 
+                 [class.active]="currentSlideIndex() === $index"
+                 [style.background]="slide.color">
+              <div class="slide-content">
+                <span class="slide-badge">{{ slide.badge }}</span>
+                <h2 class="slide-title">{{ slide.title }}</h2>
+                <p class="slide-desc">{{ slide.desc }}</p>
+              </div>
+              <div class="slide-action">
+                <button class="slide-btn">{{ slide.btnText }} ➡️</button>
+              </div>
             </div>
-          </div>
-          <div class="offer-card">
-            <span class="offer-badge">Tekin</span>
-            <h4 class="offer-title">Yetkazish Mutlaqo Tekin!</h4>
-            <p class="offer-desc">50,000 so'mdan yuqori bo'lgan har qanday buyurtmani bepul yetkazib beramiz.</p>
-            <div class="offer-footer">
-              <span class="offer-code-tag">BEPUL</span>
-              <span class="offer-action-text">Ko'rish ➡️</span>
-            </div>
-          </div>
-          <div class="offer-card">
-            <span class="offer-badge">Bonus</span>
-            <h4 class="offer-title">Sovg'a sifatida Pepsi!</h4>
-            <p class="offer-desc">100,000 so'mdan ortiq har bir buyurtma bilan 1 litr Pepsi-Cola qo'shib beriladi.</p>
-            <div class="offer-footer">
-              <span class="offer-code-tag">PEPSI</span>
-              <span class="offer-action-text">Qo'shiling ➡️</span>
-            </div>
+          }
+          
+          <!-- Slide Navigation Indicators -->
+          <div class="slider-dots">
+            @for (slide of promoSlides; track $index) {
+              <button class="slider-dot" 
+                      [class.active]="currentSlideIndex() === $index"
+                      (click)="setSlide($index)"></button>
+            }
           </div>
         </div>
       </section>
@@ -294,68 +271,112 @@ import { API_BASE } from '../../../core/config';
       box-shadow: 0 6px 18px rgba(249, 115, 22, 0.4);
     }
 
-    /* HERO PROMO BANNER */
-    .hero-banner-new {
-      background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
-      border: 1px solid #334155;
-      border-radius: 20px;
-      padding: 40px;
+    /* PROMO CAROUSEL SLIDER */
+    .promo-slider-section {
+      margin-bottom: 28px;
       position: relative;
-      overflow: hidden;
-      margin-bottom: 32px;
-      text-align: left;
     }
-    .hero-bg-effects {
+    .promo-slider-container {
+      position: relative;
+      height: 165px;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid #334155;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+    .promo-slide {
       position: absolute;
       inset: 0;
+      padding: 24px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      opacity: 0;
       pointer-events: none;
+      transition: opacity 0.6s ease, transform 0.6s ease;
+      transform: scale(0.98);
+      gap: 20px;
     }
-    .blur-circle {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(80px);
-      opacity: 0.15;
+    .promo-slide.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: scale(1);
     }
-    .blur-circle.c1 { width: 300px; height: 300px; background: #f97316; top: -50px; left: -50px; }
-    .blur-circle.c2 { width: 250px; height: 250px; background: #ef4444; bottom: -40px; right: -40px; }
-    .hero-tag-new {
-      background: rgba(249, 115, 22, 0.12);
+    .slide-content {
+      flex: 1;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .slide-badge {
+      background: rgba(249, 115, 22, 0.15);
       color: #f97316;
-      border: 1px solid rgba(249, 115, 22, 0.25);
-      font-size: 0.72rem;
-      font-weight: 700;
-      padding: 4px 10px;
+      border: 1px solid rgba(249, 115, 22, 0.3);
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 3px 10px;
       border-radius: 50px;
+      width: fit-content;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
-    .hero-title-new {
-      font-size: 2.2rem;
+    .slide-title {
+      font-size: 1.3rem;
       font-weight: 800;
       color: #fff;
-      margin: 16px 0 8px 0;
-      max-width: 600px;
+      margin: 0;
     }
-    .hero-desc-new {
-      font-size: 0.95rem;
-      color: #94a3b8;
-      max-width: 500px;
-      line-height: 1.5;
-    }
-    .hero-badge-row {
-      display: flex;
-      gap: 12px;
-      margin-top: 24px;
-      flex-wrap: wrap;
-    }
-    .hero-badge {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      padding: 8px 14px;
-      border-radius: 12px;
+    .slide-desc {
       font-size: 0.8rem;
       color: #cbd5e1;
-      font-weight: 600;
+      margin: 0;
+      max-width: 550px;
+      line-height: 1.4;
+    }
+    .slide-action {
+      flex-shrink: 0;
+    }
+    .slide-btn {
+      background: #f97316;
+      color: #fff;
+      border: none;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 10px 20px;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+      transition: all 0.2s ease;
+    }
+    .slide-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(249, 115, 22, 0.5);
+      background: #fb923c;
+    }
+    .slider-dots {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+    }
+    .slider-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      transition: all 0.3s ease;
+    }
+    .slider-dot.active {
+      background: #f97316;
+      width: 20px;
+      border-radius: 4px;
     }
 
     /* CATEGORIES HORIZONTAL SCROLL */
@@ -405,48 +426,7 @@ import { API_BASE } from '../../../core/config';
     }
     .cat-emoji { font-size: 1.1rem; }
 
-    /* SPECIAL OFFERS CAROUSEL */
-    .special-offers-section {
-      margin-bottom: 36px;
-      text-align: left;
-    }
-    .offers-carousel-wrap {
-      display: flex;
-      gap: 16px;
-      overflow-x: auto;
-      padding-bottom: 12px;
-      scrollbar-width: none;
-    }
-    .offers-carousel-wrap::-webkit-scrollbar { display: none; }
-    .offer-card {
-      min-width: 280px;
-      max-width: 280px;
-      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-      border: 1px solid #334155;
-      border-radius: 16px;
-      padding: 20px;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-      text-align: left;
-    }
-    .offer-badge {
-      background: #ef4444;
-      color: #fff;
-      font-size: 0.68rem;
-      font-weight: 800;
-      padding: 3px 8px;
-      border-radius: 50px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      display: inline-block;
-      margin-bottom: 12px;
-    }
-    .offer-title { font-size: 0.94rem; font-weight: 800; color: #fff; margin-bottom: 6px; }
-    .offer-desc { font-size: 0.78rem; color: #94a3b8; line-height: 1.45; margin-bottom: 14px; }
-    .offer-footer { display: flex; justify-content: space-between; align-items: center; }
-    .offer-code-tag { font-size: 0.75rem; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); padding: 4px 8px; border-radius: 8px; font-weight: 700; color: #fff; }
-    .offer-action-text { font-size: 0.75rem; color: #f97316; font-weight: 700; }
+    /* Removed special-offers-section since it's replaced by the promo slider */
 
     /* RESTAURANTS SECTION */
     .restaurants-section-new {
@@ -688,15 +668,32 @@ import { API_BASE } from '../../../core/config';
 
     /* RESPONSIVE DESIGN */
     @media (max-width: 768px) {
-      .hero-banner-new { padding: 24px; }
-      .hero-title-new { font-size: 1.6rem; }
+      .promo-slider-container {
+        height: 195px;
+      }
+      .promo-slide {
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 20px;
+        gap: 12px;
+      }
+      .slide-title {
+        font-size: 1.1rem;
+      }
+      .slide-desc {
+        font-size: 0.75rem;
+      }
+      .slide-btn {
+        padding: 8px 16px;
+      }
       .restaurants-grid-new { grid-template-columns: 1fr; }
       .foods-grid-new { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
       .food-img-wrap { height: 120px; }
     }
   `]
 })
-export class RestaurantsComponent implements OnInit {
+export class RestaurantsComponent implements OnInit, OnDestroy {
   restaurants = signal<Restaurant[]>([]);
   loading = signal(true);
   searchQuery = '';
@@ -710,6 +707,33 @@ export class RestaurantsComponent implements OnInit {
   // Cart confirmation states
   showConfirmDialog = signal(false);
   pendingFood: Food | null = null;
+
+  // Promo Slider States
+  promoSlides = [
+    {
+      badge: 'AKSIYA',
+      title: 'Pitsalarga 20% Chegirma! 🍕',
+      desc: 'Ushbu haftada barcha pitsalar va kalzonlar uchun narxlar 20% ga tushirildi. Promo kod: PIZZA20',
+      color: 'linear-gradient(135deg, #1e1b4b 0%, #311042 100%)',
+      btnText: "Buyurtma berish"
+    },
+    {
+      badge: 'TEKIN YETKAZISH',
+      title: 'Yetkazib berish mutlaqo tekin! 🚚',
+      desc: '50,000 so\'mdan yuqori bo\'lgan barcha buyurtmalar uchun bepul yetkazib berish xizmati. Promo kod: BEPUL',
+      color: 'linear-gradient(135deg, #064e3b 0%, #0f172a 100%)',
+      btnText: "Ko'rish"
+    },
+    {
+      badge: 'BONUS',
+      title: 'Sovg\'aga Pepsi-Cola! 🥤',
+      desc: '100,000 so\'mdan ortiq har bir buyurtma bilan 1 litr Pepsi bepul qo\'shib beriladi. Promo kod: PEPSI',
+      color: 'linear-gradient(135deg, #1e3a8a 0%, #1e1b4b 100%)',
+      btnText: "Batafsil"
+    }
+  ];
+  currentSlideIndex = signal(0);
+  private promoIntervalId: any;
 
   categoriesList = [
     { id: 'all', name: 'Barchasi', emoji: '🌟' },
@@ -741,6 +765,29 @@ export class RestaurantsComponent implements OnInit {
   ngOnInit(): void {
     window.scrollTo(0, 0);
     this.loadData();
+    this.startPromoTimer();
+  }
+
+  ngOnDestroy(): void {
+    this.stopPromoTimer();
+  }
+
+  startPromoTimer(): void {
+    this.stopPromoTimer();
+    this.promoIntervalId = setInterval(() => {
+      this.currentSlideIndex.set((this.currentSlideIndex() + 1) % this.promoSlides.length);
+    }, 5000);
+  }
+
+  stopPromoTimer(): void {
+    if (this.promoIntervalId) {
+      clearInterval(this.promoIntervalId);
+    }
+  }
+
+  setSlide(index: number): void {
+    this.currentSlideIndex.set(index);
+    this.startPromoTimer();
   }
 
   loadData(): void {
