@@ -294,7 +294,7 @@ import { Restaurant } from '../../../core/models/restaurant.model';
     .main-content {
       flex: 1;
       padding: 28px;
-      overflow-y: auto;
+      min-height: 0;
     }
 
     .mobile-overlay {
@@ -322,6 +322,7 @@ import { Restaurant } from '../../../core/models/restaurant.model';
       
       .main-content {
         padding: 20px 16px;
+        overflow-y: visible;
       }
     }
   `]

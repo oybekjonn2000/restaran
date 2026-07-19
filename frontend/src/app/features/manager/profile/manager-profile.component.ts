@@ -87,12 +87,20 @@ import { API_BASE } from '../../../core/config';
     </div>
   `,
   styles: [`
-    .manager-profile { max-width: 1100px; margin: 0 auto; }
+    .manager-profile {
+      max-width: 1100px;
+      margin: 0 auto;
+      overflow-x: hidden;
+    }
+
+    .page-header {
+      margin-bottom: 24px;
+    }
 
     .profile-layout {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 28px;
+      gap: 24px;
     }
 
     .form-card-profile, .map-card-profile {
@@ -100,6 +108,8 @@ import { API_BASE } from '../../../core/config';
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 24px;
+      box-sizing: border-box;
+      min-width: 0;
     }
 
     .image-preview {
@@ -109,12 +119,24 @@ import { API_BASE } from '../../../core/config';
       height: 140px;
       border: 1px solid var(--border);
     }
-    .image-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .image-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
 
     .form-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
+    }
+
+    /* Ensure all form controls don't overflow */
+    .form-control {
+      width: 100%;
+      box-sizing: border-box;
+      max-width: 100%;
     }
 
     .map-container {
@@ -126,10 +148,51 @@ import { API_BASE } from '../../../core/config';
       background: var(--bg-card2);
     }
 
-    .map-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 10px; line-height: 1.4; }
+    .map-hint {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 10px;
+      line-height: 1.4;
+    }
 
+    /* ── Tablet ── */
     @media (max-width: 820px) {
-      .profile-layout { grid-template-columns: 1fr; }
+      .profile-layout {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .map-container {
+        height: 280px;
+      }
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 480px) {
+      .form-card-profile, .map-card-profile {
+        padding: 16px;
+        border-radius: var(--radius);
+      }
+
+      /* Stack lat/lng vertically on small screens */
+      .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+      }
+
+      .map-container {
+        height: 220px;
+        border-radius: var(--radius);
+      }
+
+      .image-preview {
+        height: 160px;
+      }
+
+      /* Yuklash button full width on very small screens */
+      .btn-upload-row {
+        flex-wrap: wrap;
+      }
     }
   `]
 })
@@ -169,11 +232,11 @@ export class ManagerProfileComponent implements OnInit {
       next: (res) => {
         this.profileForm.patchValue({ imageUrl: res.url });
         this.uploading.set(false);
-        this.snack.open('✅ Rasm muvaffaqiyatli yuklandi!', '', { duration: 2500 });
+        this.snack.open('✅ Rasm muvaffaqiyatli yuklandi!', 'Yopish', { duration: 2500, horizontalPosition: 'center', verticalPosition: 'top', panelClass: ['snack-success'] });
       },
       error: (err) => {
         this.uploading.set(false);
-        this.snack.open(`❌ Yuklashda xatolik: ${err.error?.message || 'Amal bajarilmadi'}`, '', { duration: 3000 });
+        this.snack.open(`❌ Yuklashda xatolik: ${err.error?.message || 'Amal bajarilmadi'}`, 'Yopish', { duration: 3000, horizontalPosition: 'center', verticalPosition: 'top', panelClass: ['snack-error'] });
       }
     });
   }
@@ -274,11 +337,11 @@ export class ManagerProfileComponent implements OnInit {
     this.orderService.updateManagerRestaurant(this.profileForm.value).subscribe({
       next: () => {
         this.saving.set(false);
-        this.snack.open("✅ Restoran ma'lumotlari muvaffaqiyatli yangilandi!", "", { duration: 3000 });
+        this.snack.open("✅ Restoran ma'lumotlari muvaffaqiyatli yangilandi!", 'Yopish', { duration: 3500, horizontalPosition: 'center', verticalPosition: 'top', panelClass: ['snack-success'] });
       },
       error: (err) => {
         this.saving.set(false);
-        this.snack.open(`❌ Xatolik: ${err.error?.message || "yangilab bo'lmadi"}`, "", { duration: 3000 });
+        this.snack.open(`❌ Xatolik: ${err.error?.message || "yangilab bo'lmadi"}`, 'Yopish', { duration: 3500, horizontalPosition: 'center', verticalPosition: 'top', panelClass: ['snack-error'] });
       }
     });
   }

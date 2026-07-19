@@ -1743,7 +1743,7 @@ export class ManagerDashboardComponent implements OnInit, OnDestroy {
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-              y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } },
+              y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8', precision: 0, stepSize: 1 }, beginAtZero: true },
               x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
             }
           }
@@ -1757,12 +1757,14 @@ export class ManagerDashboardComponent implements OnInit, OnDestroy {
         const completed = this.completedCount();
         const canceled = this.canceledCount();
 
+        const statusData = [pending, prep, completed, canceled];
+        const statusLabels = ['Yangi', 'Tayyorlash', 'Yetkazildi', "Bekor bo'ldi"];
         this.statusChart = new Chart(ctxStatus, {
           type: 'doughnut',
           data: {
-            labels: ['Yangi', 'Tayyorlash', 'Yetkazildi', 'Bekor bo\'ldi'],
+            labels: statusLabels.map((lbl, i) => `${lbl} (${statusData[i]})`),
             datasets: [{
-              data: [pending, prep, completed, canceled],
+              data: statusData,
               backgroundColor: ['#f59e0b', '#8b5cf6', '#10b981', '#ef4444'],
               borderWidth: 0
             }]
