@@ -232,7 +232,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
                           <span class="btn-text">Marshrutni tuzish</span>
                         </button>
                         
-                        @if (order.status === 'COURIER_AT_CLIENT') {
+                        @if (order.status === 'COURIER_AT_CLIENT' || order.status === 'DELIVERING') {
                           <a [href]="'tel:' + (order.user?.phone || '+998901234567')" class="control-action-btn call-client-btn">
                             <span class="btn-icon">📞</span>
                             <span class="btn-text">Mijozga qo'ng'iroq</span>

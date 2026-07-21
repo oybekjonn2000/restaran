@@ -119,7 +119,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
       <div class="footer-bottom">
         <div class="footer-bottom-container">
           <p class="copyright-text">
-            &copy; 2025 MangoFood. Barcha huquqlar himoyalangan.
+            &copy; {{ currentYear }} MangoFood. Barcha huquqlar himoyalangan.
           </p>
           <p class="powered-text">
             Made with ❤️ in Uzbekistan
@@ -419,6 +419,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
   `]
 })
 export class FooterComponent {
+  readonly currentYear = new Date().getFullYear();
   email = '';
   emailSuccess = signal(false);
   emailError = signal(false);
