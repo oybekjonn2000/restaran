@@ -11,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,6 +38,70 @@ public class CourierController {
     public ResponseEntity<List<Order>> getMyOrders(
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         return ResponseEntity.ok(orderService.getOrdersByCourier(userDetails.getId()));
+    }
+
+    /**
+     * Queue logikasi bo'yicha faol buyurtmalar ma'lumoti.
+     * visibleOrders: Ekranda ko'rinadigan buyurtmalar (max 2)
+     *   - Bitta restorandan bo'lsa: ikkalasi ko'rinadi
+     *   - Turli restorandan bo'lsa: faqat birinchisi, ikkinchisi navbatda
+     * queuedOrders: Navbatdagi (yashirin) buyurtmalar
+     * totalActive: Jami faol buyurtmalar soni
+     */
+    @GetMapping("/my-active-orders")
+    public ResponseEntity<Map<String, Object>> getMyActiveOrders(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+
+        List<OrderStatus> activeStatuses = List.of(
+            OrderStatus.COURIER_ACCEPTED,
+            OrderStatus.COURIER_AT_RESTAURANT,
+            OrderStatus.DELIVERING,
+            OrderStatus.COURIER_AT_CLIENT
+        );
+
+        List<Order> allOrders = orderService.getOrdersByCourier(userDetails.getId());
+
+        // Faqat faol (tugalamagan) buyurtmalar, FIFO tartibida
+        List<Order> activeOrders = allOrders.stream()
+            .filter(o -> activeStatuses.contains(o.getStatus()))
+            .sorted((a, b) -> a.getCreatedAt().compareTo(b.getCreatedAt()))
+            .toList();
+
+        List<Order> visibleOrders = new ArrayList<>();
+        List<Order> queuedOrders = new ArrayList<>();
+
+        for (Order order : activeOrders) {
+            if (visibleOrders.size() < 2) {
+                if (visibleOrders.isEmpty()) {
+                    visibleOrders.add(order);
+                } else {
+                    // Birinchi visible buyurtma bilan restoran tekshiruvi
+                    Order first = visibleOrders.get(0);
+                    Long firstRestId = first.getRestaurant() != null ? first.getRestaurant().getId() : null;
+                    Long curRestId = order.getRestaurant() != null ? order.getRestaurant().getId() : null;
+                    if (firstRestId != null && firstRestId.equals(curRestId)) {
+                        // Bir xil restoran → ikkalasi ham visible
+                        visibleOrders.add(order);
+                    } else {
+                        // Boshqa restoran → navbatga
+                        queuedOrders.add(order);
+                    }
+                }
+            } else {
+                queuedOrders.add(order);
+            }
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("visibleOrders", visibleOrders);
+        result.put("queuedOrders", queuedOrders);
+        result.put("totalActive", activeOrders.size());
+        result.put("sameRestaurant", visibleOrders.size() == 2 &&
+            visibleOrders.get(0).getRestaurant() != null &&
+            visibleOrders.get(1).getRestaurant() != null &&
+            visibleOrders.get(0).getRestaurant().getId().equals(visibleOrders.get(1).getRestaurant().getId()));
+
+        return ResponseEntity.ok(result);
     }
 
     /**

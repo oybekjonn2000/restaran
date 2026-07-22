@@ -36,6 +36,16 @@ export class OrderService {
     return this.http.get<Order[]>(`${BASE}/courier/my-orders`);
   }
 
+  /** Queue logikasi: visibleOrders, queuedOrders, totalActive, sameRestaurant */
+  getMyActiveOrders(): Observable<{
+    visibleOrders: Order[];
+    queuedOrders: Order[];
+    totalActive: number;
+    sameRestaurant: boolean;
+  }> {
+    return this.http.get<any>(`${BASE}/courier/my-active-orders`);
+  }
+
   acceptOrder(orderId: number, lat?: number, lng?: number): Observable<Order> {
     let url = `${BASE}/courier/${orderId}/accept`;
     if (lat !== undefined && lng !== undefined) {

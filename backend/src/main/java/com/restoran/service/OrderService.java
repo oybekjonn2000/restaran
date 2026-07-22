@@ -385,8 +385,23 @@ public class OrderService {
             OrderStatus.COURIER_AT_CLIENT
         );
 
+        // Maksimal 2 ta faol buyurtma limiti — 2 ta yoki undan ko'p buyurtmasi bor kuryerlarni o'tkazib yuboramiz
+        final int MAX_ACTIVE_ORDERS = 2;
+        List<User> eligibleCandidates = candidates.stream()
+            .filter(c -> orderRepository.countByCourierAndStatusIn(c, activeStatuses) < MAX_ACTIVE_ORDERS)
+            .toList();
+
+        if (eligibleCandidates.isEmpty()) {
+            // Barcha nomzodlarda 2 ta limit to'lgan — navbatga qoldiramiz
+            System.out.println(">>> Barcha kuryerlarda " + MAX_ACTIVE_ORDERS + " ta limit to'lgan. Buyurtma #" + order.getId() + " navbatda qolmoqda...");
+            logDispatchEvent(order, null, "Barcha kuryerlarda " + MAX_ACTIVE_ORDERS + " ta limit to'lgan. Navbatda.", false, null, null, null, false);
+            // Kuryerni null qilib qoldiramiz, backfillCourier qayta urinadi
+            setCourierOnOrder(order, null);
+            return;
+        }
+
         // Yuklamasi (aktiv buyurtmalari soni) eng kam bo'lgan kuryerni tanlaymiz
-        User selectedCourier = candidates.stream()
+        User selectedCourier = eligibleCandidates.stream()
             .min((c1, c2) -> {
                 long count1 = orderRepository.countByCourierAndStatusIn(c1, activeStatuses);
                 long count2 = orderRepository.countByCourierAndStatusIn(c2, activeStatuses);
@@ -411,6 +426,21 @@ public class OrderService {
             return;
         }
 
+        // Kuryerning hozirgi faol buyurtmalari sonini tekshiramiz (2 ta limit)
+        List<OrderStatus> activeStatuses = List.of(
+            OrderStatus.PREPARING,
+            OrderStatus.COURIER_ACCEPTED,
+            OrderStatus.COURIER_AT_RESTAURANT,
+            OrderStatus.DELIVERING,
+            OrderStatus.COURIER_AT_CLIENT
+        );
+        final int MAX_ACTIVE_ORDERS = 2;
+        long currentActiveCount = orderRepository.countByCourierAndStatusIn(courier, activeStatuses);
+        if (currentActiveCount >= MAX_ACTIVE_ORDERS) {
+            System.out.println(">>> Kuryer #" + courier.getId() + " allaqachon " + currentActiveCount + " ta faol buyurtmaga ega. Backfill o'tkazildi.");
+            return;
+        }
+
         List<Order> unassignedOrders = orderRepository.findByStatusOrderByCreatedAtAsc(OrderStatus.PREPARING);
         for (Order o : unassignedOrders) {
             if (o.getCourier() == null) {
@@ -420,7 +450,9 @@ public class OrderService {
                     o.setAssignedAt(java.time.LocalDateTime.now());
                     o.setAttemptedCourierIds(attempted + "[" + courier.getId() + "],");
                     orderRepository.save(o);
-                    break;
+                    // Limitni qayta tekshiramiz — 1 ta biriktirdik, limit to'ldimi?
+                    currentActiveCount++;
+                    if (currentActiveCount >= MAX_ACTIVE_ORDERS) break;
                 }
             }
         }

@@ -18,6 +18,69 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
   template: `
     <div class="courier-app">
 
+      <!-- ===== BUYURTMALAR DRAWER (Badge bosilganda ochiladi) ===== -->
+      @if (showOrdersDrawer()) {
+        <div class="orders-drawer-overlay" (click)="showOrdersDrawer.set(false)">
+          <div class="orders-drawer" (click)="$event.stopPropagation()">
+            <div class="orders-drawer-handle"></div>
+            <div class="orders-drawer-header">
+              <span class="orders-drawer-title">🛵 Faol buyurtmalar</span>
+              <button class="orders-drawer-close" (click)="showOrdersDrawer.set(false)">✕</button>
+            </div>
+            <div class="orders-drawer-list">
+              @if (totalActiveCount() === 0) {
+                <div class="orders-drawer-empty">
+                  <span style="font-size: 2.5rem;">📭</span>
+                  <p>Hozirda faol buyurtma yo'q</p>
+                </div>
+              } @else {
+                <!-- Ko'rinadigan buyurtmalar -->
+                @for (order of visibleDeliveries(); track order.id) {
+                  <div class="drawer-order-card" [class.drawer-order-active]="true">
+                    <div class="drawer-order-top">
+                      <span class="drawer-order-num">#{{ order.id }}</span>
+                      <span class="drawer-order-badge" [class]="'dpill-' + order.status.toLowerCase()">{{ statusLabel(order.status) }}</span>
+                    </div>
+                    <div class="drawer-order-rest">🏪 {{ order.restaurant?.name || "Noma'lum" }}</div>
+                    <div class="drawer-order-addr">📍 {{ order.deliveryAddress }}</div>
+                    <div class="drawer-order-meta">
+                      <span class="drawer-meta-price">💰 {{ (order.totalPrice + (order.deliveryFee || 0)) | number:'1.0-0' }} so'm</span>
+                      <span class="drawer-meta-time">🕒 {{ order.createdAt | date:'HH:mm' }}</span>
+                    </div>
+                    <div class="drawer-order-status-row">
+                      <span class="drawer-visible-tag">✅ Faol</span>
+                      @if (order.paymentMethod === 'CARD') {
+                        <span class="drawer-payment-tag card">💳 Karta</span>
+                      } @else {
+                        <span class="drawer-payment-tag cash">💵 Naqd</span>
+                      }
+                    </div>
+                  </div>
+                }
+                <!-- Navbatdagi buyurtmalar -->
+                @for (order of queuedDeliveries(); track order.id) {
+                  <div class="drawer-order-card drawer-order-queued">
+                    <div class="drawer-order-top">
+                      <span class="drawer-order-num">#{{ order.id }}</span>
+                      <span class="drawer-queued-badge">⏳ Navbatda</span>
+                    </div>
+                    <div class="drawer-order-rest">🏪 {{ order.restaurant?.name || "Noma'lum" }}</div>
+                    <div class="drawer-order-addr">📍 {{ order.deliveryAddress }}</div>
+                    <div class="drawer-order-meta">
+                      <span class="drawer-meta-price">💰 {{ (order.totalPrice + (order.deliveryFee || 0)) | number:'1.0-0' }} so'm</span>
+                      <span class="drawer-meta-time">🕒 {{ order.createdAt | date:'HH:mm' }}</span>
+                    </div>
+                    <div class="drawer-order-status-row">
+                      <span class="drawer-queued-info">⌛ Birinchi buyurtma tugagandan so'ng faollashadi</span>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          </div>
+        </div>
+      }
+
       <!-- ===== JADVAL TAB ===== -->
       @if (activeTab() === 'jadval') {
         <div class="tab-content animate-tab">
@@ -180,144 +243,180 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
                   </div>
                 </div>
 
-                <!-- Faol buyurtma -->
-                @for (order of currentDeliveries(); track order.id) {
-                  @if (order.status !== 'DELIVERED') {
-                    <div class="active-order-card" [id]="'smena-order-' + order.id">
-                      <div class="active-order-top">
+                <!-- Faol buyurtmalar — Queue logikasi bilan -->
+                <!-- Bir xil restorandan 2 ta buyurtma bo'lsa: bitta karta + badge -->
+                @if (sameRestaurant() && visibleDeliveries().length === 2) {
+                  <!-- BITTA RESTORAN, 2 TA BUYURTMA: Restoran kartasi bitta -->
+                  <div class="same-rest-header">
+                    <div class="same-rest-name">🏪 {{ visibleDeliveries()[0].restaurant?.name || "Restoran" }}</div>
+                    <span class="same-rest-badge">{{ visibleDeliveries().length }} buyurtma</span>
+                  </div>
+                }
+                @for (order of visibleDeliveries(); track order.id) {
+                  <div class="active-order-card" [id]="'smena-order-' + order.id">
+                    <div class="active-order-top">
+                      @if (sameRestaurant() && visibleDeliveries().length === 2) {
                         <span class="active-order-num">#{{ order.id }}</span>
-                        <span class="status-pill" [class]="'pill-' + order.status.toLowerCase()">{{ statusLabel(order.status) }}</span>
-                      </div>
-                      
+                        <span class="order-sequence-badge">Buyurtma №{{ $index + 1 }}</span>
+                      } @else {
+                        <span class="active-order-num">#{{ order.id }}</span>
+                      }
+                      <span class="status-pill" [class]="'pill-' + order.status.toLowerCase()">{{ statusLabel(order.status) }}</span>
+                    </div>
+
+                    @if (!sameRestaurant() || visibleDeliveries().length < 2) {
                       <div class="active-order-info-group">
                         <div class="active-order-restaurant" style="font-size: 1.05rem; font-weight: 700; color: #fff; margin: 4px 0 2px;">🏪 {{ order.restaurant?.name || "Noma'lum restoran" }}</div>
                         <div class="active-order-addr" style="font-size: 0.9rem; color: #a1a1aa; margin: 4px 0 12px;">📍 {{ order.deliveryAddress }}</div>
                       </div>
-
-                      <!-- Payment Method Banner -->
-                      <div class="active-order-payment-banner" style="margin-bottom: 12px; padding: 12px; border-radius: 10px; font-weight: 700; font-size: 0.95rem; line-height: 1.4;"
-                           [style.background]="order.paymentMethod === 'CARD' ? 'rgba(16,185,129,0.1)' : 'rgba(249,115,22,0.1)'"
-                           [style.border]="order.paymentMethod === 'CARD' ? '1px solid rgba(16,185,129,0.25)' : '1px solid rgba(249,115,22,0.25)'"
-                           [style.color]="order.paymentMethod === 'CARD' ? '#10b981' : '#f97316'">
-                        @if (order.paymentMethod === 'CARD') {
-                          <span style="font-size: 1.05rem; display: block; margin-bottom: 2px;">🟢 Karta orqali to'langan</span>
-                          <span style="font-size: 0.82rem; font-weight: 400; color: #a7f3d0;">To'lov oldindan amalga oshirilgan.</span>
-                        } @else {
-                          <span style="font-size: 1.05rem; display: block; margin-bottom: 2px;">🟠 Naqd to'lov</span>
-                          <span style="font-size: 0.85rem; font-weight: 600; color: #fed7aa;">Mijozdan {{ (order.totalPrice + (order.deliveryFee || 0)) | number:'1.0-0' }} so'm qabul qiling.</span>
-                        }
+                    } @else {
+                      <div class="active-order-info-group">
+                        <div class="active-order-addr" style="font-size: 0.9rem; color: #a1a1aa; margin: 4px 0 12px;">📍 {{ order.deliveryAddress }}</div>
                       </div>
+                    }
 
-                      <!-- Food Ready Status Alert Banner -->
-                      @if (order.status === 'COURIER_ACCEPTED' || order.status === 'COURIER_AT_RESTAURANT') {
-                        @if (order.isReady) {
-                          <div class="food-ready-alert ready-yes animate-in">
-                            <span class="alert-icon">✅</span>
-                            <span class="alert-text">Taom tayyor! Olip yo'lga chiqishingiz mumkin.</span>
-                          </div>
-                        } @else {
-                          <div class="food-ready-alert ready-no animate-in">
-                            <span class="alert-icon">🍳</span>
-                            <span class="alert-text">Taom tayyorlanmoqda. Restoran tasdiqlashini kuting...</span>
-                          </div>
-                        }
+                    <!-- Payment Method Banner -->
+                    <div class="active-order-payment-banner" style="margin-bottom: 12px; padding: 12px; border-radius: 10px; font-weight: 700; font-size: 0.95rem; line-height: 1.4;"
+                         [style.background]="order.paymentMethod === 'CARD' ? 'rgba(16,185,129,0.1)' : 'rgba(249,115,22,0.1)'"
+                         [style.border]="order.paymentMethod === 'CARD' ? '1px solid rgba(16,185,129,0.25)' : '1px solid rgba(249,115,22,0.25)'"
+                         [style.color]="order.paymentMethod === 'CARD' ? '#10b981' : '#f97316'">
+                      @if (order.paymentMethod === 'CARD') {
+                        <span style="font-size: 1.05rem; display: block; margin-bottom: 2px;">🟢 Karta orqali to'langan</span>
+                        <span style="font-size: 0.82rem; font-weight: 400; color: #a7f3d0;">To'lov oldindan amalga oshirilgan.</span>
+                      } @else {
+                        <span style="font-size: 1.05rem; display: block; margin-bottom: 2px;">🟠 Naqd to'lov</span>
+                        <span style="font-size: 0.85rem; font-weight: 600; color: #fed7aa;">Mijozdan {{ (order.totalPrice + (order.deliveryFee || 0)) | number:'1.0-0' }} so'm qabul qiling.</span>
                       }
+                    </div>
 
-                      <!-- Control Actions Row: Marshrut va Telefon Call -->
-                      <div class="active-order-controls-row">
-                        <button 
-                          [class]="'control-action-btn route-btn ' + ((order.status === 'COURIER_ACCEPTED' || order.status === 'COURIER_AT_RESTAURANT') ? 'to-restaurant' : 'to-client')"
-                          (click)="openYandexRoute(order)">
-                          <span class="btn-icon">🗺️</span>
-                          <span class="btn-text">Marshrutni tuzish</span>
-                        </button>
-                        
-                        @if (order.status === 'COURIER_AT_CLIENT' || order.status === 'DELIVERING') {
-                          <a [href]="'tel:' + (order.user?.phone || '+998901234567')" class="control-action-btn call-client-btn">
-                            <span class="btn-icon">📞</span>
-                            <span class="btn-text">Mijozga qo'ng'iroq</span>
-                          </a>
-                        } @else {
-                          <a [href]="'tel:' + (order.restaurant?.owner?.phone || '+998901234567')" class="control-action-btn call-btn">
-                            <span class="btn-icon">📞</span>
-                            <span class="btn-text">Restoranga qo'ng'iroq</span>
-                          </a>
-                        }
-                      </div>
-
-                      @if (order.status === 'COURIER_ACCEPTED') {
-                        <button class="control-action-btn cancel-request-btn" (click)="requestOrderCancel(order.id)" style="margin-top: 8px; background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); width: 100%; padding: 8px; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.82rem;">
-                          <span class="btn-icon">✕</span>
-                          <span class="btn-text">Bekor qilishni so'rash</span>
-                        </button>
+                    <!-- Food Ready Status Alert Banner -->
+                    @if (order.status === 'COURIER_ACCEPTED' || order.status === 'COURIER_AT_RESTAURANT') {
+                      @if (order.isReady) {
+                        <div class="food-ready-alert ready-yes animate-in">
+                          <span class="alert-icon">✅</span>
+                          <span class="alert-text">Taom tayyor! Olip yo'lga chiqishingiz mumkin.</span>
+                        </div>
+                      } @else {
+                        <div class="food-ready-alert ready-no animate-in">
+                          <span class="alert-icon">🍳</span>
+                          <span class="alert-text">Taom tayyorlanmoqda. Restoran tasdiqlashini kuting...</span>
+                        </div>
                       }
+                    }
 
-                      <!-- Verification Mode if "Yo'lga chiqdim" is swiped -->
-                      @if (showOrderItemsVerificationId() === order.id) {
-                        <div class="order-verification-box">
-                          <div class="verification-title">📦 Buyurtma tarkibi:</div>
-                          <div class="verification-items-list">
-                            @for (item of order.items; track item.id) {
-                              <div class="verification-item">
-                                <span class="verification-item-qty">{{ item.quantity }}x</span>
-                                <span class="verification-item-name">{{ item.food?.name }}</span>
-                                <span class="verification-item-price">{{ (item.price * item.quantity) | number:'1.0-0' }} so'm</span>
-                              </div>
-                            }
-                          </div>
-                          
-                          <!-- Payment method reminder on completion screen -->
-                          <div class="delivery-completion-payment" style="margin-top: 14px; padding: 12px; border-radius: 8px; font-weight: 700; font-size: 0.9rem;"
-                               [style.background]="order.paymentMethod === 'CARD' ? 'rgba(16,185,129,0.15)' : 'rgba(249,115,22,0.15)'"
-                               [style.color]="order.paymentMethod === 'CARD' ? '#10b981' : '#f97316'">
-                            @if (order.paymentMethod === 'CARD') {
-                              🟢 To'lov oldindan Karta orqali qilingan. Mijozdan pul olmang!
-                            } @else {
-                              🟠 Naqd to'lov! Mijozdan {{ (order.totalPrice + (order.deliveryFee || 0)) | number:'1.0-0' }} so'm qabul qiling.
-                            }
-                          </div>
+                    <!-- Control Actions Row: Marshrut va Telefon Call -->
+                    <div class="active-order-controls-row">
+                      <button 
+                        [class]="'control-action-btn route-btn ' + ((order.status === 'COURIER_ACCEPTED' || order.status === 'COURIER_AT_RESTAURANT') ? 'to-restaurant' : 'to-client')"
+                        (click)="openYandexRoute(order)">
+                        <span class="btn-icon">🗺️</span>
+                        <span class="btn-text">Marshrutni tuzish</span>
+                      </button>
+                      
+                      @if (order.status === 'COURIER_AT_CLIENT' || order.status === 'DELIVERING') {
+                        <a [href]="'tel:' + (order.user?.phone || '+998901234567')" class="control-action-btn call-client-btn">
+                          <span class="btn-icon">📞</span>
+                          <span class="btn-text">Mijozga qo'ng'iroq</span>
+                        </a>
+                      } @else {
+                        <a [href]="'tel:' + (order.restaurant?.owner?.phone || '+998901234567')" class="control-action-btn call-btn">
+                          <span class="btn-icon">📞</span>
+                          <span class="btn-text">Restoranga qo'ng'iroq</span>
+                        </a>
+                      }
+                    </div>
+
+                    @if (order.status === 'COURIER_ACCEPTED') {
+                      <button class="control-action-btn cancel-request-btn" (click)="requestOrderCancel(order.id)" style="margin-top: 8px; background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); width: 100%; padding: 8px; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.82rem;">
+                        <span class="btn-icon">✕</span>
+                        <span class="btn-text">Bekor qilishni so'rash</span>
+                      </button>
+                    }
+
+                    <!-- Verification Mode if "Yo'lga chiqdim" is swiped -->
+                    @if (showOrderItemsVerificationId() === order.id) {
+                      <div class="order-verification-box">
+                        <div class="verification-title">📦 Buyurtma tarkibi:</div>
+                        <div class="verification-items-list">
+                          @for (item of order.items; track item.id) {
+                            <div class="verification-item">
+                              <span class="verification-item-qty">{{ item.quantity }}x</span>
+                              <span class="verification-item-name">{{ item.food?.name }}</span>
+                              <span class="verification-item-price">{{ (item.price * item.quantity) | number:'1.0-0' }} so'm</span>
+                            </div>
+                          }
                         </div>
                         
+                        <!-- Payment method reminder on completion screen -->
+                        <div class="delivery-completion-payment" style="margin-top: 14px; padding: 12px; border-radius: 8px; font-weight: 700; font-size: 0.9rem;"
+                             [style.background]="order.paymentMethod === 'CARD' ? 'rgba(16,185,129,0.15)' : 'rgba(249,115,22,0.15)'"
+                             [style.color]="order.paymentMethod === 'CARD' ? '#10b981' : '#f97316'">
+                          @if (order.paymentMethod === 'CARD') {
+                            🟢 To'lov oldindan Karta orqali qilingan. Mijozdan pul olmang!
+                          } @else {
+                            🟠 Naqd to'lov! Mijozdan {{ (order.totalPrice + (order.deliveryFee || 0)) | number:'1.0-0' }} so'm qabul qiling.
+                          }
+                        </div>
+                      </div>
+                      
+                      <div class="active-order-actions" style="margin-top: 10px;">
+                        <!-- "Hammasi to'g'ri" Swipe-to-Confirm element -->
+                        <div class="swipe-container verify-swipe" 
+                             (mousedown)="onSwipeStart($event, order, true)" 
+                             (touchstart)="onSwipeStart($event, order, true)">
+                          <div class="swipe-track">
+                            <div class="swipe-bg verify-swipe-bg" [style.width.%]="activeSwipingOrderId() === order.id ? swipePercent() : 0"></div>
+                            <div class="swipe-handle" [style.transform]="activeSwipingOrderId() === order.id ? 'translateX(' + swipeTranslateX() + 'px)' : 'translateX(0px)'">
+                              <span class="swipe-arrow" style="color: #10b981;">➔</span>
+                            </div>
+                            <span class="swipe-text verify-swipe-text" [style.color]="activeSwipingOrderId() === order.id && swipePercent() > 50 ? '#fff' : '#10b981'">
+                              {{ order.status === 'COURIER_AT_CLIENT' ? "Hammasi topshirildi (Suring ➔)" : "Hammasi to'g'ri (Suring ➔)" }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    } @else {
+                      <!-- Regular Swipe-to-Confirm action -->
+                      @if (order.status === 'CANCELLATION_REQUESTED') {
+                        <div class="cancellation-waiting-banner" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 14px; text-align: center; color: #f59e0b; font-weight: 700; margin-top: 10px; font-size: 0.85rem;">
+                          ⚠️ Bekor qilish so'rovi yuborildi. Admin javobi kutilmoqda...
+                        </div>
+                      } @else {
                         <div class="active-order-actions" style="margin-top: 10px;">
-                          <!-- "Hammasi to'g'ri" Swipe-to-Confirm element -->
-                          <div class="swipe-container verify-swipe" 
-                               (mousedown)="onSwipeStart($event, order, true)" 
-                               (touchstart)="onSwipeStart($event, order, true)">
+                          <div class="swipe-container" 
+                               (mousedown)="onSwipeStart($event, order, false)" 
+                               (touchstart)="onSwipeStart($event, order, false)">
                             <div class="swipe-track">
-                              <div class="swipe-bg verify-swipe-bg" [style.width.%]="activeSwipingOrderId() === order.id ? swipePercent() : 0"></div>
+                              <div class="swipe-bg" [style.width.%]="activeSwipingOrderId() === order.id ? swipePercent() : 0"></div>
                               <div class="swipe-handle" [style.transform]="activeSwipingOrderId() === order.id ? 'translateX(' + swipeTranslateX() + 'px)' : 'translateX(0px)'">
-                                <span class="swipe-arrow" style="color: #10b981;">➔</span>
+                                <span class="swipe-arrow">➔</span>
                               </div>
-                              <span class="swipe-text verify-swipe-text" [style.color]="activeSwipingOrderId() === order.id && swipePercent() > 50 ? '#fff' : '#10b981'">
-                                {{ order.status === 'COURIER_AT_CLIENT' ? "Hammasi topshirildi (Suring ➔)" : "Hammasi to'g'ri (Suring ➔)" }}
+                              <span class="swipe-text" [style.color]="activeSwipingOrderId() === order.id && swipePercent() > 50 ? '#fff' : '#4b6bfb'">
+                                {{ swipeText(order.status) }}
                               </span>
                             </div>
                           </div>
                         </div>
-                      } @else {
-                        <!-- Regular Swipe-to-Confirm action -->
-                        @if (order.status === 'CANCELLATION_REQUESTED') {
-                          <div class="cancellation-waiting-banner" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 14px; text-align: center; color: #f59e0b; font-weight: 700; margin-top: 10px; font-size: 0.85rem;">
-                            ⚠️ Bekor qilish so'rovi yuborildi. Admin javobi kutilmoqda...
-                          </div>
-                        } @else {
-                          <div class="active-order-actions" style="margin-top: 10px;">
-                            <div class="swipe-container" 
-                                 (mousedown)="onSwipeStart($event, order, false)" 
-                                 (touchstart)="onSwipeStart($event, order, false)">
-                              <div class="swipe-track">
-                                <div class="swipe-bg" [style.width.%]="activeSwipingOrderId() === order.id ? swipePercent() : 0"></div>
-                                <div class="swipe-handle" [style.transform]="activeSwipingOrderId() === order.id ? 'translateX(' + swipeTranslateX() + 'px)' : 'translateX(0px)'">
-                                  <span class="swipe-arrow">➔</span>
-                                </div>
-                                <span class="swipe-text" [style.color]="activeSwipingOrderId() === order.id && swipePercent() > 50 ? '#fff' : '#4b6bfb'">
-                                  {{ swipeText(order.status) }}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        }
                       }
+                    }
+                  </div>
+                }
+
+                <!-- Navbatdagi buyurtmalar (turli restoran, kutilmoqda) -->
+                @if (queuedDeliveries().length > 0) {
+                  @for (qOrder of queuedDeliveries(); track qOrder.id) {
+                    <div class="queued-order-card">
+                      <div class="queued-order-header">
+                        <span class="queued-order-num">#{{ qOrder.id }}</span>
+                        <span class="queued-order-tag">Buyurtma №{{ visibleDeliveries().length + $index + 1 }}</span>
+                      </div>
+                      <div class="queued-order-rest">🏪 {{ qOrder.restaurant?.name || "Noma'lum restoran" }}</div>
+                      <div class="queued-order-addr">📍 {{ qOrder.deliveryAddress }}</div>
+                      <div class="queued-order-meta">
+                        <span>💰 {{ qOrder.totalPrice | number:'1.0-0' }} so'm</span>
+                        <span>📦 {{ qOrder.items?.length || 0 }} ta pozitsiya</span>
+                      </div>
+                      <div class="queued-order-hint">⌛ Oldin №1 buyurtmani oling</div>
                     </div>
                   }
                 }
@@ -598,7 +697,13 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
           </span>
           <span class="nav-label">Jadval</span>
         </button>
-        <button class="nav-btn" [class.nav-active]="activeTab() === 'smena'" (click)="switchToSmena()" id="nav-smena">
+        <button class="nav-btn" [class.nav-active]="activeTab() === 'smena'" (click)="switchToSmena()" id="nav-smena" style="position: relative;">
+          <!-- Buyurtmalar Badge — Chap yuqori burchak -->
+          @if (totalActiveCount() > 0) {
+            <span class="orders-count-badge" (click)="$event.stopPropagation(); showOrdersDrawer.set(true)" id="orders-count-badge">
+              {{ totalActiveCount() }} buyurtma
+            </span>
+          }
           <span class="nav-icon-svg">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
@@ -3761,6 +3866,317 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
       color: #8b949e;
       cursor: not-allowed;
     }
+
+    /* ===== ORDERS COUNT BADGE (Chap yuqori burchak) ===== */
+    .orders-count-badge {
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #4b6bfb, #6366f1);
+      color: #fff;
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 20px;
+      white-space: nowrap;
+      cursor: pointer;
+      z-index: 20;
+      box-shadow: 0 2px 8px rgba(75, 107, 251, 0.5);
+      animation: badgePop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      border: 1.5px solid rgba(255,255,255,0.2);
+      letter-spacing: 0.02em;
+    }
+    @keyframes badgePop {
+      from { transform: translateX(-50%) scale(0.5); opacity: 0; }
+      to   { transform: translateX(-50%) scale(1); opacity: 1; }
+    }
+
+    /* ===== SAME RESTAURANT HEADER ===== */
+    .same-rest-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(135deg, rgba(75,107,251,0.15), rgba(99,102,241,0.1));
+      border: 1px solid rgba(75,107,251,0.35);
+      border-radius: 14px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+    }
+    .same-rest-name {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #fff;
+      font-family: 'Poppins', sans-serif;
+    }
+    .same-rest-badge {
+      background: #4b6bfb;
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 12px;
+      border: 1.5px solid rgba(255,255,255,0.2);
+    }
+    .order-sequence-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #4b6bfb;
+      background: rgba(75,107,251,0.12);
+      border: 1px solid rgba(75,107,251,0.25);
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin-left: 6px;
+    }
+
+    /* ===== QUEUED ORDER CARD ===== */
+    .queued-order-card {
+      background: rgba(55, 65, 81, 0.5);
+      border: 1.5px dashed #4b5563;
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      opacity: 0.85;
+    }
+    .queued-order-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .queued-order-num {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #9ca3af;
+      font-family: 'Poppins', sans-serif;
+    }
+    .queued-order-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #6b7280;
+      background: rgba(107,114,128,0.15);
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    .queued-order-rest {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #9ca3af;
+      margin-bottom: 4px;
+    }
+    .queued-order-addr {
+      font-size: 0.82rem;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+    .queued-order-meta {
+      display: flex;
+      gap: 12px;
+      font-size: 0.78rem;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+    .queued-order-hint {
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: #f59e0b;
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.2);
+      border-radius: 8px;
+      padding: 6px 10px;
+      text-align: center;
+    }
+
+    /* ===== ORDERS DRAWER ===== */
+    .orders-drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(6px);
+      z-index: 2000;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      animation: fadeInOverlay 0.22s ease;
+    }
+    @keyframes fadeInOverlay {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .orders-drawer {
+      width: 100%;
+      max-width: 480px;
+      max-height: 80vh;
+      background: #1f2937;
+      border-radius: 24px 24px 0 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4);
+      border: 1px solid #374151;
+      border-bottom: none;
+      animation: slideUpDrawer 0.3s cubic-bezier(0.32, 0.94, 0.6, 1);
+    }
+    @keyframes slideUpDrawer {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+    .orders-drawer-handle {
+      width: 36px;
+      height: 4px;
+      background: #4b5563;
+      border-radius: 2px;
+      margin: 10px auto 0;
+      flex-shrink: 0;
+    }
+    .orders-drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px 10px;
+      border-bottom: 1px solid #374151;
+      flex-shrink: 0;
+    }
+    .orders-drawer-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #fff;
+      font-family: 'Poppins', sans-serif;
+    }
+    .orders-drawer-close {
+      background: #374151;
+      border: 1px solid #4b5563;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #9ca3af;
+      cursor: pointer;
+    }
+    .orders-drawer-list {
+      overflow-y: auto;
+      padding: 14px 16px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .orders-drawer-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      color: #6b7280;
+      text-align: center;
+    }
+    .orders-drawer-empty p {
+      margin-top: 12px;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .drawer-order-card {
+      background: #111827;
+      border-radius: 16px;
+      padding: 14px 16px;
+      border: 1px solid #374151;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .drawer-order-card.drawer-order-queued {
+      opacity: 0.7;
+      border-style: dashed;
+      border-color: #4b5563;
+    }
+    .drawer-order-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .drawer-order-num {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #fff;
+      font-family: 'Poppins', sans-serif;
+    }
+    .drawer-order-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(75,107,251,0.15);
+      color: #818cf8;
+      border: 1px solid rgba(75,107,251,0.25);
+    }
+    .drawer-queued-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(245,158,11,0.12);
+      color: #f59e0b;
+      border: 1px solid rgba(245,158,11,0.25);
+    }
+    .drawer-order-rest {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #d1d5db;
+    }
+    .drawer-order-addr {
+      font-size: 0.8rem;
+      color: #9ca3af;
+    }
+    .drawer-order-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: #6b7280;
+      padding-top: 4px;
+      border-top: 1px solid #374151;
+    }
+    .drawer-meta-price { color: #10b981; font-weight: 600; }
+    .drawer-meta-time  { color: #9ca3af; }
+    .drawer-order-status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 2px;
+    }
+    .drawer-visible-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #10b981;
+      background: rgba(16,185,129,0.1);
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(16,185,129,0.2);
+    }
+    .drawer-payment-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    .drawer-payment-tag.card {
+      color: #10b981;
+      background: rgba(16,185,129,0.08);
+      border: 1px solid rgba(16,185,129,0.2);
+    }
+    .drawer-payment-tag.cash {
+      color: #f97316;
+      background: rgba(249,115,22,0.08);
+      border: 1px solid rgba(249,115,22,0.2);
+    }
+    .drawer-queued-info {
+      font-size: 0.72rem;
+      color: #f59e0b;
+      font-weight: 600;
+    }
   `]
 })
 export class CourierDashboardComponent implements OnInit, OnDestroy {
@@ -3801,6 +4217,13 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
   activeRequests    = signal<Order[]>([]);
   currentDeliveries = signal<Order[]>([]);
   deliveredCount    = signal<number>(0);
+
+  // Queue logikasi signallari
+  visibleDeliveries  = signal<Order[]>([]);  // Ekranda ko'rinadigan buyurtmalar (max 2)
+  queuedDeliveries   = signal<Order[]>([]);  // Navbatdagi (yashirin) buyurtmalar
+  sameRestaurant     = signal<boolean>(false); // Ikkala buyurtma bir restorandan ekanmi?
+  totalActiveCount   = signal<number>(0);     // Jami faol buyurtmalar
+  showOrdersDrawer   = signal<boolean>(false); // Badge bosilganda ochiluvchi Drawer
 
   activeSlot     = signal<Slot | null>(null);
   myBookedSlots  = signal<Slot[]>([]);
@@ -4604,8 +5027,49 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
         if (this.activeTab() === 'smena') {
           setTimeout(() => this.initMainMap(), 200);
         }
+        // Queue logikasini yangilash
+        this.loadActiveOrdersQueue();
       },
       error: () => { if (showLoader) this.loading.set(false); }
+    });
+  }
+
+  loadActiveOrdersQueue(): void {
+    this.orderService.getMyActiveOrders().subscribe({
+      next: (data) => {
+        this.visibleDeliveries.set(data.visibleOrders || []);
+        this.queuedDeliveries.set(data.queuedOrders || []);
+        this.sameRestaurant.set(data.sameRestaurant || false);
+        this.totalActiveCount.set(data.totalActive || 0);
+      },
+      error: () => {
+        // Fallback: queue logikasini frontendda bajaramiz
+        const active = this.currentDeliveries().filter(o => o.status !== 'DELIVERED');
+        const sorted = [...active].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        const visible: Order[] = [];
+        const queued: Order[] = [];
+        for (const order of sorted) {
+          if (visible.length < 2) {
+            if (visible.length === 0) {
+              visible.push(order);
+            } else {
+              const firstRestId = visible[0].restaurant?.id;
+              const curRestId = order.restaurant?.id;
+              if (firstRestId && firstRestId === curRestId) {
+                visible.push(order);
+              } else {
+                queued.push(order);
+              }
+            }
+          } else {
+            queued.push(order);
+          }
+        }
+        this.visibleDeliveries.set(visible);
+        this.queuedDeliveries.set(queued);
+        this.sameRestaurant.set(visible.length === 2 && visible[0].restaurant?.id === visible[1].restaurant?.id);
+        this.totalActiveCount.set(active.length);
+      }
     });
   }
 
