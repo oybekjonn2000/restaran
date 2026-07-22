@@ -5593,6 +5593,17 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
   }
 
   deliverOrder(id: number): void {
+    // FIFO ketma-ketlik tekshiruvi: 1-buyurtma topshirilmaguncha 2-buyurtma topshirilmaydi
+    const active = this.currentDeliveries().filter(o => o.status !== 'DELIVERED');
+    const targetOrder = active.find(o => o.id === id);
+    if (targetOrder) {
+      const olderOrder = active.find(o => o.id !== id && new Date(o.createdAt).getTime() < new Date(targetOrder.createdAt).getTime());
+      if (olderOrder) {
+        this.snack.open(`⚠️ Avval 1-buyurtmani (#${olderOrder.id}) topshirishingiz kerak!`, '', { duration: 4000 });
+        return;
+      }
+    }
+
     this.actionLoading.set(id);
     this.orderService.deliverOrder(id).subscribe({
       next: () => { this.actionLoading.set(null); this.snack.open('🎉 Topshirildi!', '', { duration: 3500 }); this.loadAll(false); },

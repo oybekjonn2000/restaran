@@ -225,8 +225,22 @@ public class OrderService {
                 autoAssignCourier(order);
             }
         } else if (status == OrderStatus.DELIVERED) {
-            // Calculate kuryer earnings
+            // FIFO ketma-ketlik tekshiruvi: Birinchi tushgan buyurtma avval topshirilishi shart
             if (order.getCourier() != null) {
+                List<OrderStatus> activeStatuses = List.of(
+                    OrderStatus.COURIER_ACCEPTED,
+                    OrderStatus.COURIER_AT_RESTAURANT,
+                    OrderStatus.DELIVERING,
+                    OrderStatus.COURIER_AT_CLIENT
+                );
+                List<Order> courierActive = orderRepository.findByCourierAndStatusIn(order.getCourier(), activeStatuses);
+                java.util.Optional<Order> olderOrder = courierActive.stream()
+                    .filter(o -> !o.getId().equals(order.getId()) && o.getCreatedAt() != null && order.getCreatedAt() != null && o.getCreatedAt().isBefore(order.getCreatedAt()))
+                    .findFirst();
+                if (olderOrder.isPresent()) {
+                    throw new RuntimeException("Avval 1-buyurtmani (#" + olderOrder.get().getId() + ") topshirishingiz kerak!");
+                }
+
                 // Base fee
                 order.setBaseFee(payBaseFee);
 
