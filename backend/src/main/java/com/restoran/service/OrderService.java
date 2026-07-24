@@ -719,8 +719,8 @@ public class OrderService {
             return order;
         }
 
-        // Set start coordinates if null (e.g. if lat/lng were missing on accept call)
-        if (order.getCourierStartLatitude() == null || order.getCourierStartLongitude() == null) {
+        // Set start coordinates if null or 0.0 (e.g. if lat/lng were missing on accept call)
+        if (order.getCourierStartLatitude() == null || order.getCourierStartLongitude() == null || order.getCourierStartLatitude() == 0.0 || order.getCourierStartLongitude() == 0.0) {
             order.setCourierStartLatitude(lat);
             order.setCourierStartLongitude(lng);
             calculateAndSetOrderDistancesAndEarnings(order);

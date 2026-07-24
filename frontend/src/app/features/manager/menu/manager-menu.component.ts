@@ -131,8 +131,8 @@ import { BodyPortalDirective } from '../../../core/directives/body-portal.direct
 
       <!-- Food Form Modal -->
       @if (showForm()) {
-        <div class="modal-overlay" appBodyPortal (click)="closeForm()">
-          <div class="modal-card animate-in" (click)="$event.stopPropagation()">
+        <div class="modal-overlay" appBodyPortal>
+          <div class="modal-card animate-in">
             <div class="modal-header">
               <h2>{{ editId() ? '✏️ Taomni tahrirlash' : '+ Yangi taom' }}</h2>
               <button class="close-btn" (click)="closeForm()">✕</button>
@@ -188,7 +188,7 @@ import { BodyPortalDirective } from '../../../core/directives/body-portal.direct
                   <button type="button" class="btn btn-outline" (click)="closeForm()">Bekor qilish</button>
                   <button type="submit" class="btn btn-primary" [disabled]="saving() || foodForm.invalid">
                     @if (saving()) { <mat-spinner diameter="16" color="accent"></mat-spinner> }
-                    {{ editId() ? 'Saqlash' : 'Qo\'shish' }}
+                    {{ editId() ? 'Saqlash' : 'Qoshish' }}
                   </button>
                 </div>
               </form>

@@ -5518,41 +5518,13 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
 
   acceptOrder(id: number): void {
     this.actionLoading.set(id);
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          this.orderService.acceptOrder(id, lat, lng).subscribe({
-            next: () => {
-              this.actionLoading.set(null);
-              this.snack.open('🏍️ Buyurtma qabul qilindi!', '', { duration: 3000 });
-              this.loadAll(false);
-            },
-            error: (err) => {
-              this.actionLoading.set(null);
-              this.snack.open(`❌ ${err.error?.message || 'Qabul qilib bo\'lmadi'}`, '', { duration: 3000 });
-            }
-          });
-        },
-        (err) => {
-          console.error('Accept order geolocation error:', err);
-          this.orderService.acceptOrder(id).subscribe({
-            next: () => {
-              this.actionLoading.set(null);
-              this.snack.open('🏍️ Buyurtma qabul qilindi!', '', { duration: 3000 });
-              this.loadAll(false);
-            },
-            error: (err) => {
-              this.actionLoading.set(null);
-              this.snack.open(`❌ ${err.error?.message || 'Qabul qilib bo\'lmadi'}`, '', { duration: 3000 });
-            }
-          });
-        },
-        { enableHighAccuracy: true, timeout: 3000 }
-      );
-    } else {
-      this.orderService.acceptOrder(id).subscribe({
+    const fallbackLat = (this.courierStartCoords && this.courierStartCoords[0]) ? this.courierStartCoords[0] : undefined;
+    const fallbackLng = (this.courierStartCoords && this.courierStartCoords[1]) ? this.courierStartCoords[1] : undefined;
+
+    const doAccept = (lat?: number, lng?: number) => {
+      const finalLat = lat || fallbackLat;
+      const finalLng = lng || fallbackLng;
+      this.orderService.acceptOrder(id, finalLat, finalLng).subscribe({
         next: () => {
           this.actionLoading.set(null);
           this.snack.open('🏍️ Buyurtma qabul qilindi!', '', { duration: 3000 });
@@ -5563,6 +5535,19 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
           this.snack.open(`❌ ${err.error?.message || 'Qabul qilib bo\'lmadi'}`, '', { duration: 3000 });
         }
       });
+    };
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => doAccept(pos.coords.latitude, pos.coords.longitude),
+        (err) => {
+          console.warn('Accept order geolocation timeout/error, using fallback coords:', err);
+          doAccept();
+        },
+        { enableHighAccuracy: true, timeout: 6000 }
+      );
+    } else {
+      doAccept();
     }
   }
 

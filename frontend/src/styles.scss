@@ -374,25 +374,30 @@ a { color: inherit; text-decoration: none; }
  * be position:fixed. We also reset any wrapper alignment overrides.
  */
 
-/* Desktop: Bottom Right | Mobile: Bottom Center */
-.cdk-global-overlay-wrapper {
-  display: flex;
-  position: absolute;
-  z-index: 1000;
-  pointer-events: none;
+/* Desktop: Top Right | Mobile: Top Center */
+.cdk-overlay-container {
+  z-index: 999999 !important;
 }
 
-/* Snackbar wrapper positioning */
-.cdk-global-overlay-wrapper:has(.snack-success .mdc-snackbar__surface),
-.cdk-global-overlay-wrapper:has(.snack-error .mdc-snackbar__surface),
-.cdk-global-overlay-wrapper:has(.mat-mdc-snack-bar-container) {
-  align-items: flex-end !important;
+.cdk-global-overlay-wrapper:has(.mat-mdc-snack-bar-container),
+.cdk-global-overlay-wrapper:has(.mdc-snackbar__surface) {
+  position: fixed !important;
+  top: 24px !important;
+  right: 24px !important;
+  left: auto !important;
+  bottom: auto !important;
+  width: auto !important;
+  height: auto !important;
   justify-content: flex-end !important;
-  padding: 0 24px 24px 0 !important;
+  align-items: flex-start !important;
+  pointer-events: none !important;
+  z-index: 999999 !important;
 
   @media (max-width: 768px) {
+    top: 16px !important;
+    right: 16px !important;
+    left: 16px !important;
     justify-content: center !important;
-    padding: 0 16px 16px 16px !important;
   }
 }
 
@@ -498,42 +503,99 @@ a { color: inherit; text-decoration: none; }
 
 
 
-/* ===== Snackbar / Toast Styles ===== */
-.snack-success .mdc-snackbar__surface {
-  background: #10b981 !important;
-  color: #fff !important;
+/* ===== Ultra-Modern Angular Material Snackbar / Toast System ===== */
+.mat-mdc-snack-bar-container {
+  pointer-events: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.mat-mdc-snack-bar-container .mdc-snackbar__surface {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98)) !important;
+  color: #ffffff !important;
   border-radius: 14px !important;
-  font-weight: 600;
-  font-size: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-left: 5px solid #3b82f6 !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  padding: 10px 16px !important;
   min-width: 320px !important;
-  box-shadow: 0 8px 32px rgba(16, 185, 129, 0.45) !important;
-  animation: toastSlideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) both !important;
+  max-width: 500px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  animation: toastSlideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1) both !important;
 }
 
-.snack-success .mdc-button__label,
-.snack-success .mat-mdc-button .mdc-button__label {
-  color: rgba(255, 255, 255, 0.85) !important;
+/* Label / Message Text */
+.mat-mdc-snack-bar-container .mdc-snackbar__label,
+.mat-mdc-snack-bar-container .mat-mdc-snack-bar-label {
+  color: #ffffff !important;
+  font-size: 0.93rem !important;
+  font-weight: 600 !important;
+  line-height: 1.4 !important;
+  padding: 4px 0 !important;
+  font-family: inherit !important;
+  flex: 1 1 auto !important;
 }
 
-.snack-error .mdc-snackbar__surface {
-  background: #ef4444 !important;
-  color: #fff !important;
-  border-radius: 14px !important;
-  font-weight: 600;
-  font-size: 0.9rem;
-  min-width: 320px !important;
-  box-shadow: 0 8px 32px rgba(239, 68, 68, 0.45) !important;
-  animation: toastSlideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) both !important;
+/* Action Button ("Yopish") */
+.mat-mdc-snack-bar-container .mdc-snackbar__action,
+.mat-mdc-snack-bar-container .mat-mdc-snack-bar-action {
+  margin-left: 12px !important;
+  flex-shrink: 0 !important;
 }
 
-.snack-error .mdc-button__label,
-.snack-error .mat-mdc-button .mdc-button__label {
-  color: rgba(255, 255, 255, 0.85) !important;
+.mat-mdc-snack-bar-container .mdc-snackbar__action .mdc-button,
+.mat-mdc-snack-bar-container .mat-mdc-snack-bar-action .mat-mdc-button,
+.mat-mdc-snack-bar-container .mdc-snackbar__action button,
+.mat-mdc-snack-bar-container button {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 8px !important;
+  color: #ffffff !important;
+  padding: 6px 14px !important;
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.3px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  min-width: unset !important;
+  height: auto !important;
+  line-height: 1.2 !important;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+    transform: translateY(-1px) !important;
+  }
+
+  .mdc-button__label {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+  }
+}
+
+/* Success Variant */
+.mat-mdc-snack-bar-container.snack-success .mdc-snackbar__surface,
+.mat-mdc-snack-bar-container.success-snack .mdc-snackbar__surface {
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.98), rgba(16, 185, 129, 0.95)) !important;
+  border-left: 5px solid #34d399 !important;
+  box-shadow: 0 16px 36px rgba(16, 185, 129, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Error Variant */
+.mat-mdc-snack-bar-container.snack-error .mdc-snackbar__surface,
+.mat-mdc-snack-bar-container.error-snack .mdc-snackbar__surface {
+  background: linear-gradient(135deg, rgba(153, 27, 27, 0.98), rgba(239, 68, 68, 0.95)) !important;
+  border-left: 5px solid #f87171 !important;
+  box-shadow: 0 16px 36px rgba(239, 68, 68, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3) !important;
 }
 
 @media (max-width: 768px) {
-  .snack-success .mdc-snackbar__surface,
-  .snack-error .mdc-snackbar__surface {
+  .mat-mdc-snack-bar-container .mdc-snackbar__surface {
     min-width: calc(100vw - 32px) !important;
     max-width: calc(100vw - 32px) !important;
     border-radius: 12px !important;
