@@ -123,6 +123,10 @@ public class Order {
     @Builder.Default
     private Double pickupDistanceKm = 0.0;
 
+    @Column(name = "billable_pickup_distance_km")
+    @Builder.Default
+    private Double billablePickupDistanceKm = 0.0;
+
     @Column(name = "delivery_distance_km")
     @Builder.Default
     private Double deliveryDistanceKm = 0.0;

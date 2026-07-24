@@ -227,7 +227,7 @@ import { AuthService } from '../../../core/services/auth.service';
                 <button
                   class="btn btn-primary"
                   (click)="placeOrder()"
-                  [disabled]="ordering() || !deliveryAddress || !paymentMethod || cart.totalPrice() < minOrderAmount"
+                  [disabled]="ordering() || !deliveryAddress || !paymentMethod || cart.totalPrice() < minOrderAmount || isOutsideDeliveryRadius()"
                   id="place-order-btn">
                   @if (ordering()) {
                     <mat-spinner diameter="18" color="accent"></mat-spinner>
@@ -235,6 +235,11 @@ import { AuthService } from '../../../core/services/auth.service';
                   🎯 Buyurtma berish
                 </button>
               </div>
+              @if (isOutsideDeliveryRadius()) {
+                <div class="delivery-radius-warning" style="color: #ef4444; font-size: 0.88rem; margin-top: 12px; font-weight: 600; text-align: center; border: 1.5px solid rgba(239, 68, 68, 0.4); padding: 12px 14px; border-radius: 10px; background: rgba(239, 68, 68, 0.08); line-height: 1.5; backdrop-filter: blur(8px);">
+                  ❌ Tanlangan manzil restoran xizmat ko'rsatish hududidan tashqarida. Ushbu manzilga yetkazib bera olmaymiz.
+                </div>
+              }
               @if (!deliveryAddress) {
                 <p class="address-hint">⚠️ Iltimos, yetkazib berish manzilini kiriting yoki xaritadan tanlang!</p>
               }
@@ -921,6 +926,10 @@ export class CartComponent implements OnInit, AfterViewInit {
   deliveryFee = 10000;
   courierActive = true;
 
+  isOutsideDeliveryRadius = signal<boolean>(false);
+  restaurantDeliveryRadius = signal<number>(20);
+  straightDistance = signal<number>(0);
+
   suggestions = signal<any[]>([]);
   private suggestTimeout: any;
 
@@ -1099,6 +1108,32 @@ export class CartComponent implements OnInit, AfterViewInit {
     );
 
     this.map.geoObjects.add(this.restaurantPlacemark);
+
+    // Draw Delivery Radius Circle (Default 20 km)
+    let radiusKm = 20;
+    const items = this.cart.items();
+    if (items.length > 0 && items[0].food.restaurant?.deliveryRadiusKm) {
+      radiusKm = items[0].food.restaurant.deliveryRadiusKm;
+    }
+
+    try {
+      const circle = new ymaps.Circle(
+        [coords, radiusKm * 1000],
+        {},
+        {
+          fillColor: 'rgba(59, 130, 246, 0.08)',
+          strokeColor: '#3b82f6',
+          strokeOpacity: 0.5,
+          strokeWidth: 1.5,
+          interactive: false,
+          hasBalloon: false,
+          hasHint: false
+        }
+      );
+      this.map.geoObjects.add(circle);
+    } catch (e) {
+      console.warn('Could not add circle overlay to map:', e);
+    }
   }
 
   setMarker(coords: number[]): void {
@@ -1256,7 +1291,47 @@ export class CartComponent implements OnInit, AfterViewInit {
     return R * c;
   }
 
+  checkDeliveryRadius(targetLat: number, targetLng: number): void {
+    let restLat = 38.866127;
+    let restLng = 65.816309;
+    let radius = 20;
+
+    const items = this.cart.items();
+    if (items.length > 0 && items[0].food.restaurant) {
+      const rest = items[0].food.restaurant;
+      if (rest.latitude && rest.longitude) {
+        restLat = rest.latitude;
+        restLng = rest.longitude;
+      }
+      if (rest.deliveryRadiusKm && rest.deliveryRadiusKm > 0) {
+        radius = rest.deliveryRadiusKm;
+      }
+    }
+
+    const straightDist = this.calculateHaversineDistance(restLat, restLng, targetLat, targetLng);
+    const roundedDist = Math.round(straightDist * 10) / 10;
+
+    this.ngZone.run(() => {
+      this.straightDistance.set(roundedDist);
+      this.restaurantDeliveryRadius.set(radius);
+      this.isOutsideDeliveryRadius.set(roundedDist > radius);
+    });
+  }
+
+  calculateZoneFee(distKm: number): number {
+    if (distKm <= 10.0) {
+      return 15000;
+    } else if (distKm <= 15.0) {
+      return 20000;
+    } else if (distKm <= 20.0) {
+      return 25000;
+    }
+    return 25000;
+  }
+
   calculateYandexDistance(coords: number[]): void {
+    this.checkDeliveryRadius(coords[0], coords[1]);
+
     const ymaps = (window as any).ymaps;
     let restLat = 38.866127;
     let restLng = 65.816309;
@@ -1277,13 +1352,9 @@ export class CartComponent implements OnInit, AfterViewInit {
     }
 
     ymaps.route([restCoords, coords]).then((route: any) => {
-      const distanceInMeters = route.getLength();
-      const distanceInKm = distanceInMeters / 1000;
-      
       this.ngZone.run(() => {
-        this.distance = Math.round(distanceInKm * 10) / 10;
-        this.deliveryFee = 10000 + (this.distance * 1800);
-        this.deliveryFee = Math.round(this.deliveryFee / 100) * 100;
+        this.distance = this.straightDistance();
+        this.deliveryFee = this.calculateZoneFee(this.distance);
       });
     }, (err: any) => {
       console.warn('Error calculating Yandex route distance, fallback to Haversine', err);
@@ -1292,22 +1363,18 @@ export class CartComponent implements OnInit, AfterViewInit {
   }
 
   private fallbackToHaversine(restLat: number, restLng: number, targetLat: number, targetLng: number): void {
-    const straightDistance = this.calculateHaversineDistance(restLat, restLng, targetLat, targetLng);
-    const estimatedDrivingDistance = straightDistance * 1.35;
-    
+    this.checkDeliveryRadius(targetLat, targetLng);
     this.ngZone.run(() => {
-      this.distance = Math.round(estimatedDrivingDistance * 10) / 10;
-      if (this.distance < 0.1) {
-        this.distance = 0;
-        this.deliveryFee = 10000;
-      } else {
-        this.deliveryFee = 10000 + (this.distance * 1800);
-        this.deliveryFee = Math.round(this.deliveryFee / 100) * 100;
-      }
+      this.distance = this.straightDistance();
+      this.deliveryFee = this.calculateZoneFee(this.distance);
     });
   }
 
   placeOrder(): void {
+    if (this.isOutsideDeliveryRadius()) {
+      this.snack.open('❌ Tanlangan manzil restoran xizmat ko\'rsatish hududidan tashqarida!', 'Yopish', { duration: 4000 });
+      return;
+    }
     if (!this.deliveryAddress || this.cart.isEmpty() || !this.paymentMethod) return;
 
     if (!this.auth.isLoggedIn()) {

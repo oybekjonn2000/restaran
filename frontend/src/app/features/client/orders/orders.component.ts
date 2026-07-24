@@ -81,7 +81,16 @@ import { AuthService } from '../../../core/services/auth.service';
                       <span class="meta-item">📍 {{ order.deliveryAddress }}</span>
                     }
                     @if (order.courier) {
-                      <span class="meta-item">🏍️ Kuryer: {{ order.courier.name }}</span>
+                      <span class="meta-item" style="display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <span>🏍️ Kuryer: <strong>{{ order.courier.name }}</strong></span>
+                        @if (order.status !== 'DELIVERED' && order.status !== 'CANCELED') {
+                          <a [href]="'tel:' + (order.courier.phone || '+998901234567')" 
+                             class="call-courier-btn" 
+                             style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: #10b981; color: #ffffff; border: none; border-radius: 8px; font-weight: 700; text-decoration: none; font-size: 0.82rem; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);">
+                            📞 Kuryerga qo'ng'iroq
+                          </a>
+                        }
+                      </span>
                     }
                     <span class="meta-item">
                       To'lov turi: 
@@ -93,10 +102,8 @@ import { AuthService } from '../../../core/services/auth.service';
                     </span>
                   </div>
                   <div class="order-total" style="font-size: 0.85rem;">
-                    @if (order.deliveryFee || order.totalEarning) {
-                      <span>Taomlar: {{ order.totalPrice | number:'1.0-0' }} so'm | Yetkazish: {{ (order.totalEarning || order.deliveryFee || 0) | number:'1.0-0' }} so'm ({{ (order.deliveryDistanceKm || order.distance || 0) | number:'1.1-2' }} km) | </span>
-                    }
-                    Jami: <strong>{{ (order.totalPrice + (order.totalEarning || order.deliveryFee || 0)) | number:'1.0-0' }} so'm</strong>
+                    <span>Taomlar: {{ order.totalPrice | number:'1.0-0' }} so'm | Yetkazish: {{ getZoneDeliveryFee(order) | number:'1.0-0' }} so'm | </span>
+                    Jami: <strong>{{ (order.totalPrice + getZoneDeliveryFee(order)) | number:'1.0-0' }} so'm</strong>
                   </div>
                 </div>
 
@@ -363,11 +370,11 @@ export class ClientOrdersComponent implements OnInit, OnDestroy {
   private orderMaps = new Map<number, any>();
   private courierPlacemarks = new Map<number, any>();
   private trackingSockets = new Map<number, WebSocket>();
-  
+
   private auth = inject(AuthService);
   private ngZone = inject(NgZone);
 
-  constructor(private orderService: OrderService) {}
+  constructor(private orderService: OrderService) { }
 
   ngOnInit(): void {
     this.load(true);
@@ -406,7 +413,7 @@ export class ClientOrdersComponent implements OnInit, OnDestroy {
     if (!ymaps) return;
 
     const activeOrders = this.orders().filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELED');
-    
+
     activeOrders.forEach(order => {
       const containerId = 'tracking-map-' + order.id;
       const el = document.getElementById(containerId);
@@ -597,23 +604,37 @@ export class ClientOrdersComponent implements OnInit, OnDestroy {
 
   animateMarker(placemark: any, startCoords: number[], endCoords: number[], duration = 1200): void {
     const startTime = performance.now();
-    
+
     const update = (time: number) => {
       const elapsed = time - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      
+
       // Interpolate coordinates
       const lat = startCoords[0] + (endCoords[0] - startCoords[0]) * progress;
       const lng = startCoords[1] + (endCoords[1] - startCoords[1]) * progress;
-      
+
       placemark.geometry.setCoordinates([lat, lng]);
-      
+
       if (progress < 1) {
         requestAnimationFrame(update);
       }
     };
-    
+
     requestAnimationFrame(update);
+  }
+
+  getZoneDeliveryFee(order: Order): number {
+    if (!order) return 15000;
+    const dist = order.deliveryDistanceKm || order.distance || 0;
+    if (dist > 0) {
+      if (dist <= 10.0) return 15000;
+      if (dist <= 15.0) return 20000;
+      if (dist <= 20.0) return 25000;
+    }
+    if (order.deliveryFee && order.deliveryFee <= 25000 && order.deliveryFee >= 15000) {
+      return order.deliveryFee;
+    }
+    return 15000;
   }
 
   statusLabel(status: OrderStatus): string {
@@ -622,18 +643,18 @@ export class ClientOrdersComponent implements OnInit, OnDestroy {
 
   progressWidth(status: OrderStatus): string {
     const map: Record<OrderStatus, string> = {
-      PENDING:               '10%',
-      PREPARING:             '30%',
-      COURIER_ACCEPTED:      '50%',
+      PENDING: '10%',
+      PREPARING: '30%',
+      COURIER_ACCEPTED: '50%',
       COURIER_AT_RESTAURANT: '70%',
-      DELIVERING:            '85%',
-      COURIER_AT_CLIENT:     '95%',
-      DELIVERED:             '100%',
-      CANCELED:              '0%',
+      DELIVERING: '85%',
+      COURIER_AT_CLIENT: '95%',
+      DELIVERED: '100%',
+      CANCELED: '0%',
       CANCELLATION_REQUESTED: '50%',
       TRANSFERRED_TO_YANDEX: '30%',
       YANDEX_COURIER_CALLED: '40%',
-      READY:                 '60%',
+      READY: '60%',
       YANDEX_COURIER_PICKED_UP: '80%',
     };
     return map[status] ?? '0%';

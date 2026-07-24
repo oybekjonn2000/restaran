@@ -69,6 +69,12 @@ import { API_BASE } from '../../../core/config';
                 </div>
               </div>
 
+              <div class="form-group">
+                <label class="form-label">Xizmat Ko'rsatish Radiusi (km) *</label>
+                <input formControlName="deliveryRadiusKm" type="number" step="0.5" class="form-control" placeholder="20" id="profile-radius">
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 4px;">Mijozlar faqat ushbu radius ichidan buyurtma bera olishadi (defolt: 20 km)</span>
+              </div>
+
               <button type="submit" class="btn btn-primary" [disabled]="saving() || profileForm.invalid" style="width: 100%; margin-top: 10px;">
                 @if (saving()) { <mat-spinner diameter="16" color="accent"></mat-spinner> }
                 Saqlash
@@ -259,7 +265,8 @@ export class ManagerProfileComponent implements OnInit {
       imageUrl: [data.imageUrl || ''],
       address: [data.address || '', Validators.required],
       latitude: [data.latitude || 38.866127, Validators.required],
-      longitude: [data.longitude || 65.816309, Validators.required]
+      longitude: [data.longitude || 65.816309, Validators.required],
+      deliveryRadiusKm: [data.deliveryRadiusKm || 20, [Validators.required, Validators.min(0.5)]]
     });
   }
 

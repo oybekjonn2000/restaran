@@ -266,6 +266,7 @@ public class AdminController {
             .address(request.getAddress())
             .latitude(request.getLatitude())
             .longitude(request.getLongitude())
+            .deliveryRadiusKm(request.getDeliveryRadiusKm() != null && request.getDeliveryRadiusKm() > 0 ? request.getDeliveryRadiusKm() : 20.0)
             .owner(owner)
             .build();
 
@@ -291,6 +292,9 @@ public class AdminController {
         restaurant.setAddress(request.getAddress());
         restaurant.setLatitude(request.getLatitude());
         restaurant.setLongitude(request.getLongitude());
+        if (request.getDeliveryRadiusKm() != null && request.getDeliveryRadiusKm() > 0) {
+            restaurant.setDeliveryRadiusKm(request.getDeliveryRadiusKm());
+        }
         restaurant.setOwner(owner);
 
         return ResponseEntity.ok(restaurantRepository.save(restaurant));
@@ -489,6 +493,7 @@ public class AdminController {
         private String address;
         private Double latitude;
         private Double longitude;
+        private Double deliveryRadiusKm;
         private Long ownerId;
     }
 

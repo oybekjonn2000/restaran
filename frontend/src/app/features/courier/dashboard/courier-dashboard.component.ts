@@ -333,12 +333,7 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
                       }
                     </div>
 
-                    @if (order.status === 'COURIER_ACCEPTED') {
-                      <button class="control-action-btn cancel-request-btn" (click)="requestOrderCancel(order.id)" style="margin-top: 8px; background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); width: 100%; padding: 8px; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.82rem;">
-                        <span class="btn-icon">✕</span>
-                        <span class="btn-text">Bekor qilishni so'rash</span>
-                      </button>
-                    }
+
 
                     <!-- Verification Mode if "Yo'lga chiqdim" is swiped -->
                     @if (showOrderItemsVerificationId() === order.id) {

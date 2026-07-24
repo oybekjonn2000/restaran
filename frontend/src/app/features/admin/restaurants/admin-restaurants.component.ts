@@ -43,6 +43,7 @@ import { BodyPortalDirective } from '../../../core/directives/body-portal.direct
                 </div>
                 <p class="rest-meta">📍 {{ r.address || 'Manzil kiritilmagan' }}</p>
                 <p class="rest-meta">👤 Menejer: <strong>{{ r.owner?.name || 'Biriktirilmagan' }}</strong> ({{ r.owner?.email || '' }})</p>
+                <p class="rest-meta">📏 Delivery Radius: <strong>{{ r.deliveryRadiusKm || 20 }} km</strong></p>
                 <p class="rest-meta">🌐 Coords: {{ r.latitude || 38.866 }}, {{ r.longitude || 65.816 }}</p>
                 
                 <!-- Status Toggle Switch -->
@@ -124,6 +125,10 @@ import { BodyPortalDirective } from '../../../core/directives/body-portal.direct
                   <div class="form-group">
                     <label class="form-label">Longitude *</label>
                     <input formControlName="longitude" type="number" step="0.000001" class="form-control" readonly id="rest-form-lng">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Xizmat Radiusi (km) *</label>
+                    <input formControlName="deliveryRadiusKm" type="number" step="0.5" class="form-control" placeholder="20" id="rest-form-radius">
                   </div>
                 </div>
 
@@ -353,7 +358,8 @@ export class AdminRestaurantsComponent implements OnInit {
       imageUrl: [data?.imageUrl || ''],
       address: [data?.address || '', Validators.required],
       latitude: [data?.latitude || 38.866127, Validators.required],
-      longitude: [data?.longitude || 65.816309, Validators.required]
+      longitude: [data?.longitude || 65.816309, Validators.required],
+      deliveryRadiusKm: [data?.deliveryRadiusKm || 20, [Validators.required, Validators.min(0.5)]]
     });
   }
 

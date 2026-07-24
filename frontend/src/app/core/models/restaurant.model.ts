@@ -9,6 +9,7 @@ export interface Restaurant {
   longitude?: number;
   owner?: User;
   isActive?: boolean;
+  deliveryRadiusKm?: number;
 }
 
 export interface RestaurantAdminRequest {
@@ -18,4 +19,5 @@ export interface RestaurantAdminRequest {
   latitude?: number;
   longitude?: number;
   ownerId?: number;
+  deliveryRadiusKm?: number;
 }

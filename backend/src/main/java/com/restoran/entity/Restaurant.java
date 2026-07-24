@@ -31,6 +31,10 @@ public class Restaurant {
     @Builder.Default
     private boolean isActive = true;
 
+    @Column(name = "delivery_radius_km")
+    @Builder.Default
+    private Double deliveryRadiusKm = 20.0;
+
     @ManyToOne
     @JoinColumn(name = "owner_id")
     private User owner;

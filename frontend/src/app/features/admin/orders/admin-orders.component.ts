@@ -197,11 +197,34 @@ const ALL_STATUSES: OrderStatus[] = [
               <p><strong>Manzil:</strong> {{ selectedOrder()!.deliveryAddress || '—' }}</p>
               <p><strong>Izoh:</strong> {{ selectedOrder()!.note || '—' }}</p>
               <p><strong>Holat:</strong> {{ statusLabel(selectedOrder()!.status) }}</p>
+              
+              <!-- Delivery Radius & Customer Fee Info -->
+              <div style="font-size: 0.85rem; display: flex; flex-direction: column; gap: 6px; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 8px; border: 1px solid var(--border); margin-top: 10px;">
+                <div style="display: flex; justify-content: space-between;">
+                  <span>📏 Restoran → Mijoz masofasi:</span>
+                  <strong>{{ selectedOrder()!.deliveryDistanceKm || selectedOrder()!.distance || 0 | number:'1.1-1' }} km</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; color: #3b82f6; font-weight: 700;">
+                  <span>💳 Mijoz To'lagan Delivery Fee (Zona):</span>
+                  <span>{{ selectedOrder()!.deliveryFee || 0 | number:'1.0-0' }} so'm</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span>🎯 Delivery Radius (Xizmat radiusi):</span>
+                  <strong>{{ selectedOrder()!.restaurant?.deliveryRadiusKm || 20 }} km</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span>📍 Radius holati:</span>
+                  <span class="badge" [class.badge-delivered]="(selectedOrder()!.deliveryDistanceKm || selectedOrder()!.distance || 0) <= (selectedOrder()!.restaurant?.deliveryRadiusKm || 20)" [class.badge-canceled]="(selectedOrder()!.deliveryDistanceKm || selectedOrder()!.distance || 0) > (selectedOrder()!.restaurant?.deliveryRadiusKm || 20)" style="padding: 2px 8px; font-size: 0.75rem; border-radius: 6px;">
+                    {{ (selectedOrder()!.deliveryDistanceKm || selectedOrder()!.distance || 0) <= (selectedOrder()!.restaurant?.deliveryRadiusKm || 20) ? '✅ Radius ichida' : '❌ Radius tashqarisida' }}
+                  </span>
+                </div>
+              </div>
               @if (selectedOrder()!.courier) {
                 <div class="courier-payment-details" style="font-size: 0.85rem; display: flex; flex-direction: column; gap: 6px; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 8px; border: 1px solid var(--border); margin-top: 10px;">
                   <div style="display: flex; justify-content: space-between;"><span>👤 Kuryer:</span> <strong>{{ selectedOrder()!.courier?.name }}</strong></div>
                   <div style="display: flex; justify-content: space-between;"><span>💵 Bazaviy to'lov:</span> <span>{{ selectedOrder()!.baseFee || 9000 | number:'1.0-0' }} so'm</span></div>
-                  <div style="display: flex; justify-content: space-between;"><span>🏪 Restorangacha masofa:</span> <span>{{ selectedOrder()!.pickupDistanceKm || 0 | number:'1.2-2' }} km</span></div>
+                  <div style="display: flex; justify-content: space-between;"><span>🏪 Haqiqiy Kuryer → Restoran:</span> <span>{{ selectedOrder()!.pickupDistanceKm || 0 | number:'1.2-2' }} km</span></div>
+                  <div style="display: flex; justify-content: space-between; color: #3b82f6;"><span>💳 Mijozga hisoblangan Pickup (max 10 km):</span> <strong>{{ selectedOrder()!.billablePickupDistanceKm || (selectedOrder()!.pickupDistanceKm && selectedOrder()!.pickupDistanceKm! > 10 ? 10 : selectedOrder()!.pickupDistanceKm) || 0 | number:'1.2-2' }} km</strong></div>
                   <div style="display: flex; justify-content: space-between;"><span>🏪 Restorangacha haq:</span> <span>{{ selectedOrder()!.pickupFee || 0 | number:'1.0-0' }} so'm</span></div>
                   <div style="display: flex; justify-content: space-between;"><span>📍 Mijozgacha masofa:</span> <span>{{ selectedOrder()!.deliveryDistanceKm || 0 | number:'1.2-2' }} km</span></div>
                   <div style="display: flex; justify-content: space-between;"><span>📍 Yetkazib berish haqi:</span> <span>{{ selectedOrder()!.courierDeliveryFee || 0 | number:'1.0-0' }} so'm</span></div>

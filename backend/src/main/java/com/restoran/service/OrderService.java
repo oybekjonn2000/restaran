@@ -86,6 +86,12 @@ public class OrderService {
         }
         order.setPickupDistanceKm(pickupDist);
 
+        // Mijoz uchun billing pickup masofasi (Maksimal 10.0 km bilan cheklanadi)
+        double maxPickupChargeKm = 10.0;
+        double billablePickupDist = Math.min(pickupDist, maxPickupChargeKm);
+        billablePickupDist = Math.round(billablePickupDist * 100.0) / 100.0;
+        order.setBillablePickupDistanceKm(billablePickupDist);
+
         // 4. 2-bosqich: Restoran -> Mijoz (deliveryDistanceKm)
         // Restoran koordinatasi -> Mijozning buyurtma yaratilgandagi koordinatasi
         double deliveryDist = 0.0;
@@ -181,13 +187,24 @@ public class OrderService {
         }
 
         double distance = request.getDistance() != null ? request.getDistance() : 0.0;
-        double deliveryFee = request.getDeliveryFee() != null ? request.getDeliveryFee() : BASE_FEE;
 
-        if (distance == 0.0 && request.getLatitude() != null && request.getLongitude() != null && request.getLatitude() != 0 && request.getLongitude() != 0) {
+        if (request.getLatitude() != null && request.getLongitude() != null && request.getLatitude() != 0 && request.getLongitude() != 0) {
             distance = calculateDistance(restLat, restLng, request.getLatitude(), request.getLongitude());
             distance = Math.round(distance * 10.0) / 10.0; // Round to 1 decimal place
-            deliveryFee = BASE_FEE + (distance * PER_KM_FEE);
-            deliveryFee = Math.round(deliveryFee / 100.0) * 100.0; // Round to nearest 100 so'm
+        }
+        double deliveryFee = calculateZoneDeliveryFee(distance);
+
+        // Delivery Radius Validation (Restoran -> Mijoz masofasi)
+        if (request.getLatitude() != null && request.getLongitude() != null && request.getLatitude() != 0 && request.getLongitude() != 0) {
+            double straightDist = distance;
+            double radius = (restaurant != null && restaurant.getDeliveryRadiusKm() != null && restaurant.getDeliveryRadiusKm() > 0.0)
+                ? restaurant.getDeliveryRadiusKm()
+                : 20.0;
+
+            if (straightDist > radius) {
+                throw new RuntimeException("Tanlangan manzil xizmat ko'rsatish hududidan tashqarida. Ushbu manzilga yetkazib bera olmaymiz. (Masofa: " 
+                    + straightDist + " km, Xizmat ko'rsatish radiusi: " + String.format("%.0f", radius) + " km)");
+            }
         }
 
         boolean anyCourierOnShift = isAnyCourierOnShift();
@@ -639,6 +656,18 @@ public class OrderService {
             .anyMatch(s -> s.getCourier() != null);
     }
 
+    public double calculateZoneDeliveryFee(double distanceKm) {
+        if (distanceKm <= 10.0) {
+            return 15000.0;
+        } else if (distanceKm <= 15.0) {
+            return 20000.0;
+        } else if (distanceKm <= 20.0) {
+            return 25000.0;
+        } else {
+            throw new RuntimeException("Tanlangan manzil xizmat ko'rsatish hududidan tashqarida.");
+        }
+    }
+
     private void calculateAndSetDeliveryFee(Order order) {
         double dist = order.getDistance() != null ? order.getDistance() : 0.0;
         if (dist == 0.0 && order.getLatitude() != null && order.getLongitude() != null && order.getLatitude() != 0 && order.getLongitude() != 0) {
@@ -652,8 +681,7 @@ public class OrderService {
             dist = Math.round(dist * 10.0) / 10.0;
             order.setDistance(dist);
         }
-        double deliveryFee = BASE_FEE + (dist * PER_KM_FEE);
-        deliveryFee = Math.round(deliveryFee / 100.0) * 100.0;
+        double deliveryFee = calculateZoneDeliveryFee(dist);
         order.setDeliveryFee(deliveryFee);
     }
 

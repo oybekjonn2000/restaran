@@ -37,6 +37,7 @@ export interface Order {
   gpsSignalLost?: boolean;
   baseFee?: number;
   pickupDistanceKm?: number;
+  billablePickupDistanceKm?: number;
   deliveryDistanceKm?: number;
   pickupFee?: number;
   courierDeliveryFee?: number;

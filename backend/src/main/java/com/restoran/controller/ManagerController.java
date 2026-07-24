@@ -78,6 +78,9 @@ public class ManagerController {
         restaurant.setAddress(request.getAddress());
         restaurant.setLatitude(request.getLatitude());
         restaurant.setLongitude(request.getLongitude());
+        if (request.getDeliveryRadiusKm() != null && request.getDeliveryRadiusKm() > 0) {
+            restaurant.setDeliveryRadiusKm(request.getDeliveryRadiusKm());
+        }
 
         return ResponseEntity.ok(restaurantRepository.save(restaurant));
     }
@@ -212,6 +215,7 @@ public class ManagerController {
         private String address;
         private Double latitude;
         private Double longitude;
+        private Double deliveryRadiusKm;
     }
 
     // =================== KATEGORIYALAR (MANAGER) ===================

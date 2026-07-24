@@ -147,9 +147,11 @@ import { AuthService } from '../../../core/services/auth.service';
                     </td>
                     <td class="col-distance" data-label="Masofa">
                       <div style="font-size: 0.75rem; line-height: 1.4; text-align: left;">
-                        <div>📍 Kuryer → Restoran: {{ (order.pickupDistanceKm || 0) | number:'1.1-2' }} km</div>
+                        <div>📍 Kuryer → Restoran (Haqiqiy): {{ (order.pickupDistanceKm || 0) | number:'1.1-2' }} km</div>
+                        <div style="color: #3b82f6;">💳 Mijoz Pickup (max 10km): {{ (order.billablePickupDistanceKm || (order.pickupDistanceKm && order.pickupDistanceKm > 10 ? 10 : order.pickupDistanceKm) || 0) | number:'1.1-2' }} km</div>
                         <div>📍 Restoran → Mijoz: {{ (order.deliveryDistanceKm || 0) | number:'1.1-2' }} km</div>
-                        <div style="font-weight: 700; color: #3b82f6;">📍 Jami: {{ (order.totalDistanceKm || 0) | number:'1.1-2' }} km</div>
+                        <div style="font-weight: 700; color: #3b82f6;">📍 Jami (Haqiqiy): {{ (order.totalDistanceKm || 0) | number:'1.1-2' }} km</div>
+                        <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 2px;">🎯 Radius: {{ order.restaurant?.deliveryRadiusKm || 20 }} km</div>
                       </div>
                     </td>
                     <td class="col-courier" data-label="Kuryer to'lovi">
