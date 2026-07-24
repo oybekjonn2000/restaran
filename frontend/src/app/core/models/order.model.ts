@@ -42,6 +42,7 @@ export interface Order {
   courierDeliveryFee?: number;
   totalDistanceKm?: number;
   totalEarning?: number;
+  totalCourierEarning?: number;
   createdAt: string;
   items: OrderItem[];
   dispatchAttempt?: number;

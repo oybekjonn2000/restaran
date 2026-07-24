@@ -289,6 +289,13 @@ type TabType = 'jadval' | 'smena' | 'chatlar' | 'profil';
                       }
                     </div>
 
+                    <!-- Distance Breakdown -->
+                    <div class="active-order-distance-box" style="margin-bottom: 12px; padding: 10px 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; font-size: 0.85rem; line-height: 1.6;">
+                      <div style="display: flex; justify-content: space-between;"><span>📍 Kuryer → Restoran</span> <strong>{{ (order.pickupDistanceKm || 0) | number:'1.1-2' }} km</strong></div>
+                      <div style="display: flex; justify-content: space-between;"><span>📍 Restoran → Mijoz</span> <strong>{{ (order.deliveryDistanceKm || 0) | number:'1.1-2' }} km</strong></div>
+                      <div style="display: flex; justify-content: space-between; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 4px; margin-top: 4px; color: #3b82f6; font-weight: 700;"><span>📍 Jami</span> <strong>{{ (order.totalDistanceKm || 0) | number:'1.1-2' }} km</strong></div>
+                    </div>
+
                     <!-- Food Ready Status Alert Banner -->
                     @if (order.status === 'COURIER_ACCEPTED' || order.status === 'COURIER_AT_RESTAURANT') {
                       @if (order.isReady) {
@@ -5483,7 +5490,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
     // Capture current shift stats before clearing
     const earnings = this.totalEarnings;
     const ordersCount = this.deliveredCount();
-    const distanceVal = Math.round(this.currentDeliveries().reduce((sum, o) => sum + (o.distance || 0), 0) * 10) / 10;
+    const distanceVal = Math.round(this.allOrders().filter(o => o.status === 'DELIVERED').reduce((sum, o) => sum + (o.totalDistanceKm || 0), 0) * 10) / 10;
 
     this.slotLoading.set(true);
     this.orderService.endSlot(slot.id).subscribe({
@@ -5496,7 +5503,7 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
           endTime: slot.endTime,
           earnings: earnings,
           ordersCount: ordersCount,
-          distance: distanceVal || 34 // fallback mock value from image if 0
+          distance: distanceVal
         });
         this.activeSlot.set(null);
         this.snack.open('🔴 Smena tugatildi. Yaxshi dam oling!', '', { duration: 3500 });

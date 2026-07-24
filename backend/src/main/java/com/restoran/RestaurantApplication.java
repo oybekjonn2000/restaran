@@ -184,7 +184,8 @@ public class RestaurantApplication {
     public CommandLineRunner databaseFixer(
             OrderRepository orderRepository,
             UserRepository userRepository,
-            SlotRepository slotRepository) {
+            SlotRepository slotRepository,
+            com.restoran.service.OrderService orderService) {
         return args -> {
             System.out.println(">>> databaseFixer initializing dynamically...");
             LocalDate today = LocalDate.now();
@@ -211,20 +212,7 @@ public class RestaurantApplication {
                 // Calculate earnings dynamically for each order
                 double totalCalculated = 0.0;
                 for (Order o : deliveredOrders) {
-                    o.setBaseFee(9000.0);
-                    double pickupDist = o.getDistanceToRestaurant() != null && o.getDistanceToRestaurant() > 0.0 
-                        ? o.getDistanceToRestaurant() : 1.2;
-                    double deliveryDist = o.getDistance() != null && o.getDistance() > 0.0 
-                        ? o.getDistance() : 1.8;
-                    
-                    o.setPickupDistanceKm(pickupDist);
-                    o.setDeliveryDistanceKm(deliveryDist);
-                    o.setPickupFee(Math.round(pickupDist * 1600.0 * 100.0) / 100.0);
-                    o.setCourierDeliveryFee(Math.round(deliveryDist * 1600.0 * 100.0) / 100.0);
-                    o.setTotalDistanceKm(pickupDist + deliveryDist);
-
-                    double totalEarn = 9000.0 + o.getPickupFee() + o.getCourierDeliveryFee();
-                    o.setTotalEarning(Math.round(totalEarn * 100.0) / 100.0);
+                    orderService.calculateAndSetOrderDistancesAndEarnings(o);
 
                     // Update creation date dynamically to today so it groups under today's shift report
                     o.setCreatedAt(LocalDateTime.of(today, o.getCreatedAt().toLocalTime()));

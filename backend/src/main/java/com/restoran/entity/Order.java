@@ -153,16 +153,23 @@ public class Order {
     @Transient
     private boolean courierActiveOnShift;
 
+    @com.fasterxml.jackson.annotation.JsonProperty("customerLatitude")
     public Double getCustomerLatitude() {
         return this.latitude;
     }
 
+    @com.fasterxml.jackson.annotation.JsonProperty("customerLongitude")
     public Double getCustomerLongitude() {
         return this.longitude;
     }
 
     public String getCustomerAddress() {
         return this.deliveryAddress;
+    }
+
+    @com.fasterxml.jackson.annotation.JsonProperty("totalCourierEarning")
+    public Double getTotalCourierEarning() {
+        return this.totalEarning;
     }
 
     @PrePersist
