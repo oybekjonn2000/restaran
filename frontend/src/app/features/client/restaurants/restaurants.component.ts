@@ -68,22 +68,6 @@ import { API_BASE } from '../../../core/config';
         </div>
       </section>
 
-      <!-- CATEGORIES HORIZONTAL chips scroll -->
-      <section class="categories-section">
-        <h2 class="section-title-new">🍕 Taom Kategoriyalari</h2>
-        <div class="categories-chips-scroll">
-          @for (cat of categoriesList; track cat.id) {
-            <button 
-              class="category-chip-new" 
-              [class.active]="selectedCategory() === cat.id"
-              (click)="selectCategory(cat.id)">
-              <span class="cat-emoji">{{ cat.emoji }}</span>
-              <span>{{ cat.name }}</span>
-            </button>
-          }
-        </div>
-      </section>
-
       @if (loading()) {
         <div class="spinner-overlay" style="padding: 40px 0; text-align: center;">
           <mat-spinner diameter="40" color="accent" style="margin: 0 auto;"></mat-spinner>
@@ -92,86 +76,148 @@ import { API_BASE } from '../../../core/config';
       }
 
       @if (!loading()) {
-        <!-- RESTAURANTS SECTION -->
-        <section class="restaurants-section-new">
-          <h2 class="section-title-new">🏪 Hamkor Restoranlar</h2>
-          
-          <div class="restaurants-grid-new">
-            @for (r of filteredRestaurants(); track r.id) {
-              <div class="restaurant-card-new" [routerLink]="['/client/menu', r.id]">
-                <div class="card-img-wrap-new">
-                  <img 
-                    [src]="getFullUrl(r.imageUrl) || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500'" 
-                    [alt]="r.name" 
-                    class="card-img-new"
-                    (error)="onImgError($event)">
-                  <span class="open-status-badge">OPEN</span>
-                  <div class="rating-badge-new">⭐ 4.8</div>
-                </div>
-                <div class="card-content-new">
-                  <h3 class="rest-name-new">{{ r.name }}</h3>
-                  <p class="rest-desc-new">📍 {{ r.address || 'Qarshi shahri' }}</p>
-                  <div class="rest-info-row-new">
-                    <span class="info-item-new">⏰ 20-30 daqiqa</span>
-                    <span class="info-item-new">🚚 9,000 so'm</span>
-                    <span class="info-item-new">🍔 Min: 30,000 so'm</span>
-                  </div>
-                </div>
+        <!-- SINGLE ACTIVE RESTAURANT DIRECT MENU VIEW -->
+        @if (restaurants().length === 1 && singleRestaurant()) {
+          <section class="single-restaurant-section">
+            <div class="single-rest-header">
+              <div class="rest-title-area">
+                <h1 class="single-rest-name">🏪 {{ singleRestaurant()?.name }}</h1>
+                <p class="single-rest-addr">📍 {{ singleRestaurant()?.address || 'Qarshi shahri' }}</p>
               </div>
-            }
-          </div>
-
-          @if (restaurants().length === 0) {
-            <div class="empty-state-new">
-              <div class="empty-icon">🏪</div>
-              <h3>Hozircha faol restoran mavjud emas.</h3>
+              <div class="rest-search-box">
+                <span class="search-icon">🔍</span>
+                <input
+                  [(ngModel)]="searchQuery"
+                  type="text"
+                  placeholder="Taom qidiring..."
+                  class="search-input-new"
+                  id="single-food-search">
+              </div>
             </div>
-          } @else if (filteredRestaurants().length === 0) {
-            <div class="empty-state-new">
-              <div class="empty-icon">🏪</div>
-              <h3>Mos restoranlar topilmadi</h3>
-              <p>Qidiruv shartlarini o'zgartirib ko'ring</p>
-            </div>
-          }
-        </section>
 
-        <!-- POPULAR FOODS SECTION -->
-        @if (popularFoods().length > 0) {
-          <section class="popular-foods-section">
-            <h2 class="section-title-new">⭐️ Eng Mashhur Taomlar</h2>
+            <!-- CATEGORIES HORIZONTAL CHIPS SCROLL -->
+            <section class="categories-section" style="margin-top: 20px;">
+              <h2 class="section-title-new">🍕 Taom Kategoriyalari</h2>
+              <div class="categories-chips-scroll">
+                @for (cat of categoriesList; track cat.id) {
+                  <button 
+                    class="category-chip-new" 
+                    [class.active]="selectedCategory() === cat.id"
+                    (click)="selectCategory(cat.id)">
+                    <span class="cat-emoji">{{ cat.emoji }}</span>
+                    <span>{{ cat.name }}</span>
+                  </button>
+                }
+              </div>
+            </section>
+
+            <!-- SINGLE RESTAURANT FOODS GRID -->
+            <section class="single-foods-section" style="margin-top: 24px;">
+              <h2 class="section-title-new">🍽️ Menyudagi Taomlar ({{ filteredSingleFoods().length }})</h2>
+
+              @if (filteredSingleFoods().length > 0) {
+                <div class="foods-grid-new">
+                  @for (food of filteredSingleFoods(); track food.id) {
+                    <div class="food-card-new">
+                      <div class="food-img-wrap">
+                        <img 
+                          [src]="getFullUrl(food.imageUrl) || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80'" 
+                          [alt]="food.name" 
+                          class="food-img"
+                          (error)="onImgError($event)">
+                        <button 
+                          class="fav-heart-btn" 
+                          [class.active]="favorites().includes(food.id)" 
+                          (click)="toggleFavorite(food.id, $event)">
+                          ❤️
+                        </button>
+                        <span class="food-rating-tag">⭐ 4.8</span>
+                      </div>
+                      <div class="food-content-new">
+                        <span class="food-cat-badge">{{ food.category?.name || 'Taom' }}</span>
+                        <h4 class="food-title-new">{{ food.name }}</h4>
+                        <p class="food-desc-new">{{ food.description || 'Mazali va toyimli taom.' }}</p>
+                        <div class="food-footer-new">
+                          <span class="food-price-new">{{ food.price | number:'1.0-0' }} so'm</span>
+                          <button class="food-add-btn-new" (click)="addToCart(food)">
+                            <span>+</span> Savatga
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="empty-state-new">
+                  <div class="empty-icon">🍽️</div>
+                  <h3>Taomlar topilmadi</h3>
+                  <p>Qidiruv shartini o'zgartiring yoki boshqa kategoriyani tanlang</p>
+                </div>
+              }
+            </section>
+          </section>
+
+        } @else if (restaurants().length > 1) {
+          <!-- MULTIPLE RESTAURANTS VIEW -->
+          <section class="categories-section">
+            <h2 class="section-title-new">🍕 Taom Kategoriyalari</h2>
+            <div class="categories-chips-scroll">
+              @for (cat of categoriesList; track cat.id) {
+                <button 
+                  class="category-chip-new" 
+                  [class.active]="selectedCategory() === cat.id"
+                  (click)="selectCategory(cat.id)">
+                  <span class="cat-emoji">{{ cat.emoji }}</span>
+                  <span>{{ cat.name }}</span>
+                </button>
+              }
+            </div>
+          </section>
+
+          <section class="restaurants-section-new" style="margin-top: 24px;">
+            <h2 class="section-title-new">🏪 Hamkor Restoranlar</h2>
             
-            <div class="foods-grid-new">
-              @for (food of popularFoods(); track food.id) {
-                <div class="food-card-new">
-                  <div class="food-img-wrap">
+            <div class="restaurants-grid-new">
+              @for (r of filteredRestaurants(); track r.id) {
+                <div class="restaurant-card-new" [routerLink]="['/client/menu', r.id]">
+                  <div class="card-img-wrap-new">
                     <img 
-                      [src]="getFullUrl(food.imageUrl) || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80'" 
-                      [alt]="food.name" 
-                      class="food-img"
+                      [src]="getFullUrl(r.imageUrl) || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500'" 
+                      [alt]="r.name" 
+                      class="card-img-new"
                       (error)="onImgError($event)">
-                    <button 
-                      class="fav-heart-btn" 
-                      [class.active]="favorites().includes(food.id)" 
-                      (click)="toggleFavorite(food.id, $event)">
-                      ❤️
-                    </button>
-                    <span class="food-rating-tag">⭐ 4.7</span>
+                    <span class="open-status-badge">OPEN</span>
+                    <div class="rating-badge-new">⭐ 4.8</div>
                   </div>
-                  <div class="food-content-new">
-                    <span class="food-cat-badge">{{ food.category?.name || 'Taom' }}</span>
-                    <h4 class="food-title-new">{{ food.name }}</h4>
-                    <p class="food-desc-new">{{ food.description || 'Mazali va to\\'yimli taom.' }}</p>
-                    <div class="food-footer-new">
-                      <span class="food-price-new">{{ food.price | number:'1.0-0' }} so'm</span>
-                      <button class="food-add-btn-new" (click)="addToCart(food)">
-                        <span>+</span> Savatga
-                      </button>
+                  <div class="card-content-new">
+                    <h3 class="rest-name-new">{{ r.name }}</h3>
+                    <p class="rest-desc-new">📍 {{ r.address || 'Qarshi shahri' }}</p>
+                    <div class="rest-info-row-new">
+                      <span class="info-item-new">⏰ 20-30 daqiqa</span>
+                      <span class="info-item-new">🚚 9,000 so'm</span>
+                      <span class="info-item-new">🍔 Min: 30,000 so'm</span>
                     </div>
                   </div>
                 </div>
               }
             </div>
+
+            @if (filteredRestaurants().length === 0) {
+              <div class="empty-state-new">
+                <div class="empty-icon">🏪</div>
+                <h3>Mos restoranlar topilmadi</h3>
+                <p>Qidiruv shartlarini o'zgartirib ko'ring</p>
+              </div>
+            }
           </section>
+
+        } @else {
+          <!-- ZERO ACTIVE RESTAURANTS -->
+          <div class="empty-state-new" style="padding: 60px 0;">
+            <div class="empty-icon">🏪</div>
+            <h3>Hozircha faol restoran mavjud emas.</h3>
+            <p style="color: #94a3b8; margin-top: 8px;">Tez orada yangi restoranlar qo'shiladi!</p>
+          </div>
         }
       }
 
@@ -302,57 +348,46 @@ import { API_BASE } from '../../../core/config';
       pointer-events: auto;
       transform: scale(1);
     }
-    .slide-content {
-      flex: 1;
-      text-align: left;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
     .slide-badge {
-      background: rgba(249, 115, 22, 0.15);
+      display: inline-block;
+      background: rgba(249, 115, 22, 0.25);
       color: #f97316;
-      border: 1px solid rgba(249, 115, 22, 0.3);
-      font-size: 0.68rem;
+      border: 1px solid rgba(249, 115, 22, 0.4);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.72rem;
       font-weight: 800;
-      padding: 3px 10px;
-      border-radius: 50px;
-      width: fit-content;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
     }
     .slide-title {
-      font-size: 1.3rem;
+      font-size: 1.35rem;
       font-weight: 800;
       color: #fff;
-      margin: 0;
+      margin: 0 0 6px 0;
     }
     .slide-desc {
-      font-size: 0.8rem;
+      font-size: 0.84rem;
       color: #cbd5e1;
       margin: 0;
-      max-width: 550px;
+      max-width: 500px;
       line-height: 1.4;
-    }
-    .slide-action {
-      flex-shrink: 0;
     }
     .slide-btn {
       background: #f97316;
       color: #fff;
       border: none;
-      font-size: 0.8rem;
-      font-weight: 700;
       padding: 10px 20px;
       border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.88rem;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
-      transition: all 0.2s ease;
+      box-shadow: 0 6px 16px rgba(249, 115, 22, 0.4);
+      transition: all 0.2s;
     }
     .slide-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(249, 115, 22, 0.5);
-      background: #fb923c;
+      transform: translateX(4px);
+      box-shadow: 0 8px 20px rgba(249, 115, 22, 0.5);
     }
     .slider-dots {
       position: absolute;
@@ -360,8 +395,8 @@ import { API_BASE } from '../../../core/config';
       left: 50%;
       transform: translateX(-50%);
       display: flex;
-      gap: 8px;
-      z-index: 10;
+      gap: 6px;
+      z-index: 5;
     }
     .slider-dot {
       width: 8px;
@@ -374,69 +409,105 @@ import { API_BASE } from '../../../core/config';
       transition: all 0.3s ease;
     }
     .slider-dot.active {
-      background: #f97316;
-      width: 20px;
+      width: 24px;
       border-radius: 4px;
+      background: #f97316;
     }
 
-    /* CATEGORIES HORIZONTAL SCROLL */
-    .categories-section {
-      margin-bottom: 32px;
-      text-align: left;
+    /* SINGLE RESTAURANT HEADER STYLES */
+    .single-rest-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 20px 24px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
     }
-    .section-title-new {
-      font-size: 1.25rem;
+    .single-rest-name {
+      font-size: 1.5rem;
       font-weight: 800;
       color: #fff;
-      margin-bottom: 16px;
+      margin: 0;
+    }
+    .single-rest-addr {
+      font-size: 0.88rem;
+      color: #94a3b8;
+      margin: 4px 0 0 0;
+    }
+    .rest-search-box {
+      display: flex;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 8px 14px;
+      width: 100%;
+      max-width: 320px;
+    }
+    .search-input-new {
+      background: none;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-size: 0.88rem;
+      width: 100%;
+      margin-left: 8px;
+    }
+
+    /* CATEGORIES CHIPS SCROLL */
+    .categories-section {
+      margin-bottom: 24px;
+    }
+    .section-title-new {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 14px;
     }
     .categories-chips-scroll {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       overflow-x: auto;
       padding-bottom: 8px;
-      scrollbar-width: none;
+      scrollbar-width: thin;
+      scrollbar-color: #334155 transparent;
     }
-    .categories-chips-scroll::-webkit-scrollbar { display: none; }
     .category-chip-new {
-      background: #1e293b;
-      border: 1px solid #334155;
-      padding: 10px 20px;
-      border-radius: 50px;
       display: flex;
       align-items: center;
       gap: 8px;
-      color: #94a3b8;
-      font-size: 0.88rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 8px 16px;
+      border-radius: 20px;
+      color: #cbd5e1;
+      font-size: 0.86rem;
       font-weight: 600;
       cursor: pointer;
       white-space: nowrap;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.2s ease;
     }
     .category-chip-new:hover {
-      border-color: #f97316;
+      background: #334155;
       color: #fff;
-      transform: translateY(-1px);
     }
     .category-chip-new.active {
       background: #f97316;
       border-color: #f97316;
       color: #fff;
-      box-shadow: 0 4px 14px rgba(249, 115, 22, 0.3);
+      box-shadow: 0 4px 14px rgba(249, 115, 22, 0.4);
     }
-    .cat-emoji { font-size: 1.1rem; }
+    .cat-emoji { font-size: 1.05rem; }
 
-    /* Removed special-offers-section since it's replaced by the promo slider */
-
-    /* RESTAURANTS SECTION */
-    .restaurants-section-new {
-      margin-bottom: 40px;
-      text-align: left;
-    }
+    /* RESTAURANTS GRID */
     .restaurants-grid-new {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 24px;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px;
     }
     .restaurant-card-new {
       background: #1e293b;
@@ -444,249 +515,249 @@ import { API_BASE } from '../../../core/config';
       border-radius: 18px;
       overflow: hidden;
       cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.3s ease;
     }
     .restaurant-card-new:hover {
       transform: translateY(-4px);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
       border-color: #f97316;
-      box-shadow: 0 8px 30px rgba(249, 115, 22, 0.15);
     }
     .card-img-wrap-new {
       position: relative;
-      height: 170px;
+      height: 140px;
       overflow: hidden;
     }
-    .card-img-new { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; }
-    .restaurant-card-new:hover .card-img-new { transform: scale(1.04); }
-    .rating-badge-new {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      background: rgba(15, 23, 42, 0.8);
-      backdrop-filter: blur(4px);
-      color: #fbbf24;
-      font-size: 0.72rem;
-      font-weight: 700;
-      padding: 4px 8px;
-      border-radius: 12px;
-      border: 1px solid rgba(251, 191, 36, 0.25);
+    .card-img-new {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+    .restaurant-card-new:hover .card-img-new {
+      transform: scale(1.05);
     }
     .open-status-badge {
       position: absolute;
-      top: 12px;
-      left: 12px;
-      background: rgba(16, 185, 129, 0.85);
-      backdrop-filter: blur(4px);
+      top: 10px;
+      left: 10px;
+      background: #10b981;
       color: #fff;
       font-size: 0.68rem;
       font-weight: 800;
-      padding: 4px 8px;
-      border-radius: 8px;
-      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 6px;
     }
-    .card-content-new { padding: 20px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
-    .rest-name-new { font-size: 1.15rem; font-weight: 800; color: #fff; }
-    .rest-desc-new { font-size: 0.8rem; color: #94a3b8; line-height: 1.45; }
+    .rating-badge-new {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(4px);
+      color: #fbbf24;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .card-content-new {
+      padding: 16px;
+    }
+    .rest-name-new {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+      margin: 0 0 4px 0;
+    }
+    .rest-desc-new {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin: 0 0 12px 0;
+    }
     .rest-info-row-new {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
-      font-size: 0.75rem;
-      color: #64748b;
-      margin-top: 6px;
-      border-top: 1px solid rgba(255,255,255,0.03);
-      padding-top: 10px;
+      gap: 6px;
     }
-    .info-item-new { display: flex; align-items: center; gap: 4px; }
+    .info-item-new {
+      background: rgba(255, 255, 255, 0.05);
+      color: #cbd5e1;
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      border-radius: 6px;
 
-    /* POPULAR FOODS SECTION */
-    .popular-foods-section {
-      margin-bottom: 40px;
-      text-align: left;
     }
+
+    /* FOODS GRID */
     .foods-grid-new {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
       gap: 20px;
     }
     .food-card-new {
       background: #1e293b;
       border: 1px solid #334155;
-      border-radius: 16px;
+      border-radius: 18px;
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      position: relative;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.3s ease;
     }
     .food-card-new:hover {
       transform: translateY(-4px);
-      border-color: #f97316;
-      box-shadow: 0 8px 24px rgba(249, 115, 22, 0.1);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.4);
+      border-color: rgba(249, 115, 22, 0.5);
     }
     .food-img-wrap {
       position: relative;
-      height: 150px;
+      height: 140px;
       overflow: hidden;
-      background: #0f172a;
     }
-    .food-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; }
-    .food-card-new:hover .food-img { transform: scale(1.04); }
+    .food-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
     .fav-heart-btn {
       position: absolute;
-      top: 10px;
-      right: 10px;
+      top: 8px;
+      right: 8px;
       background: rgba(15, 23, 42, 0.7);
-      backdrop-filter: blur(4px);
       border: none;
+      border-radius: 50%;
       width: 32px;
       height: 32px;
-      border-radius: 50%;
-      color: #94a3b8;
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
-      font-size: 1rem;
+      font-size: 0.9rem;
+      opacity: 0.7;
       transition: all 0.2s;
     }
-    .fav-heart-btn:hover { color: #ef4444; background: rgba(15,23,42,0.9); }
-    .fav-heart-btn.active { color: #ef4444; }
+    .fav-heart-btn.active, .fav-heart-btn:hover {
+      opacity: 1;
+      transform: scale(1.1);
+    }
     .food-rating-tag {
       position: absolute;
       bottom: 8px;
       left: 8px;
-      background: rgba(15, 23, 42, 0.75);
+      background: rgba(15, 23, 42, 0.8);
       color: #fbbf24;
-      font-size: 0.68rem;
+      font-size: 0.72rem;
       font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 8px;
-    }
-    .food-content-new { padding: 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; text-align: left; }
-    .food-cat-badge {
-      font-size: 0.68rem;
-      color: #f97316;
-      background: rgba(249, 115, 22, 0.1);
       padding: 2px 8px;
-      border-radius: 4px;
-      width: fit-content;
-      font-weight: 700;
+      border-radius: 12px;
     }
-    .food-title-new { font-size: 0.95rem; font-weight: 800; color: #fff; }
+    .food-content-new {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+    .food-cat-badge {
+      font-size: 0.7rem;
+      color: #f97316;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .food-title-new {
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: #fff;
+      margin: 0 0 6px 0;
+    }
     .food-desc-new {
       font-size: 0.78rem;
       color: #94a3b8;
-      line-height: 1.4;
+      margin: 0 0 12px 0;
+      line-height: 1.35;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
-      margin-bottom: 10px;
+      flex: 1;
     }
     .food-footer-new {
-      margin-top: auto;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-top: 1px solid rgba(255,255,255,0.03);
-      padding-top: 10px;
+      margin-top: auto;
     }
-    .food-price-new { font-size: 1.05rem; font-weight: 800; color: #fff; }
+    .food-price-new {
+      font-size: 0.96rem;
+      font-weight: 800;
+      color: #34d399;
+    }
     .food-add-btn-new {
       background: #f97316;
-      border: none;
       color: #fff;
-      font-size: 0.78rem;
-      font-weight: 700;
+      border: none;
       padding: 6px 14px;
       border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 4px;
       transition: all 0.2s;
-      box-shadow: 0 4px 10px rgba(249, 115, 22, 0.2);
     }
     .food-add-btn-new:hover {
       background: #ea580c;
-      box-shadow: 0 6px 14px rgba(249, 115, 22, 0.3);
+      transform: scale(1.05);
     }
 
-    /* EMPTY STATES */
     .empty-state-new {
-      padding: 60px 20px;
       text-align: center;
-      color: #94a3b8;
+      padding: 40px 20px;
+      background: #1e293b;
+      border-radius: 18px;
+      border: 1px dashed #334155;
     }
     .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
 
-    /* CONFIRMATION DIALOG MODAL */
+    /* CONFIRM MODAL */
     .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
-      display: flex; align-items: center; justify-content: center; z-index: 9999;
-      backdrop-filter: blur(6px);
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
     }
     .modal-card {
-      background: #1e293b;
+      background: #0f172a;
       border: 1px solid #334155;
-      border-radius: 20px;
-      padding: 32px 24px;
-      max-width: 440px; width: 90%;
+      border-radius: 24px;
+      padding: 28px;
+      max-width: 440px;
+      width: 100%;
       text-align: center;
-      display: flex; flex-direction: column;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
     }
-    .modal-icon { font-size: 2.5rem; margin-bottom: 12px; }
-    .modal-title { font-size: 1.25rem; font-weight: 800; color: #fff; margin: 0 0 8px; }
-    .modal-desc { font-size: 0.88rem; color: #cbd5e1; margin: 0 0 20px; }
-    .modal-buttons-row { display: flex; gap: 12px; justify-content: center; }
+    .modal-icon { font-size: 2.8rem; margin-bottom: 12px; }
+    .modal-title { font-size: 1.2rem; font-weight: 800; color: #fff; margin-bottom: 10px; }
+    .modal-desc { font-size: 0.86rem; color: #94a3b8; line-height: 1.5; margin-bottom: 12px; }
+    .modal-buttons-row { display: flex; gap: 12px; }
     .modal-btn {
-      padding: 10px 20px;
-      border-radius: 10px;
-      font-size: 0.88rem;
+      flex: 1;
+      padding: 12px;
+      border-radius: 12px;
       font-weight: 700;
-      border: none;
+      font-size: 0.88rem;
       cursor: pointer;
-      transition: all 0.2s;
+      border: none;
     }
-    .btn-back { background: transparent; color: #94a3b8; border: 1px solid #334155; }
-    .btn-back:hover { background: rgba(255,255,255,0.02); }
-    .btn-signin-gradient {
-      background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-      color: #fff;
-      box-shadow: 0 4px 15px rgba(249, 115, 22, 0.25);
-    }
-    .btn-signin-gradient:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(249, 115, 22, 0.35);
-    }
+    .btn-back { background: #334155; color: #fff; }
+    .btn-signin-gradient { background: #f97316; color: #fff; }
 
-    /* RESPONSIVE DESIGN */
-    @media (max-width: 768px) {
-      .promo-slider-container {
-        height: 195px;
-      }
-      .promo-slide {
-        flex-direction: column;
-        align-items: flex-start;
-        justify-content: center;
-        padding: 20px;
-        gap: 12px;
-      }
-      .slide-title {
-        font-size: 1.1rem;
-      }
-      .slide-desc {
-        font-size: 0.75rem;
-      }
-      .slide-btn {
-        padding: 8px 16px;
-      }
+    @media (max-width: 640px) {
       .restaurants-grid-new { grid-template-columns: 1fr; }
       .foods-grid-new { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
       .food-img-wrap { height: 120px; }
@@ -695,11 +766,11 @@ import { API_BASE } from '../../../core/config';
 })
 export class RestaurantsComponent implements OnInit, OnDestroy {
   restaurants = signal<Restaurant[]>([]);
+  singleRestaurant = signal<Restaurant | null>(null);
+  singleFoods = signal<Food[]>([]);
   loading = signal(true);
   searchQuery = '';
 
-  allFoods = signal<Food[]>([]);
-  popularFoods = signal<Food[]>([]);
   activeOrders = signal<Order[]>([]);
   selectedCategory = signal<string>('all');
   favorites = signal<number[]>([]);
@@ -803,23 +874,27 @@ export class RestaurantsComponent implements OnInit, OnDestroy {
       });
     }
 
-    // Fetch restaurants
+    // Fetch active restaurants
     this.orderService.getRestaurants().subscribe({
       next: (data) => {
         this.restaurants.set(data);
-        this.loading.set(false);
-
-        // Fetch foods for all restaurants in parallel to populate the popular foods section
-        this.allFoods.set([]);
-        data.forEach(r => {
-          this.orderService.getRestaurantFoods(r.id).subscribe({
+        
+        // Agar faqat 1 ta aktiv restoran bo'lsa, uning taomlarini yuklaymiz
+        if (data.length === 1) {
+          const activeRest = data[0];
+          this.singleRestaurant.set(activeRest);
+          this.orderService.getRestaurantFoods(activeRest.id).subscribe({
             next: (foods) => {
-              const current = this.allFoods();
-              this.allFoods.set([...current, ...foods]);
-              this.updatePopularFoods();
-            }
+              this.singleFoods.set(foods);
+              this.loading.set(false);
+            },
+            error: () => this.loading.set(false)
           });
-        });
+        } else {
+          this.singleRestaurant.set(null);
+          this.singleFoods.set([]);
+          this.loading.set(false);
+        }
       },
       error: () => this.loading.set(false)
     });
@@ -831,29 +906,28 @@ export class RestaurantsComponent implements OnInit, OnDestroy {
     return this.restaurants().filter(r => r.name.toLowerCase().includes(query));
   }
 
-  updatePopularFoods(): void {
-    let foods = this.allFoods();
+  filteredSingleFoods(): Food[] {
+    let foods = this.singleFoods();
     const query = this.searchQuery.toLowerCase().trim();
     const cat = this.selectedCategory();
 
     if (cat !== 'all') {
-      foods = foods.filter(f => this.getFoodCategoryKey(f) === cat);
+      foods = foods.filter(f => this.getFoodCategoryKey(f) === cat || (f.category?.name || '').toLowerCase().includes(cat));
     }
 
     if (query) {
       foods = foods.filter(f => 
         f.name.toLowerCase().includes(query) || 
-        f.description?.toLowerCase().includes(query) ||
+        (f.description || '').toLowerCase().includes(query) ||
         (f.category?.name || '').toLowerCase().includes(query)
       );
     }
 
-    this.popularFoods.set(foods.slice(0, 8));
+    return foods;
   }
 
   selectCategory(catId: string): void {
     this.selectedCategory.set(catId);
-    this.updatePopularFoods();
   }
 
   toggleFavorite(foodId: number, event: Event) {

@@ -1,15 +1,16 @@
-import { Component } from '@angular/core';
-import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
+import { Component, OnDestroy } from '@angular/core';
+import { FormBuilder, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../../core/services/auth.service';
 import { redirectByRole } from '../../../core/guards/auth.guard';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, MatProgressSpinnerModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink, MatProgressSpinnerModule],
   template: `
     <div class="auth-page">
       <div class="auth-card">
@@ -80,7 +81,7 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
                 <input type="checkbox" formControlName="rememberMe">
                 <span>Eslab qolish</span>
               </label>
-              <a class="forgot-link">Parol esdan chiqdimi ?</a>
+              <a class="forgot-link" (click)="openForgotModal()">Parol esdan chiqdimi ?</a>
             </div>
 
             @if (errorMsg) {
@@ -106,6 +107,150 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
         </div>
       </div>
     </div>
+
+    <!-- ================= PAROLNI TIKLASH MODAL (FORGOT PASSWORD) ================= -->
+    @if (showForgotModal) {
+      <div class="modal-backdrop" (click)="closeForgotModal()">
+        <div class="forgot-modal animate-slide-up" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h3>🔑 Parolni tiklash</h3>
+            <button type="button" class="close-btn" (click)="closeForgotModal()">✕</button>
+          </div>
+
+          @if (forgotErrorMsg) {
+            <div class="alert-error-new">⚠️ {{ forgotErrorMsg }}</div>
+          }
+          @if (forgotInfoMsg) {
+            <div class="alert-info-new">ℹ️ {{ forgotInfoMsg }}</div>
+          }
+
+          <!-- STEP 1: Phone Entry -->
+          @if (forgotStep === 1) {
+            <p class="modal-desc">Telefon raqamingizni kiriting. SMS orqali 6 xonali tasdiqlash kodi yuboriladi.</p>
+            <div class="form-group-new">
+              <label class="form-label-new">Telefon raqam</label>
+              <div class="input-container-new">
+                <input
+                  type="tel"
+                  class="form-control-new"
+                  placeholder="+998 90 123 45 67"
+                  [value]="forgotFormattedPhone"
+                  (input)="onForgotPhoneInput($event)">
+              </div>
+            </div>
+            <button
+              type="button"
+              class="btn-signin-gradient"
+              [disabled]="forgotLoading || !isForgotPhoneValid"
+              (click)="sendForgotOtp()">
+              @if (forgotLoading) {
+                <mat-spinner diameter="20" color="accent"></mat-spinner>
+                YUBORILMOQDA...
+              } @else {
+                SMS KOD YUBORISH →
+              }
+            </button>
+          }
+
+          <!-- STEP 2: OTP Entry -->
+          @if (forgotStep === 2) {
+            <p class="modal-desc"><strong>{{ forgotRawPhone }}</strong> raqamiga yuborilgan 6 xonali SMS kodni kiriting.</p>
+            @if (forgotDevOtp) {
+              <div class="dev-otp-banner">⚡ Test kodi: <strong>{{ forgotDevOtp }}</strong></div>
+            }
+            <div class="form-group-new">
+              <label class="form-label-new">SMS Kod</label>
+              <div class="input-container-new">
+                <input
+                  type="text"
+                  maxlength="6"
+                  class="form-control-new otp-input"
+                  placeholder="123456"
+                  [(ngModel)]="forgotOtpCode"
+                  (ngModelChange)="onForgotOtpChange($event)">
+              </div>
+            </div>
+            <div class="timer-row">
+              @if (forgotTimerSeconds > 0) {
+                <span class="timer-text">⏳ {{ formattedForgotTimer }}</span>
+              } @else {
+                <span class="timer-expired">⚠️ Kod muddati tugadi</span>
+              }
+              <button
+                type="button"
+                class="btn-resend"
+                [disabled]="forgotLoading || forgotTimerSeconds > 0"
+                (click)="sendForgotOtp()">
+                🔄 Qaytadan yuborish
+              </button>
+            </div>
+            <button
+              type="button"
+              class="btn-signin-gradient"
+              [disabled]="forgotLoading || forgotOtpCode.length < 6"
+              (click)="verifyForgotOtp()">
+              @if (forgotLoading) {
+                <mat-spinner diameter="20" color="accent"></mat-spinner>
+                TEKSHIRILMOQDA...
+              } @else {
+                KODNI TASDIQLASH →
+              }
+            </button>
+          }
+
+          <!-- STEP 3: New Password Creation -->
+          @if (forgotStep === 3) {
+            <p class="modal-desc">Yangi va xavfsiz parol kiring.</p>
+            <div class="form-group-new">
+              <label class="form-label-new">Yangi parol</label>
+              <div class="input-container-new">
+                <input
+                  [type]="showForgotPwd ? 'text' : 'password'"
+                  class="form-control-new"
+                  placeholder="Kamida 8 ta belgi"
+                  [(ngModel)]="newPassword"
+                  (ngModelChange)="checkNewPasswordStrength()">
+                <button type="button" class="field-icon eye-toggle" (click)="showForgotPwd = !showForgotPwd">
+                  {{ showForgotPwd ? '🙈' : '👁️' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Password Criteria -->
+            <div class="criteria-list">
+              <div class="criterion" [class.met]="hasMinLength"><span>{{ hasMinLength ? '✓' : '○' }}</span> Min 8 belgi</div>
+              <div class="criterion" [class.met]="hasUpper"><span>{{ hasUpper ? '✓' : '○' }}</span> Katta harf</div>
+              <div class="criterion" [class.met]="hasLower"><span>{{ hasLower ? '✓' : '○' }}</span> Kichik harf</div>
+              <div class="criterion" [class.met]="hasDigit"><span>{{ hasDigit ? '✓' : '○' }}</span> Raqam</div>
+            </div>
+
+            <div class="form-group-new" style="margin-top: 10px;">
+              <label class="form-label-new">Parolni tasdiqlash</label>
+              <div class="input-container-new">
+                <input
+                  [type]="showForgotConfirmPwd ? 'text' : 'password'"
+                  class="form-control-new"
+                  placeholder="Parolni qayta kiriting"
+                  [(ngModel)]="confirmNewPassword">
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="btn-signin-gradient"
+              [disabled]="forgotLoading || !isNewPasswordValid || newPassword !== confirmNewPassword"
+              (click)="saveNewPassword()">
+              @if (forgotLoading) {
+                <mat-spinner diameter="20" color="accent"></mat-spinner>
+                SAQLANMOQDA...
+              } @else {
+                ✅ PAROLNI SAQLASH
+              }
+            </button>
+          }
+        </div>
+      </div>
+    }
   `,
   styles: [`
     .auth-page {
@@ -217,7 +362,7 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
     }
 
     .form-group-new {
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -227,10 +372,6 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
       font-weight: 600;
       color: #94a3b8;
       letter-spacing: 0.5px;
-      transition: color 0.2s ease;
-    }
-    .form-group-new:focus-within .form-label-new {
-      color: #f97316;
     }
     .input-container-new {
       position: relative;
@@ -256,17 +397,13 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
       outline: none;
       font-family: 'Poppins', sans-serif;
     }
-    .form-control-new::placeholder {
-      color: #475569;
+    .otp-input {
+      letter-spacing: 6px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      text-align: center;
     }
-    .form-control-new:-webkit-autofill,
-    .form-control-new:-webkit-autofill:hover, 
-    .form-control-new:-webkit-autofill:focus, 
-    .form-control-new:-webkit-autofill:active {
-      -webkit-box-shadow: 0 0 0 30px #1e293b inset !important;
-      -webkit-text-fill-color: #f1f5f9 !important;
-      transition: background-color 5000s ease-in-out 0s;
-    }
+
     .field-icon {
       position: absolute;
       right: 16px;
@@ -275,26 +412,14 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
       background: none;
       border: none;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
     }
-    .success-check {
-      color: #10b981;
-      font-weight: bold;
-    }
-    .eye-toggle {
-      color: #94a3b8;
-      transition: color 0.2s;
-    }
-    .eye-toggle:hover {
-      color: #f97316;
-    }
+    .success-check { color: #10b981; font-weight: bold; }
+    .eye-toggle { color: #94a3b8; }
+
     .error-msg-new {
       font-size: 0.78rem;
       color: #ef4444;
       margin-top: 4px;
-      padding-left: 4px;
     }
 
     .options-row-new {
@@ -321,7 +446,7 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
     .forgot-link {
       font-size: 0.85rem;
       font-weight: 600;
-      color: #cbd5e1;
+      color: #f97316;
       text-decoration: none;
       cursor: pointer;
     }
@@ -337,6 +462,27 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
       font-size: 0.85rem;
       color: #ef4444;
       margin-bottom: 16px;
+    }
+    .alert-info-new {
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      color: #60a5fa;
+      margin-bottom: 16px;
+      line-height: 1.4;
+    }
+
+    .dev-otp-banner {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px dashed #10b981;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      color: #34d399;
+      margin-bottom: 16px;
+      text-align: center;
     }
 
     .btn-signin-gradient {
@@ -377,19 +523,89 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
       align-items: center;
       gap: 6px;
     }
-    .footer-text {
-      font-size: 0.85rem;
-      color: #64748b;
+    .footer-text { font-size: 0.85rem; color: #64748b; }
+    .signup-link { font-size: 0.88rem; font-weight: 700; color: #f97316; text-decoration: none; }
+    .signup-link:hover { text-decoration: underline; }
+
+    /* Modal Styling */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
+      z-index: 1000;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
     }
-    .signup-link {
-      font-size: 0.88rem;
+    .forgot-modal {
+      background: #0f172a;
+      border: 1px solid rgba(255,255,255,0.1);
+      width: 100%;
+      max-width: 480px;
+      border-radius: 28px 28px 0 0;
+      padding: 28px 24px 36px;
+      box-shadow: 0 -20px 60px rgba(0,0,0,0.6);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .modal-header h3 {
+      margin: 0;
+      font-size: 1.3rem;
       font-weight: 700;
-      color: #f97316;
-      text-decoration: none;
+      color: #fff;
     }
-    .signup-link:hover {
+    .close-btn {
+      background: rgba(255,255,255,0.1);
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      color: #94a3b8;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .modal-desc {
+      font-size: 0.88rem;
+      color: #94a3b8;
+      margin: 0 0 16px 0;
+      line-height: 1.4;
+    }
+
+    .timer-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .timer-text { font-size: 0.82rem; color: #94a3b8; }
+    .timer-expired { font-size: 0.82rem; color: #ef4444; font-weight: 600; }
+    .btn-resend {
+      background: none;
+      border: none;
+      color: #f97316;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
       text-decoration: underline;
     }
+    .btn-resend:disabled { color: #64748b; cursor: not-allowed; text-decoration: none; }
+
+    .criteria-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 14px;
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 10px;
+      padding: 8px 12px;
+    }
+    .criterion { font-size: 0.75rem; color: #64748b; }
+    .criterion.met { color: #34d399; font-weight: 600; }
 
     .animate-slide-up {
       animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -419,25 +635,57 @@ import { redirectByRole } from '../../../core/guards/auth.guard';
         border-radius: 24px 24px 0 0;
         padding: 36px 36px;
       }
+      .forgot-modal {
+        border-radius: 24px;
+        margin-bottom: 40px;
+      }
     }
   `]
 })
-export class LoginComponent {
+export class LoginComponent implements OnDestroy {
   form;
   loading = false;
   errorMsg = '';
   showPwd = false;
 
+  // Forgot Password State
+  showForgotModal = false;
+  forgotStep = 1;
+  forgotRawPhone = '';
+  forgotFormattedPhone = '';
+  forgotOtpCode = '';
+  forgotDevOtp = '';
+  newPassword = '';
+  confirmNewPassword = '';
+  showForgotPwd = false;
+  showForgotConfirmPwd = false;
+  forgotLoading = false;
+  forgotErrorMsg = '';
+  forgotInfoMsg = '';
+
+  forgotTimerSeconds = 0;
+  forgotTimerInterval: any;
+
+  hasMinLength = false;
+  hasUpper = false;
+  hasLower = false;
+  hasDigit = false;
+
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private snack: MatSnackBar
   ) {
     this.form = this.fb.group({
       phone: ['', Validators.required],
       password: ['', Validators.required],
       rememberMe: [false]
     });
+  }
+
+  ngOnDestroy(): void {
+    this.stopForgotTimer();
   }
 
   fillDemo(role: 'client' | 'courier' | 'admin' | 'manager10'): void {
@@ -471,6 +719,163 @@ export class LoginComponent {
       error: (err) => {
         this.loading = false;
         this.errorMsg = err.error?.message || 'Telefon yoki parol noto\'g\'ri!';
+      }
+    });
+  }
+
+  // ================= PAROLNI TIKLASH (FORGOT PASSWORD) LOGIKASI =================
+  openForgotModal(): void {
+    this.showForgotModal = true;
+    this.forgotStep = 1;
+    this.forgotErrorMsg = '';
+    this.forgotInfoMsg = '';
+    this.forgotOtpCode = '';
+    this.newPassword = '';
+    this.confirmNewPassword = '';
+
+    // Autofill phone if already entered in login form
+    const currentPhone = this.form.get('phone')?.value;
+    if (currentPhone) {
+      this.onForgotPhoneInput({ target: { value: currentPhone } });
+    }
+  }
+
+  closeForgotModal(): void {
+    this.showForgotModal = false;
+    this.stopForgotTimer();
+  }
+
+  onForgotPhoneInput(event: any): void {
+    let input = event.target.value;
+    let digits = input.replace(/\D/g, '');
+
+    if (digits.startsWith('998')) digits = digits.substring(3);
+    if (digits.length > 9) digits = digits.substring(0, 9);
+
+    this.forgotRawPhone = '+998' + digits;
+
+    let formatted = '+998';
+    if (digits.length > 0) formatted += ' ' + digits.substring(0, 2);
+    if (digits.length > 2) formatted += ' ' + digits.substring(2, 5);
+    if (digits.length > 5) formatted += ' ' + digits.substring(5, 7);
+    if (digits.length > 7) formatted += ' ' + digits.substring(7, 9);
+
+    this.forgotFormattedPhone = formatted;
+  }
+
+  get isForgotPhoneValid(): boolean {
+    return this.forgotRawPhone.replace(/\D/g, '').length === 12;
+  }
+
+  get telegramId(): number | undefined {
+    const tg = (window as any).Telegram?.WebApp;
+    return tg?.initDataUnsafe?.user?.id || undefined;
+  }
+
+  sendForgotOtp(): void {
+    if (!this.isForgotPhoneValid) return;
+
+    this.forgotLoading = true;
+    this.forgotErrorMsg = '';
+    this.forgotInfoMsg = '';
+
+    this.authService.sendOtp(this.forgotRawPhone, 'RESET_PASSWORD', this.telegramId).subscribe({
+      next: (res) => {
+        this.forgotLoading = false;
+        this.forgotDevOtp = res.devOtpCode || '';
+        this.forgotInfoMsg = res.message || 'Tasdiqlash kodi Telegram botimizga yuborildi!';
+        this.forgotStep = 2;
+        this.startForgotTimer(120);
+      },
+      error: (err) => {
+        this.forgotLoading = false;
+        this.forgotErrorMsg = err.error?.message || 'Ushbu telefon raqamli foydalanuvchi topilmadi!';
+      }
+    });
+  }
+
+  startForgotTimer(seconds: number): void {
+    this.stopForgotTimer();
+    this.forgotTimerSeconds = seconds;
+    this.forgotTimerInterval = setInterval(() => {
+      this.forgotTimerSeconds--;
+      if (this.forgotTimerSeconds <= 0) {
+        this.stopForgotTimer();
+      }
+    }, 1000);
+  }
+
+  stopForgotTimer(): void {
+    if (this.forgotTimerInterval) {
+      clearInterval(this.forgotTimerInterval);
+      this.forgotTimerInterval = null;
+    }
+  }
+
+  get formattedForgotTimer(): string {
+    const m = Math.floor(this.forgotTimerSeconds / 60);
+    const s = this.forgotTimerSeconds % 60;
+    return `${m < 10 ? '0' + m : m}:${s < 10 ? '0' + s : s}`;
+  }
+
+  onForgotOtpChange(val: string): void {
+    this.forgotOtpCode = val.replace(/\D/g, '');
+    if (this.forgotOtpCode.length === 6) {
+      this.verifyForgotOtp();
+    }
+  }
+
+  verifyForgotOtp(): void {
+    if (this.forgotOtpCode.length < 6) return;
+
+    this.forgotLoading = true;
+    this.forgotErrorMsg = '';
+    this.forgotInfoMsg = '';
+
+    this.authService.verifyOtp(this.forgotRawPhone, this.forgotOtpCode, 'RESET_PASSWORD').subscribe({
+      next: () => {
+        this.forgotLoading = false;
+        this.forgotInfoMsg = 'SMS kod tasdiqlandi!';
+        this.forgotStep = 3;
+      },
+      error: (err) => {
+        this.forgotLoading = false;
+        this.forgotErrorMsg = err.error?.message || 'Tasdiqlash kodi noto\'g\'ri!';
+      }
+    });
+  }
+
+  checkNewPasswordStrength(): void {
+    const p = this.newPassword;
+    this.hasMinLength = p.length >= 8;
+    this.hasUpper = /[A-Z]/.test(p);
+    this.hasLower = /[a-z]/.test(p);
+    this.hasDigit = /[0-9]/.test(p);
+  }
+
+  get isNewPasswordValid(): boolean {
+    return this.hasMinLength && this.hasUpper && this.hasLower && this.hasDigit;
+  }
+
+  saveNewPassword(): void {
+    if (!this.isNewPasswordValid || this.newPassword !== this.confirmNewPassword) {
+      this.forgotErrorMsg = 'Parollar mos emas yoki talablarga javob bermaydi!';
+      return;
+    }
+
+    this.forgotLoading = true;
+    this.forgotErrorMsg = '';
+
+    this.authService.resetPasswordOtp(this.forgotRawPhone, this.forgotOtpCode, this.newPassword).subscribe({
+      next: () => {
+        this.forgotLoading = false;
+        this.snack.open('Parolingiz muvaffaqiyatli o\'zgartirildi!', 'OK', { duration: 4000 });
+        this.form.patchValue({ phone: this.forgotRawPhone, password: this.newPassword });
+        this.closeForgotModal();
+      },
+      error: (err) => {
+        this.forgotLoading = false;
+        this.forgotErrorMsg = err.error?.message || 'Parolni tiklashda xatolik yuz berdi!';
       }
     });
   }

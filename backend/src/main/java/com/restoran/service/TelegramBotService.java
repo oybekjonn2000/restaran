@@ -2,6 +2,8 @@ package com.restoran.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -10,9 +12,12 @@ import org.springframework.web.client.RestTemplate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class TelegramBotService {
+
+    private static final Logger logger = LoggerFactory.getLogger(TelegramBotService.class);
 
     @Value("${telegram.bot.token:}")
     private String botToken;
@@ -24,15 +29,18 @@ public class TelegramBotService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private long lastUpdateId = 0;
 
+    // Telefon raqami va Chat ID larni xotirada saqlash uchun kesh
+    private final Map<String, Long> phoneToChatIdMap = new ConcurrentHashMap<>();
+
+    public Long getChatIdByPhone(String phone) {
+        if (phone == null) return null;
+        String cleaned = phone.replaceAll("[^0-9+]", "");
+        return phoneToChatIdMap.get(cleaned);
+    }
+
     @Scheduled(fixedDelay = 2000) // Poll every 2 seconds
     public void pollTelegramUpdates() {
-        if (botToken == null || botToken.isEmpty() || botToken.startsWith("YOUR_") || "8988031463:AAHTgeEO9Bg1p6z3bYfy-GYrYmoJ0zFRCRo".equals(botToken)) {
-            // Using a dummy or placeholder token means we skip polling to avoid spamming errors if token isn't active yet
-            // (Note: The user token '8988031463:AAHTgeEO9Bg1p6z3bYfy-GYrYmoJ0zFRCRo' is real, so we should allow it!)
-        }
-        
-        // Skip if default placeholder is active
-        if (botToken == null || botToken.isEmpty() || botToken.contains("YOUR_TELEGRAM_BOT_TOKEN")) {
+        if (botToken == null || botToken.isEmpty() || botToken.contains("8988031463:AAHTgeEO9Bg1p6z3bYfy-GYrYmoJ0zFRCRo")) {
             return;
         }
 
@@ -53,13 +61,24 @@ public class TelegramBotService {
                         JsonNode message = update.get("message");
                         if (message != null) {
                             JsonNode chat = message.get("chat");
-                            JsonNode textNode = message.get("text");
-                            if (chat != null && textNode != null) {
+                            if (chat != null) {
                                 long chatId = chat.get("id").asLong();
-                                String text = textNode.asText();
 
-                                if ("/start".equals(text)) {
-                                    sendStartMessage(chatId);
+                                // Contact share qilinganda telefon raqamini saqlash
+                                JsonNode contact = message.get("contact");
+                                if (contact != null && contact.get("phone_number") != null) {
+                                    String rawPhone = contact.get("phone_number").asText();
+                                    String cleanPhone = rawPhone.startsWith("+") ? rawPhone : "+" + rawPhone;
+                                    phoneToChatIdMap.put(cleanPhone, chatId);
+                                    logger.info("Saved phone mapping: {} -> {}", cleanPhone, chatId);
+                                }
+
+                                JsonNode textNode = message.get("text");
+                                if (textNode != null) {
+                                    String text = textNode.asText();
+                                    if ("/start".equals(text)) {
+                                        sendStartMessage(chatId);
+                                    }
                                 }
                             }
                         }
@@ -68,7 +87,6 @@ public class TelegramBotService {
             }
         } catch (Exception e) {
             // Log update error
-            System.err.println("Telegram Bot error polling: " + e.getMessage());
         }
     }
 
@@ -103,12 +121,12 @@ public class TelegramBotService {
 
             restTemplate.postForObject(url, body, String.class);
         } catch (Exception e) {
-            System.err.println("Telegram Bot error sending message: " + e.getMessage());
+            logger.error("Telegram Bot error sending start message: {}", e.getMessage());
         }
     }
 
     public void sendMessage(long chatId, String text) {
-        if (botToken == null || botToken.isEmpty() || botToken.contains("8988031463:AAHTgeEO9Bg1p6z3bYfy-GYrYmoJ0zFRCRo")) {
+        if (botToken == null || botToken.isEmpty() || botToken.contains("YOUR_TELEGRAM_BOT_TOKEN")) {
             return;
         }
         try {
@@ -118,12 +136,12 @@ public class TelegramBotService {
             body.put("text", text);
             body.put("parse_mode", "Markdown");
 
-            if (webAppUrl != null && !webAppUrl.isEmpty() && !webAppUrl.contains("https://6d993641634941a1-95-214-210-79.serveousercontent.com")) {
+            if (webAppUrl != null && !webAppUrl.isEmpty() && !webAppUrl.contains("YOUR_")) {
                 Map<String, Object> webApp = new HashMap<>();
                 webApp.put("url", webAppUrl);
 
                 Map<String, Object> button = new HashMap<>();
-                button.put("text", "🏍️ Ilovani ochish");
+                button.put("text", "🍽️ Ilovani ochish");
                 button.put("web_app", webApp);
 
                 body.put("reply_markup", Map.of("inline_keyboard", List.of(List.of(button))));
@@ -131,7 +149,7 @@ public class TelegramBotService {
 
             restTemplate.postForObject(url, body, String.class);
         } catch (Exception e) {
-            System.err.println("Telegram Bot error sending message: " + e.getMessage());
+            logger.error("Telegram Bot error sending message: {}", e.getMessage());
         }
     }
 }

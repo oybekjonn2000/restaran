@@ -753,7 +753,7 @@ import { AuthService } from '../../../core/services/auth.service';
         gap: 20px;
       }
       .cart-page {
-        padding: 16px 12px 100px;
+        padding: 16px 12px 120px;
       }
       .y-map {
         height: 220px;
@@ -762,7 +762,7 @@ import { AuthService } from '../../../core/services/auth.service';
 
     @media (max-width: 600px) {
       .page-title {
-        font-size: 1.4rem;
+        font-size: 1.35rem;
       }
       .cart-header {
         margin-bottom: 16px;
@@ -777,38 +777,89 @@ import { AuthService } from '../../../core/services/auth.service';
       }
       
       .cart-item {
-        padding: 10px;
-        gap: 10px;
+        display: grid;
+        grid-template-columns: 56px 1fr auto;
+        grid-template-rows: auto auto;
+        gap: 6px 12px;
+        align-items: center;
+        padding: 12px;
         position: relative;
       }
       .item-img {
-        width: 50px;
-        height: 50px;
-        border-radius: 8px;
+        grid-row: 1 / 3;
+        grid-column: 1 / 2;
+        width: 56px;
+        height: 56px;
+        border-radius: 10px;
+      }
+      .item-info {
+        grid-row: 1 / 2;
+        grid-column: 2 / 3;
+        min-width: 0;
       }
       .item-name {
         font-size: 0.88rem;
-        max-width: 140px;
+        font-weight: 700;
+        white-space: normal;
+        line-height: 1.25;
+        max-width: 100%;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: 2px;
       }
       .item-price {
-        font-size: 0.8rem;
+        font-size: 0.82rem;
+        font-weight: 700;
       }
       .qty-controls {
-        gap: 4px;
-        padding: 2px;
+        grid-row: 2 / 3;
+        grid-column: 2 / 3;
+        justify-self: start;
+        gap: 6px;
+        padding: 3px 6px;
       }
       .qty-btn {
         width: 26px;
         height: 26px;
-        font-size: 0.9rem;
+        font-size: 0.95rem;
       }
       .qty-num {
         font-size: 0.85rem;
         min-width: 20px;
       }
       .remove-btn {
-        font-size: 0.95rem;
-        padding: 6px;
+        grid-row: 1 / 3;
+        grid-column: 3 / 4;
+        align-self: center;
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        border-radius: 10px;
+        padding: 8px 10px;
+        font-size: 1.05rem;
+        color: #ef4444;
+      }
+
+      .saved-address-view {
+        gap: 12px;
+      }
+      .saved-address-content {
+        padding: 12px 14px;
+      }
+      .saved-address-text {
+        font-size: 0.88rem;
+      }
+      .change-address-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 10px 14px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        border-radius: 10px;
+        background: rgba(249, 115, 22, 0.1);
+        border: 1px solid rgba(249, 115, 22, 0.4);
+        color: var(--primary);
       }
 
       .card, .cart-items-card {
@@ -825,7 +876,8 @@ import { AuthService } from '../../../core/services/auth.service';
       }
       .summary-actions .btn {
         width: 100%;
-        padding: 12px;
+        padding: 14px;
+        font-size: 0.95rem;
       }
       
       .empty-state-wrapper {
@@ -844,17 +896,9 @@ import { AuthService } from '../../../core/services/auth.service';
       }
     }
 
-    @media (max-width: 380px) {
-      .cart-item {
-        flex-wrap: wrap;
-      }
-      .qty-controls {
-        margin-left: auto;
-      }
-      .remove-btn {
-        position: absolute;
-        top: 6px;
-        right: 6px;
+    @media (max-width: 400px) {
+      .payment-options {
+        grid-template-columns: 1fr;
       }
     }
 

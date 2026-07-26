@@ -2,7 +2,7 @@ import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
-import { AuthResponse, LoginRequest, RegisterRequest, User } from '../models/user.model';
+import { AuthResponse, LoginRequest, RegisterRequest, OtpRequest, OtpVerifyRequest, ResetPasswordOtpRequest, User } from '../models/user.model';
 import { API_BASE } from '../config';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
@@ -39,6 +39,21 @@ export class AuthService {
     );
   }
 
+  sendOtp(phone: string, purpose: 'REGISTER' | 'RESET_PASSWORD', telegramId?: number): Observable<any> {
+    const req: OtpRequest = { phone, purpose, telegramId };
+    return this.http.post<any>(`${API}/send-otp`, req);
+  }
+
+  verifyOtp(phone: string, code: string, purpose: 'REGISTER' | 'RESET_PASSWORD'): Observable<any> {
+    const req: OtpVerifyRequest = { phone, code, purpose };
+    return this.http.post<any>(`${API}/verify-otp`, req);
+  }
+
+  resetPasswordOtp(phone: string, code: string, newPassword: string): Observable<any> {
+    const req: ResetPasswordOtpRequest = { phone, code, newPassword };
+    return this.http.post<any>(`${API}/reset-password-otp`, req);
+  }
+
   register(request: RegisterRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${API}/register`, request).pipe(
       tap(res => this.saveUser(res))
@@ -63,8 +78,8 @@ export class AuthService {
     );
   }
 
-  updateProfile(name: string, phone: string, address: string): Observable<AuthResponse> {
-    return this.http.put<AuthResponse>(`${API}/profile`, { name, phone, address }).pipe(
+  updateProfile(name: string, phone: string, address: string, email?: string): Observable<AuthResponse> {
+    return this.http.put<AuthResponse>(`${API}/profile`, { name, phone, address, email }).pipe(
       tap(res => {
         const current = this._user();
         if (current) {

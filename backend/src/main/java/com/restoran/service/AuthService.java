@@ -2,6 +2,8 @@ package com.restoran.service;
 
 import com.restoran.dto.request.LoginRequest;
 import com.restoran.dto.request.RegisterRequest;
+import com.restoran.dto.request.ProfileUpdateRequest;
+import com.restoran.dto.request.ResetPasswordOtpRequest;
 import com.restoran.dto.response.AuthResponse;
 import com.restoran.entity.Role;
 import com.restoran.entity.User;
@@ -28,11 +30,11 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
     private final TelegramUtils telegramUtils;
+    private final OtpService otpService;
 
     public AuthResponse login(LoginRequest request) {
-        // Phone raqami bilan kirish (email fallback saqlanadi)
         String identifier = (request.getPhone() != null && !request.getPhone().isBlank())
-            ? request.getPhone().trim()
+            ? otpService.cleanPhone(request.getPhone())
             : request.getEmail();
 
         Authentication auth = authenticationManager.authenticate(
@@ -42,12 +44,14 @@ public class AuthService {
 
         UserDetailsImpl userDetails = (UserDetailsImpl) auth.getPrincipal();
         boolean rememberMe = request.getRememberMe() != null && request.getRememberMe();
-        String token = jwtUtils.generateToken(userDetails.getUsername(), rememberMe);
-
-        // Phone yoki email bo'yicha foydalanuvchini topamiz
+        
+        // Token JWT identifier sifatida foydalanuvchining telefon raqami yoki email'i ishlatiladi
         User user = userRepository.findByPhone(identifier)
                 .or(() -> userRepository.findByEmail(identifier))
                 .orElseThrow(() -> new RuntimeException("Foydalanuvchi topilmadi"));
+
+        String jwtSubject = (user.getPhone() != null && !user.getPhone().isBlank()) ? user.getPhone() : user.getEmail();
+        String token = jwtUtils.generateToken(jwtSubject, rememberMe);
 
         final Long currentUserId = user.getId();
         if (request.getInitData() != null && !request.getInitData().isEmpty()) {
@@ -70,7 +74,44 @@ public class AuthService {
     }
 
     public AuthResponse register(RegisterRequest request) {
-        // Email ixtiyoriy: kiritilgan bo'lsa tekshiramiz, yo'q bo'lsa placeholder yaratamiz
+        Role role = Role.CLIENT;
+        if (request.getRole() != null && !request.getRole().isBlank()) {
+            try {
+                role = Role.valueOf(request.getRole().toUpperCase());
+            } catch (IllegalArgumentException ignored) {}
+        }
+
+        String phone = (request.getPhone() != null && !request.getPhone().isBlank())
+            ? otpService.cleanPhone(request.getPhone())
+            : null;
+
+        // CLIENT ro'yxatdan o'tishida OTP tekshirish (Admin/Manager yaratganda ixtiyoriy bo'lishi mumkin)
+        if (role == Role.CLIENT) {
+            if (phone == null || phone.isBlank()) {
+                throw new RuntimeException("Telefon raqami kiritilishi shart!");
+            }
+            if (!otpService.isVerified(phone, "REGISTER")) {
+                throw new RuntimeException("Telefon raqami tasdiqlanmagan! Avval SMS kodni tasdiqlang.");
+            }
+            if (userRepository.existsByPhone(phone)) {
+                throw new RuntimeException("Bu telefon raqami allaqachon ro'yxatdan o'tgan!");
+            }
+            // Parol murakkabligini tekshirish
+            String pwd = request.getPassword();
+            if (pwd == null || pwd.length() < 8 || !pwd.matches(".*[A-Z].*") || !pwd.matches(".*[a-z].*") || !pwd.matches(".*[0-9].*")) {
+                throw new RuntimeException("Parol kamida 8 ta belgi, 1 ta katta harf, 1 ta kichik harf va 1 ta raqamdan iborat bo'lishi kerak!");
+            }
+        }
+
+        String name = (request.getName() != null ? request.getName().trim() : "");
+        if (request.getSurname() != null && !request.getSurname().isBlank()) {
+            name = name + " " + request.getSurname().trim();
+        }
+        if (name.isBlank()) {
+            name = "Mijoz";
+        }
+
+        // Email ixtiyoriy
         String email = (request.getEmail() != null && !request.getEmail().isBlank())
             ? request.getEmail().trim()
             : null;
@@ -79,37 +120,77 @@ public class AuthService {
             throw new RuntimeException("Bu email allaqachon ro'yxatdan o'tgan!");
         }
 
-        // JWT uchun unikal identifier: email bo'lsa email, bo'lmasa UUID
-        String jwtSubject = (email != null) ? email : ("user_" + java.util.UUID.randomUUID() + "@noemail.local");
-
-        Role role = Role.CLIENT;
+        // Manzilni shakllantirish
+        StringBuilder addressBuilder = new StringBuilder();
+        if (request.getAddress() != null && !request.getAddress().isBlank()) {
+            addressBuilder.append(request.getAddress().trim());
+        }
+        if (request.getHouse() != null && !request.getHouse().isBlank()) {
+            if (addressBuilder.length() > 0) addressBuilder.append(", ");
+            addressBuilder.append(request.getHouse().trim()).append("-uy");
+        }
+        if (request.getEntrance() != null && !request.getEntrance().isBlank()) {
+            if (addressBuilder.length() > 0) addressBuilder.append(", ");
+            addressBuilder.append(request.getEntrance().trim()).append("-kirish");
+        }
+        if (request.getFloor() != null && !request.getFloor().isBlank()) {
+            if (addressBuilder.length() > 0) addressBuilder.append(", ");
+            addressBuilder.append(request.getFloor().trim()).append("-qavat");
+        }
+        if (request.getApartment() != null && !request.getApartment().isBlank()) {
+            if (addressBuilder.length() > 0) addressBuilder.append(", ");
+            addressBuilder.append(request.getApartment().trim()).append("-xonadon");
+        }
+        String fullAddress = addressBuilder.length() > 0 ? addressBuilder.toString() : null;
 
         User user = User.builder()
-            .name(request.getName())
-            .email(jwtSubject)  // email yo'q bo'lsa ham placeholder saqlaymiz (login uchun kerak)
+            .name(name)
+            .email(email)
             .password(passwordEncoder.encode(request.getPassword()))
-            .phone(request.getPhone())
-            .address(request.getAddress())
+            .phone(phone)
+            .address(fullAddress)
             .role(role)
             .build();
 
         user = userRepository.save(user);
-        String token = jwtUtils.generateToken(user.getEmail());
+
+        if (phone != null) {
+            otpService.clearOtp(phone, "REGISTER");
+        }
+
+        String jwtSubject = (phone != null) ? phone : (email != null ? email : user.getId().toString());
+        String token = jwtUtils.generateToken(jwtSubject);
 
         return buildAuthResponse(token, user);
     }
 
+    public void resetPasswordWithOtp(ResetPasswordOtpRequest request) {
+        String phone = otpService.cleanPhone(request.getPhone());
+        if (!otpService.isVerified(phone, "RESET_PASSWORD")) {
+            throw new RuntimeException("Telefon raqami uchun SMS kod tasdiqlanmagan!");
+        }
+
+        String pwd = request.getNewPassword();
+        if (pwd == null || pwd.length() < 8 || !pwd.matches(".*[A-Z].*") || !pwd.matches(".*[a-z].*") || !pwd.matches(".*[0-9].*")) {
+            throw new RuntimeException("Parol kamida 8 ta belgi, 1 ta katta harf, 1 ta kichik harf va 1 ta raqamdan iborat bo'lishi kerak!");
+        }
+
+        User user = userRepository.findByPhone(phone)
+                .orElseThrow(() -> new RuntimeException("Ushbu telefon raqamli foydalanuvchi topilmadi!"));
+
+        user.setPassword(passwordEncoder.encode(pwd));
+        userRepository.save(user);
+
+        otpService.clearOtp(phone, "RESET_PASSWORD");
+    }
+
     private AuthResponse buildAuthResponse(String token, User user) {
-        // Placeholder email (@noemail.local) frontendga yuborilmasin
-        String displayEmail = (user.getEmail() != null && user.getEmail().endsWith("@noemail.local"))
-            ? null
-            : user.getEmail();
         return AuthResponse.builder()
             .token(token)
             .type("Bearer")
             .id(user.getId())
             .name(user.getName())
-            .email(displayEmail)
+            .email(user.getEmail())
             .role(user.getRole().name())
             .phone(user.getPhone())
             .address(user.getAddress())
@@ -129,12 +210,11 @@ public class AuthService {
 
         User user = userRepository.findByTelegramId(tgUser.getId())
                 .orElseGet(() -> {
-                    String email = "telegram_" + tgUser.getId() + "@restoran.com";
                     String name = tgUser.getFirstName() + (tgUser.getLastName() != null ? " " + tgUser.getLastName() : "");
                     
                     User newUser = User.builder()
                             .name(name)
-                            .email(email)
+                            .email(null)
                             .password(passwordEncoder.encode(UUID.randomUUID().toString()))
                             .role(Role.CLIENT)
                             .telegramId(tgUser.getId())
@@ -142,7 +222,7 @@ public class AuthService {
                     return userRepository.save(newUser);
                 });
 
-        String token = jwtUtils.generateToken(user.getEmail());
+        String token = jwtUtils.generateToken("tg_" + user.getTelegramId());
         return buildAuthResponse(token, user);
     }
 
@@ -152,14 +232,32 @@ public class AuthService {
         return buildAuthResponse(null, user);
     }
 
-    public AuthResponse updateProfile(Long userId, com.restoran.dto.request.ProfileUpdateRequest request) {
+    public AuthResponse updateProfile(Long userId, ProfileUpdateRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Foydalanuvchi topilmadi"));
         
         user.setName(request.getName());
-        if (request.getPhone() != null) {
-            user.setPhone(request.getPhone());
+        
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            String newEmail = request.getEmail().trim();
+            userRepository.findByEmail(newEmail).ifPresent(existing -> {
+                if (!existing.getId().equals(userId)) {
+                    throw new RuntimeException("Bu email allaqachon boshqa foydalanuvchi tomonidan ishlatilmoqda!");
+                }
+            });
+            user.setEmail(newEmail);
         }
+
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            String cleanP = otpService.cleanPhone(request.getPhone());
+            userRepository.findByPhone(cleanP).ifPresent(existing -> {
+                if (!existing.getId().equals(userId)) {
+                    throw new RuntimeException("Bu telefon raqami boshqa foydalanuvchi tomonidan ishlatilmoqda!");
+                }
+            });
+            user.setPhone(cleanP);
+        }
+        
         if (request.getAddress() != null) {
             user.setAddress(request.getAddress());
         }

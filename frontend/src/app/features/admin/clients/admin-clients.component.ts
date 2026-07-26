@@ -652,7 +652,7 @@ export class AdminClientsComponent implements OnInit {
     if (!q) return this.clients();
     return this.clients().filter(c => 
       c.name.toLowerCase().includes(q) || 
-      c.email.toLowerCase().includes(q) || 
+      (c.email && c.email.toLowerCase().includes(q)) || 
       (c.phone && c.phone.includes(q))
     );
   }

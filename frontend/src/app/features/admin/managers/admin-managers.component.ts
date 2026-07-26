@@ -732,7 +732,7 @@ export class AdminManagersComponent implements OnInit {
     if (!q) return this.managers();
     return this.managers().filter(m => 
       m.name.toLowerCase().includes(q) || 
-      m.email.toLowerCase().includes(q) || 
+      (m.email && m.email.toLowerCase().includes(q)) || 
       (m.phone && m.phone.includes(q))
     );
   }

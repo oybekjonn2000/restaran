@@ -19,8 +19,20 @@ interface MenuItem {
     <div class="profile-page animate-fade">
       <!-- User Info Header -->
       <div class="profile-header">
-        <h1 class="user-name">{{ auth.user()?.name || 'Mijoz' }}</h1>
-        <p class="user-phone">{{ auth.user()?.phone || '+998 00-000-00-00' }}</p>
+        <div class="header-user-row">
+          <div>
+            <h1 class="user-name">{{ auth.user()?.name || 'Mijoz' }}</h1>
+            <p class="user-phone">📱 {{ auth.user()?.phone || '+998 00-000-00-00' }}</p>
+            @if (auth.user()?.email) {
+              <p class="user-email">✉️ {{ auth.user()?.email }}</p>
+            } @else {
+              <p class="user-email-placeholder">✉️ Email kiritilmagan (tahrirlab qo'shing)</p>
+            }
+          </div>
+          <button type="button" class="btn-edit-header" (click)="openEditProfile()">
+            ✏️ Tahrirlash
+          </button>
+        </div>
       </div>
 
       <!-- Menu List -->
@@ -41,6 +53,49 @@ interface MenuItem {
           </div>
         }
       </div>
+
+      <!-- Edit Profile Modal -->
+      @if (showEditModal()) {
+        <div class="modal-backdrop" (click)="closeEditProfile()">
+          <div class="edit-modal animate-slide-up" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h3>✏️ Profilni tahrirlash</h3>
+              <button class="close-btn" (click)="closeEditProfile()">✕</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group-edit">
+                <label>To'liq ism</label>
+                <input type="text" [(ngModel)]="editName" placeholder="Ismingiz">
+              </div>
+
+              <div class="form-group-edit">
+                <label>Email <span class="badge-opt">(ixtiyoriy)</span></label>
+                <input type="email" [(ngModel)]="editEmail" placeholder="email@manzil.uz">
+              </div>
+
+              <div class="form-group-edit">
+                <label>Telefon raqam</label>
+                <input type="tel" [(ngModel)]="editPhone" placeholder="+998901234567">
+              </div>
+
+              <div class="form-group-edit">
+                <label>Manzil</label>
+                <input type="text" [(ngModel)]="editAddress" placeholder="Toshkent sh, Amir Temur k.">
+              </div>
+
+              @if (editError) {
+                <div class="alert-error">⚠️ {{ editError }}</div>
+              }
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="cancel-btn" (click)="closeEditProfile()">Bekor qilish</button>
+              <button type="button" class="save-btn" [disabled]="saving" (click)="saveProfile()">
+                {{ saving ? 'Saqlanmoqda...' : 'Saqlash' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
 
       <!-- Info Modal Dialog -->
       @if (activeModalTitle()) {
@@ -82,45 +137,55 @@ interface MenuItem {
     /* ── Header ─────────────────────────────────── */
     .profile-header {
       position: relative;
-      padding: 48px 24px 36px;
+      padding: 36px 24px 30px;
       background: linear-gradient(135deg, #1a1a3e 0%, #12122a 60%, #0f0f1a 100%);
       overflow: hidden;
     }
-    .profile-header::before {
-      content: '';
-      position: absolute;
-      top: -60px; left: -60px;
-      width: 220px; height: 220px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(99,102,241,0.35) 0%, transparent 70%);
-      pointer-events: none;
+    .header-user-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      position: relative;
+      z-index: 1;
     }
-    .profile-header::after {
-      content: '';
-      position: absolute;
-      bottom: -40px; right: -40px;
-      width: 160px; height: 160px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(168,85,247,0.25) 0%, transparent 70%);
-      pointer-events: none;
+    .btn-edit-header {
+      background: rgba(249, 115, 22, 0.15);
+      border: 1px solid rgba(249, 115, 22, 0.4);
+      color: #f97316;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-edit-header:hover {
+      background: #f97316;
+      color: #fff;
     }
     .user-name {
-      font-size: 2.4rem;
+      font-size: 2.2rem;
       font-weight: 900;
       color: #ffffff;
       margin: 0 0 6px;
       letter-spacing: -0.03em;
-      position: relative;
-      z-index: 1;
     }
     .user-phone {
-      font-size: 1rem;
-      color: rgba(167,139,250,0.85);
-      margin: 0;
+      font-size: 0.95rem;
+      color: rgba(167,139,250,0.9);
+      margin: 0 0 4px;
       font-weight: 500;
-      position: relative;
-      z-index: 1;
-      letter-spacing: 0.02em;
+    }
+    .user-email {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.7);
+      margin: 0;
+    }
+    .user-email-placeholder {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.4);
+      margin: 0;
+      font-style: italic;
     }
 
     /* ── Menu List ───────────────────────────────── */
@@ -141,17 +206,12 @@ interface MenuItem {
       background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.07);
       backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
       transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .menu-item:hover {
       background: rgba(255,255,255,0.08);
       border-color: rgba(255,255,255,0.14);
       transform: translateX(4px);
-    }
-    .menu-item:active {
-      transform: scale(0.98);
-      background: rgba(255,255,255,0.06);
     }
 
     .menu-item-left {
@@ -169,71 +229,47 @@ interface MenuItem {
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      transition: transform 0.2s ease;
-    }
-    .menu-item:hover .menu-icon-wrapper {
-      transform: scale(1.08) rotate(-4deg);
     }
 
+    .menu-icon-wrapper.orange {
+      background: linear-gradient(135deg, rgba(249,115,22,0.3), rgba(251,146,60,0.2));
+      box-shadow: 0 4px 12px rgba(249,115,22,0.25);
+    }
     .menu-icon-wrapper.purple {
       background: linear-gradient(135deg, rgba(99,102,241,0.3), rgba(139,92,246,0.2));
-      box-shadow: 0 4px 12px rgba(99,102,241,0.25);
     }
     .menu-icon-wrapper.blue {
       background: linear-gradient(135deg, rgba(59,130,246,0.3), rgba(96,165,250,0.2));
-      box-shadow: 0 4px 12px rgba(59,130,246,0.25);
     }
     .menu-icon-wrapper.pink {
       background: linear-gradient(135deg, rgba(236,72,153,0.3), rgba(244,114,182,0.2));
-      box-shadow: 0 4px 12px rgba(236,72,153,0.25);
     }
     .menu-icon-wrapper.red {
       background: linear-gradient(135deg, rgba(239,68,68,0.3), rgba(252,165,165,0.15));
-      box-shadow: 0 4px 12px rgba(239,68,68,0.25);
     }
     .menu-icon-wrapper.violet {
       background: linear-gradient(135deg, rgba(139,92,246,0.3), rgba(167,139,250,0.2));
-      box-shadow: 0 4px 12px rgba(139,92,246,0.25);
     }
     .menu-icon-wrapper.indigo {
       background: linear-gradient(135deg, rgba(79,70,229,0.3), rgba(129,140,248,0.2));
-      box-shadow: 0 4px 12px rgba(79,70,229,0.25);
     }
 
-    .menu-icon {
-      font-size: 1.2rem;
-    }
-    .menu-text {
-      font-size: 1rem;
-      font-weight: 600;
-      color: rgba(255,255,255,0.9);
-      letter-spacing: 0.01em;
-    }
-    .chevron {
-      font-size: 1.5rem;
-      color: rgba(255,255,255,0.25);
-      font-weight: 300;
-      line-height: 1;
-      transition: color 0.2s, transform 0.2s;
-    }
-    .menu-item:hover .chevron {
-      color: rgba(167,139,250,0.7);
-      transform: translateX(2px);
-    }
+    .menu-icon { font-size: 1.2rem; }
+    .menu-text { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.9); }
+    .chevron { font-size: 1.5rem; color: rgba(255,255,255,0.25); }
 
-    /* ── Modal ───────────────────────────────────── */
+    /* ── Edit Modal ───────────────────────────────────── */
     .modal-backdrop {
       position: fixed;
       inset: 0;
       background: rgba(0, 0, 0, 0.72);
       backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
       z-index: 999;
       display: flex;
       align-items: flex-end;
       justify-content: center;
     }
-    .info-modal {
+    .edit-modal, .info-modal {
       background: linear-gradient(160deg, #1c1c3a 0%, #16162e 100%);
       border: 1px solid rgba(255,255,255,0.10);
       width: 100%;
@@ -242,21 +278,20 @@ interface MenuItem {
       border-top-right-radius: 28px;
       padding: 28px 24px 36px;
       box-sizing: border-box;
-      box-shadow: 0 -20px 60px rgba(0,0,0,0.6), 0 -1px 0 rgba(255,255,255,0.08);
+      box-shadow: 0 -20px 60px rgba(0,0,0,0.6);
       text-align: left;
     }
     .modal-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 14px;
+      margin-bottom: 18px;
     }
     .modal-header h3 {
       margin: 0;
       font-size: 1.3rem;
       font-weight: 800;
       color: #ffffff;
-      letter-spacing: -0.01em;
     }
     .close-btn {
       background: rgba(255,255,255,0.08);
@@ -271,69 +306,97 @@ interface MenuItem {
       font-weight: 700;
       color: rgba(255,255,255,0.6);
       cursor: pointer;
-      transition: background 0.2s, color 0.2s;
     }
-    .close-btn:hover {
-      background: rgba(239,68,68,0.2);
-      color: #f87171;
-      border-color: rgba(239,68,68,0.3);
+
+    .form-group-edit {
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
-    .modal-body {
-      margin-bottom: 24px;
+    .form-group-edit label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #94a3b8;
     }
-    .modal-body p {
-      margin: 0;
-      font-size: 0.97rem;
-      color: rgba(255,255,255,0.55);
-      line-height: 1.65;
+    .badge-opt {
+      font-size: 0.72rem;
+      color: #64748b;
       font-weight: 400;
     }
+    .form-group-edit input {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: #f1f5f9;
+      font-size: 0.95rem;
+      outline: none;
+    }
+    .form-group-edit input:focus {
+      border-color: #f97316;
+    }
+
+    .alert-error {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #ef4444;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      margin-top: 8px;
+    }
+
     .modal-footer {
       display: flex;
+      gap: 10px;
+      margin-top: 20px;
     }
-    .ok-btn {
+    .cancel-btn {
       flex: 1;
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      background: rgba(255,255,255,0.08);
+      color: #cbd5e1;
+      border: none;
+      padding: 14px;
+      border-radius: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .save-btn, .ok-btn {
+      flex: 1;
+      background: linear-gradient(135deg, #f97316, #ea580c);
       color: #fff;
       border: none;
-      padding: 15px;
+      padding: 14px;
       border-radius: 14px;
       font-size: 1rem;
       font-weight: 700;
       cursor: pointer;
-      letter-spacing: 0.01em;
-      box-shadow: 0 8px 24px rgba(99,102,241,0.4);
-      transition: all 0.2s ease;
+      box-shadow: 0 8px 24px rgba(249,115,22,0.4);
     }
-    .ok-btn:hover {
-      background: linear-gradient(135deg, #4f46e5, #7c3aed);
-      transform: translateY(-1px);
-      box-shadow: 0 12px 30px rgba(99,102,241,0.5);
-    }
-    .ok-btn:active {
-      transform: translateY(0);
+    .save-btn:disabled {
+      background: #475569;
+      box-shadow: none;
+      cursor: not-allowed;
     }
 
-    /* ── Animations ──────────────────────────────── */
-    .animate-fade {
-      animation: fadeIn 0.35s ease;
-    }
-    .animate-slide-up {
-      animation: slideUp 0.38s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes slideUp {
-      from { transform: translateY(100%); opacity: 0; }
-      to   { transform: translateY(0);    opacity: 1; }
-    }
-  `],
+    .animate-fade { animation: fadeIn 0.35s ease; }
+    .animate-slide-up { animation: slideUp 0.38s cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  `]
 })
 export class ClientProfileComponent implements OnInit {
   activeModalTitle = signal<string | null>(null);
   activeModalContent = signal<string | null>(null);
+  showEditModal = signal<boolean>(false);
+
+  editName = '';
+  editEmail = '';
+  editPhone = '';
+  editAddress = '';
+  editError = '';
+  saving = false;
 
   menuItems: MenuItem[] = [];
 
@@ -344,6 +407,12 @@ export class ClientProfileComponent implements OnInit {
 
   ngOnInit(): void {
     this.menuItems = [
+      {
+        icon: '✏️',
+        label: 'Profilni tahrirlash',
+        colorClass: 'orange',
+        action: () => this.openEditProfile()
+      },
       {
         icon: '💬',
         label: 'Qo\'llab-quvvatlash',
@@ -395,6 +464,42 @@ export class ClientProfileComponent implements OnInit {
     ];
   }
 
+  openEditProfile(): void {
+    const user = this.auth.user();
+    this.editName = user?.name || '';
+    this.editEmail = user?.email || '';
+    this.editPhone = user?.phone || '';
+    this.editAddress = user?.address || '';
+    this.editError = '';
+    this.showEditModal.set(true);
+  }
+
+  closeEditProfile(): void {
+    this.showEditModal.set(false);
+  }
+
+  saveProfile(): void {
+    if (!this.editName.trim()) {
+      this.editError = 'Ismingizni kiritishingiz kerak!';
+      return;
+    }
+
+    this.saving = true;
+    this.editError = '';
+
+    this.auth.updateProfile(this.editName, this.editPhone, this.editAddress, this.editEmail.trim() || undefined).subscribe({
+      next: () => {
+        this.saving = false;
+        this.showEditModal.set(false);
+        this.snack.open('Profil muvaffaqiyatli yangilandi!', 'OK', { duration: 3000 });
+      },
+      error: (err) => {
+        this.saving = false;
+        this.editError = err.error?.message || 'Profilni yangilashda xatolik yuz berdi!';
+      }
+    });
+  }
+
   showInfo(title: string, content: string): void {
     this.activeModalTitle.set(title);
     this.activeModalContent.set(content);
@@ -410,4 +515,3 @@ export class ClientProfileComponent implements OnInit {
     this.snack.open('Tizimdan chiqildi!', '', { duration: 3000 });
   }
 }
-
