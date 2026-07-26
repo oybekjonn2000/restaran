@@ -5836,6 +5836,12 @@ export class CourierDashboardComponent implements OnInit, OnDestroy {
         (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
+
+          // Also post GPS track point via HTTP REST API for DB route persistence
+          this.orderService.recordGpsTrackPoint(orderId, lat, lng).subscribe({
+            error: () => {} // silent
+          });
+
           if (this.gpsWs && this.gpsWs.readyState === WebSocket.OPEN) {
             this.gpsWs.send(JSON.stringify({
               latitude: lat,

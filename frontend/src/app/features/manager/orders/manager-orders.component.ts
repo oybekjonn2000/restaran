@@ -7,11 +7,12 @@ import { Order, ORDER_STATUS_LABELS } from '../../../core/models/order.model';
 import { BodyPortalDirective } from '../../../core/directives/body-portal.directive';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { OrderRouteModalComponent } from '../../../shared/components/order-route-modal/order-route-modal.component';
 
 @Component({
   selector: 'app-manager-orders',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatProgressSpinnerModule, BodyPortalDirective, RouterLink],
+  imports: [CommonModule, FormsModule, MatProgressSpinnerModule, BodyPortalDirective, RouterLink, OrderRouteModalComponent],
   template: `
     <div class="manager-orders-page animate-in">
       
@@ -168,6 +169,21 @@ import { AuthService } from '../../../core/services/auth.service';
                           <strong>{{ (order.totalDistanceKm || 0) | number:'1.1-2' }} km</strong>
                         </div>
                       </div>
+
+                      @if (order.status === 'DELIVERED') {
+                        <div class="route-preview-card" (click)="openRouteModal(order.id)" title="Xaritani ochish uchun bosing">
+                          @if (order.staticMapPreview) {
+                            <img [src]="order.staticMapPreview" alt="Route Preview" class="route-static-img" />
+                          } @else {
+                            <div class="route-static-placeholder">
+                              <span>🗺️ Yandex Maps Marshruti</span>
+                            </div>
+                          }
+                          <div class="route-card-overlay">
+                            <span>🗺️ Marshrutni ko'rish (Xarita)</span>
+                          </div>
+                        </div>
+                      }
                     </div>
 
                     <!-- COLUMN 3: COURIER & ACTIONS -->
@@ -195,6 +211,9 @@ import { AuthService } from '../../../core/services/auth.service';
                       <div class="action-buttons-wrap">
                         @if (order.status === 'DELIVERED') {
                           <span class="status-done-new">✅ Topshirildi</span>
+                          <button class="act-btn-new act-courier" (click)="openRouteModal(order.id)" style="margin-top: 4px;">
+                            🗺️ Marshrutni ko'rish
+                          </button>
                         } @else if (order.status === 'CANCELED') {
                           <span class="status-canceled-new">🚫 Bekor qilindi</span>
                         }
@@ -369,7 +388,11 @@ import { AuthService } from '../../../core/services/auth.service';
                       </td>
                       <td class="col-actions">
                         <div class="action-buttons-wrap">
-                          @if (order.status === 'PENDING') {
+                          @if (order.status === 'DELIVERED') {
+                            <button class="act-btn-new act-courier" (click)="openRouteModal(order.id)">
+                              🗺️ Marshrut
+                            </button>
+                          } @else if (order.status === 'PENDING') {
                             <button class="act-btn-new act-prepare" (click)="changeStatus(order.id, 'PREPARING')" [disabled]="updatingId() === order.id">
                               🍳 Tayyorlash
                             </button>
@@ -378,9 +401,11 @@ import { AuthService } from '../../../core/services/auth.service';
                               ✅ Tayyor
                             </button>
                           }
-                          <button class="act-btn-new act-cancel" (click)="confirmCancel(order)" [disabled]="updatingId() === order.id">
-                            ✕ Bekor
-                          </button>
+                          @if (order.status !== 'DELIVERED' && order.status !== 'CANCELED') {
+                            <button class="act-btn-new act-cancel" (click)="confirmCancel(order)" [disabled]="updatingId() === order.id">
+                              ✕ Bekor
+                            </button>
+                          }
                         </div>
                       </td>
                     </tr>
@@ -448,6 +473,13 @@ import { AuthService } from '../../../core/services/auth.service';
           </div>
         </div>
       }
+
+      <!-- Order Route History Modal -->
+      <app-order-route-modal 
+        [orderId]="selectedRouteOrderId()" 
+        [show]="showRouteModal()" 
+        (close)="showRouteModal.set(false)">
+      </app-order-route-modal>
 
       <!-- Toast Notification -->
       @if (toast()) {
@@ -818,6 +850,60 @@ import { AuthService } from '../../../core/services/auth.service';
       gap: 6px;
     }
 
+    .route-preview-card {
+      position: relative;
+      margin-top: 12px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      cursor: pointer;
+      height: 90px;
+      background: #1e293b;
+      transition: all 0.2s ease;
+    }
+
+    .route-preview-card:hover {
+      transform: translateY(-2px);
+      border-color: #3b82f6;
+      box-shadow: 0 6px 16px rgba(59, 130, 246, 0.25);
+    }
+
+    .route-static-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .route-static-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      color: #94a3b8;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .route-card-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.82rem;
+      transition: background 0.2s;
+    }
+
+    .route-preview-card:hover .route-card-overlay {
+      background: rgba(15, 23, 42, 0.3);
+    }
+
     .food-item-badge {
       display: flex;
       justify-content: space-between;
@@ -1101,6 +1187,10 @@ export class ManagerOrdersComponent implements OnInit, OnDestroy {
   cancelTarget = signal<Order | null>(null);
   cancelReason = '';
 
+  // Route Modal
+  selectedRouteOrderId = signal<number | null>(null);
+  showRouteModal = signal<boolean>(false);
+
   // Toast notifier
   toast = signal<{ message: string; type: 'success' | 'error' } | null>(null);
   private toastTimer: any;
@@ -1110,6 +1200,11 @@ export class ManagerOrdersComponent implements OnInit, OnDestroy {
     private orderService: OrderService,
     public auth: AuthService
   ) {}
+
+  openRouteModal(orderId: number): void {
+    this.selectedRouteOrderId.set(orderId);
+    this.showRouteModal.set(true);
+  }
 
   ngOnInit(): void {
     this.load(true);

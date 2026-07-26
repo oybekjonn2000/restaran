@@ -1,8 +1,8 @@
 package com.restoran.controller;
 
 import com.restoran.dto.request.OrderRequest;
+import com.restoran.dto.response.OrderRouteHistoryDto;
 import com.restoran.entity.Order;
-import com.restoran.entity.OrderStatus;
 import com.restoran.security.UserDetailsImpl;
 import com.restoran.service.OrderService;
 import lombok.RequiredArgsConstructor;
@@ -55,5 +55,22 @@ public class OrderController {
     public ResponseEntity<Map<String, Boolean>> isCourierActive() {
         boolean active = orderService.isAnyCourierOnShift();
         return ResponseEntity.ok(Map.of("active", active));
+    }
+
+    /** Kuryer faol buyurtma davomida o'z GPS nuqtasini jo'natishi */
+    @PostMapping("/{id}/gps-track")
+    public ResponseEntity<Map<String, String>> recordGpsTrack(
+            @PathVariable Long id,
+            @RequestBody Map<String, Double> payload) {
+        Double lat = payload.get("latitude");
+        Double lng = payload.get("longitude");
+        orderService.recordGpsTrackPoint(id, lat, lng);
+        return ResponseEntity.ok(Map.of("status", "ok"));
+    }
+
+    /** Admin & Manager — Buyurtma marshruti tarixini va statistikalarini olish */
+    @GetMapping("/{id}/route-history")
+    public ResponseEntity<OrderRouteHistoryDto> getRouteHistory(@PathVariable Long id) {
+        return ResponseEntity.ok(orderService.getOrderRouteHistory(id));
     }
 }

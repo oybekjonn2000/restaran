@@ -154,6 +154,18 @@ public class Order {
     @Column(name = "previous_status")
     private String previousStatus;
 
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt;
+
+    @Column(name = "total_time_minutes")
+    private Integer totalTimeMinutes;
+
+    @Column(name = "average_speed_kmh")
+    private Double averageSpeedKmh;
+
+    @Column(name = "static_map_preview", length = 2000)
+    private String staticMapPreview;
+
     @Transient
     private boolean courierActiveOnShift;
 

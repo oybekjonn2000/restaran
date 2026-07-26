@@ -25,6 +25,7 @@ public class OrderService {
     private final RestaurantRepository restaurantRepository;
     private final TelegramBotService telegramBotService;
     private final com.restoran.repository.OrderDispatchLogRepository orderDispatchLogRepository;
+    private final com.restoran.repository.OrderGpsTrackPointRepository orderGpsTrackPointRepository;
     private final SystemSettingService systemSettingService;
 
     @org.springframework.beans.factory.annotation.Value("${courier.pay.base-fee:9000.0}")
@@ -343,6 +344,27 @@ public class OrderService {
                     userRepository.save(courier);
                 }
             }
+
+            // Record Delivered Route History Metrics
+            order.setDeliveredAt(java.time.LocalDateTime.now());
+            java.time.LocalDateTime startTime = order.getCourierAcceptedAt() != null ? order.getCourierAcceptedAt() : order.getCreatedAt();
+            if (startTime != null) {
+                long minutes = java.time.Duration.between(startTime, order.getDeliveredAt()).toMinutes();
+                order.setTotalTimeMinutes((int) Math.max(1, minutes));
+            } else {
+                order.setTotalTimeMinutes(1);
+            }
+
+            double dist = order.getTotalDistanceKm() != null ? order.getTotalDistanceKm() : 0.0;
+            double hours = order.getTotalTimeMinutes() / 60.0;
+            if (hours > 0) {
+                double speed = dist / hours;
+                order.setAverageSpeedKmh(Math.round(speed * 10.0) / 10.0);
+            } else {
+                order.setAverageSpeedKmh(0.0);
+            }
+
+            order.setStaticMapPreview(generateStaticMapPreview(order));
 
             // Free courier to take other orders
             if (order.getCourier() != null) {
@@ -862,5 +884,79 @@ public class OrderService {
 
         logDispatchEvent(order, order.getCourier(), "Admin qarori: Bekor qilish rad etildi. Buyurtma kuryerda qoldirildi.", false, null, null, "REJECTED_CANCELLATION", false);
         return orderRepository.save(order);
+    }
+
+    // =================== ROUTE HISTORY LOGIC ===================
+
+    public void recordGpsTrackPoint(Long orderId, Double latitude, Double longitude) {
+        if (orderId == null || latitude == null || longitude == null) return;
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null) return;
+
+        // Faol buyurtma davomida yig'ish
+        if (order.getStatus() == OrderStatus.COURIER_ACCEPTED || 
+            order.getStatus() == OrderStatus.COURIER_AT_RESTAURANT || 
+            order.getStatus() == OrderStatus.DELIVERING ||
+            order.getStatus() == OrderStatus.COURIER_AT_CLIENT) {
+            
+            com.restoran.entity.OrderGpsTrackPoint point = com.restoran.entity.OrderGpsTrackPoint.builder()
+                .orderId(orderId)
+                .latitude(latitude)
+                .longitude(longitude)
+                .timestamp(java.time.LocalDateTime.now())
+                .build();
+            orderGpsTrackPointRepository.save(point);
+
+            // Real-vaqt kuryer o'rnini yangilab qo'yamiz
+            order.setCourierLatitude(latitude);
+            order.setCourierLongitude(longitude);
+            orderRepository.save(order);
+        }
+    }
+
+    public com.restoran.dto.response.OrderRouteHistoryDto getOrderRouteHistory(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Buyurtma topilmadi: " + orderId));
+
+        List<com.restoran.entity.OrderGpsTrackPoint> points = orderGpsTrackPointRepository.findByOrderIdOrderByTimestampAsc(orderId);
+
+        double rLat = order.getRestaurantLatitude() != null ? order.getRestaurantLatitude() : REST_LAT;
+        double rLng = order.getRestaurantLongitude() != null ? order.getRestaurantLongitude() : REST_LNG;
+        double cLat = order.getLatitude() != null ? order.getLatitude() : REST_LAT;
+        double cLng = order.getLongitude() != null ? order.getLongitude() : REST_LNG;
+        double sLat = order.getCourierStartLatitude() != null ? order.getCourierStartLatitude() : rLat;
+        double sLng = order.getCourierStartLongitude() != null ? order.getCourierStartLongitude() : rLng;
+
+        return com.restoran.dto.response.OrderRouteHistoryDto.builder()
+            .orderId(order.getId())
+            .courierStartLocation(new com.restoran.dto.response.OrderRouteHistoryDto.LocationDto(sLat, sLng, "Kuryer boshlagan joy"))
+            .restaurantLocation(new com.restoran.dto.response.OrderRouteHistoryDto.LocationDto(rLat, rLng, order.getRestaurant() != null ? order.getRestaurant().getName() : "Restoran"))
+            .customerLocation(new com.restoran.dto.response.OrderRouteHistoryDto.LocationDto(cLat, cLng, order.getDeliveryAddress()))
+            .gpsTrackPoints(points)
+            .pickupDistanceKm(order.getPickupDistanceKm() != null ? order.getPickupDistanceKm() : 0.0)
+            .deliveryDistanceKm(order.getDeliveryDistanceKm() != null ? order.getDeliveryDistanceKm() : 0.0)
+            .totalDistanceKm(order.getTotalDistanceKm() != null ? order.getTotalDistanceKm() : 0.0)
+            .totalTimeMinutes(order.getTotalTimeMinutes() != null ? order.getTotalTimeMinutes() : 0)
+            .averageSpeedKmh(order.getAverageSpeedKmh() != null ? order.getAverageSpeedKmh() : 0.0)
+            .staticMapPreview(order.getStaticMapPreview())
+            .completedRoute(order.getStatus() == OrderStatus.DELIVERED)
+            .createdAt(order.getCreatedAt())
+            .courierAcceptedAt(order.getCourierAcceptedAt())
+            .deliveredAt(order.getDeliveredAt())
+            .build();
+    }
+
+    private String generateStaticMapPreview(Order order) {
+        double cLat = order.getLatitude() != null ? order.getLatitude() : REST_LAT;
+        double cLng = order.getLongitude() != null ? order.getLongitude() : REST_LNG;
+        double rLat = order.getRestaurantLatitude() != null ? order.getRestaurantLatitude() : REST_LAT;
+        double rLng = order.getRestaurantLongitude() != null ? order.getRestaurantLongitude() : REST_LNG;
+        double sLat = order.getCourierStartLatitude() != null ? order.getCourierStartLatitude() : rLat;
+        double sLng = order.getCourierStartLongitude() != null ? order.getCourierStartLongitude() : rLng;
+
+        return "https://static-maps.yandex.ru/1.x/?l=map&pt=" + 
+               sLng + "," + sLat + ",pm2grm~" + 
+               rLng + "," + rLat + ",pm2orgm~" + 
+               cLng + "," + cLat + ",pm2rdm&size=450,220";
     }
 }

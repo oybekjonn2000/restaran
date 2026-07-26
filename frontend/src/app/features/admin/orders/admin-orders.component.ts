@@ -7,6 +7,7 @@ import { OrderService } from '../../../core/services/order.service';
 import { Order, ORDER_STATUS_LABELS, OrderStatus } from '../../../core/models/order.model';
 import { User } from '../../../core/models/user.model';
 import { BodyPortalDirective } from '../../../core/directives/body-portal.directive';
+import { OrderRouteModalComponent } from '../../../shared/components/order-route-modal/order-route-modal.component';
 
 const ALL_STATUSES: OrderStatus[] = [
   'PENDING',
@@ -27,7 +28,7 @@ const ALL_STATUSES: OrderStatus[] = [
 @Component({
   selector: 'app-admin-orders',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatProgressSpinnerModule, MatSnackBarModule, BodyPortalDirective],
+  imports: [CommonModule, FormsModule, MatProgressSpinnerModule, MatSnackBarModule, BodyPortalDirective, OrderRouteModalComponent],
   template: `
     <div class="orders-page animate-in">
       <div class="page-header">
@@ -124,6 +125,9 @@ const ALL_STATUSES: OrderStatus[] = [
                       }
                     } @else if (order.status === 'DELIVERED') {
                       <span class="canceled-badge" style="background: rgba(16,185,129,0.15); color: #10b981; border-color: rgba(16,185,129,0.25);">🎉 Yetkazildi</span>
+                      <button class="btn btn-outline btn-xs" style="margin-top: 4px; font-size: 0.72rem; padding: 2px 6px; border-color: rgba(249,115,22,0.4); color: #f97316;" (click)="openRouteModal(order.id)">
+                        🗺️ Marshrut
+                      </button>
                     } @else {
                       <select class="status-select" [ngModel]="order.status"
                               (change)="changeStatus(order.id, $any($event.target).value)"
@@ -322,6 +326,13 @@ const ALL_STATUSES: OrderStatus[] = [
               <div class="modal-total">
                 Jami: {{ selectedOrder()!.totalPrice | number:'1.0-0' }} so'm
               </div>
+              @if (selectedOrder()!.status === 'DELIVERED') {
+                <div style="margin-top: 14px;">
+                  <button class="btn btn-outline" style="width: 100%; font-weight: 700; color: #f97316; border-color: rgba(249,115,22,0.4);" (click)="openRouteModal(selectedOrder()!.id)">
+                    🗺️ Buyurtma marshrutini ko'rish
+                  </button>
+                </div>
+              }
             </div>
           </div>
         </div>
@@ -378,6 +389,13 @@ const ALL_STATUSES: OrderStatus[] = [
           </div>
         </div>
       }
+
+      <!-- Order Route History Modal -->
+      <app-order-route-modal 
+        [orderId]="selectedRouteOrderId()" 
+        [show]="showRouteModal()" 
+        (close)="showRouteModal.set(false)">
+      </app-order-route-modal>
     </div>
   `,
   styles: [`
@@ -689,6 +707,10 @@ export class AdminOrdersComponent implements OnInit, OnDestroy {
   canceling = signal(false);
   cancelReason = '';
   statuses = ALL_STATUSES;
+
+  // Route Modal
+  selectedRouteOrderId = signal<number | null>(null);
+  showRouteModal = signal<boolean>(false);
   
   nowTick = signal<number>(Date.now());
   transferCourierId = '0';
@@ -720,6 +742,11 @@ export class AdminOrdersComponent implements OnInit, OnDestroy {
       });
     }
     return list;
+  }
+
+  openRouteModal(orderId: number): void {
+    this.selectedRouteOrderId.set(orderId);
+    this.showRouteModal.set(true);
   }
 
   constructor(

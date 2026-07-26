@@ -50,6 +50,10 @@ export interface Order {
   previousStatus?: string;
   paymentMethod?: 'CARD' | 'CASH';
   deliveryProvider?: 'INTERNAL' | 'YANDEX';
+  staticMapPreview?: string;
+  deliveredAt?: string;
+  totalTimeMinutes?: number;
+  averageSpeedKmh?: number;
 }
 
 export interface OrderItem {

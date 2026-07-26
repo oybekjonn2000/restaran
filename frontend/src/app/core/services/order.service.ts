@@ -356,4 +356,13 @@ export class OrderService {
     const url = type ? `${BASE}/support/admin/unread-count?type=${type}` : `${BASE}/support/admin/unread-count`;
     return this.http.get<any>(url);
   }
+
+  // ===== ROUTE HISTORY & GPS TRACKING =====
+  recordGpsTrackPoint(orderId: number, latitude: number, longitude: number): Observable<any> {
+    return this.http.post<any>(`${BASE}/orders/${orderId}/gps-track`, { latitude, longitude });
+  }
+
+  getOrderRouteHistory(orderId: number): Observable<any> {
+    return this.http.get<any>(`${BASE}/orders/${orderId}/route-history`);
+  }
 }
