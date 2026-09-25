@@ -38,7 +38,7 @@ public class RestaurantApplication {
             PasswordEncoder encoder) {
         return args -> {
 
-            // ===================== BASIC USERS =====================
+            // =====1================ BASIC USERS =====================
             if (userRepository.count() == 0) {
                 userRepository.save(User.builder()
                     .name("Admin Firdavs").email("admin@food.uz")
