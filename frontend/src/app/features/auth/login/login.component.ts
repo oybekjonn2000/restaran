@@ -718,7 +718,11 @@ export class LoginComponent implements OnDestroy {
       },
       error: (err) => {
         this.loading = false;
-        this.errorMsg = err.error?.message || 'Telefon yoki parol noto\'g\'ri!';
+        if (err.status === 0) {
+          this.errorMsg = 'Server bilan aloqa yo\'q! (Backend server ishga tushirilganligini tekshiring)';
+        } else {
+          this.errorMsg = err.error?.message || 'Telefon yoki parol noto\'g\'ri!';
+        }
       }
     });
   }
